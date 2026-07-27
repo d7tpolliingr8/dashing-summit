@@ -1,6 +1,7 @@
--- // Raven Cheats | Solara Compatible
+-- // Raven Cheats | Solara Compatible | OPTIMIZED
 -- // AI Tracking Aimbot | Red/Black/Yellow Theme | Unlock All
 -- // Discord: https://discord.gg/FnKfhZ7Fb6
+-- // FIXED: Flight no longer toggles on/off constantly
 
 -- ================================================
 --  STUBS
@@ -181,6 +182,10 @@ local flyEnabled = false
 local noclipEnabled = false
 local aimKeyHeld = false
 
+-- Optimization: Throttle ESP updates
+local espUpdateCounter = 0
+local espUpdateRate = 3 -- Update every 3 frames
+
 -- ================================================
 --  DRAWING HELPERS
 -- ================================================
@@ -297,7 +302,7 @@ local SKEL_R6 = {
 }
 
 -- ================================================
---  AI TRACKING SYSTEM
+--  AI TRACKING SYSTEM (Optimized)
 -- ================================================
 
 local function GetVelocity(player)
@@ -356,10 +361,11 @@ local function CreatePredictionDot()
 end
 
 -- ================================================
---  AI AIMBOT
+--  AI AIMBOT (Optimized)
 -- ================================================
 local lastTarget = nil
 local targetLockTimer = 0
+local aimUpdateCounter = 0
 
 local function GetBestTarget()
     local best = nil
@@ -431,6 +437,11 @@ local function DoAimbot()
         return
     end
     
+    -- Throttle aim updates to every 2 frames
+    aimUpdateCounter = aimUpdateCounter + 1
+    if aimUpdateCounter < 2 then return end
+    aimUpdateCounter = 0
+    
     local target = GetBestTarget()
     if not target then
         lastTarget = nil
@@ -501,7 +512,7 @@ local function UpdateFOV()
 end
 
 -- ================================================
---  ESP SYSTEM
+--  ESP SYSTEM (Optimized - No per-frame cleanup)
 -- ================================================
 local ESPs = {}
 local OffscreenArrows = {}
@@ -591,6 +602,7 @@ local function DestroyESP(player)
 end
 
 local function HideESP(o)
+    if not o then return
     for _, l in ipairs(o.SO or {}) do l.Visible = false end
     for _, l in ipairs(o.S) do l.Visible = false end
     for _, l in ipairs(o.HB) do l.Visible = false end
@@ -694,6 +706,11 @@ local function UpdateESP()
         end
         return
     end
+    
+    -- Throttle ESP updates to every 3 frames
+    espUpdateCounter = espUpdateCounter + 1
+    if espUpdateCounter < espUpdateRate then return end
+    espUpdateCounter = 0
     
     for _, player in ipairs(Players:GetPlayers()) do
         if player == LP then continue end
@@ -872,6 +889,11 @@ UserInputService.InputBegan:Connect(function(input, gameProcessed)
             Library:Toggle()
         end
     end
+    
+    -- Flight keybind (F by default)
+    if input.KeyCode == Cfg.Movement.FlyKeybind then
+        ToggleFly()
+    end
 end)
 
 UserInputService.InputEnded:Connect(function(input, gameProcessed)
@@ -893,19 +915,31 @@ UserInputService.JumpRequest:Connect(function()
     end
 end)
 
--- Fly
+-- FLIGHT SYSTEM (FIXED - No toggle spam)
 local flyConnection = nil
+local flyEnabled = false
 
 local function StartFly()
-    if flyConnection then return end
+    if flyConnection then 
+        print("[Raven] Flight already running")
+        return 
+    end
     local char = LP.Character
-    if not char then return end
+    if not char then 
+        print("[Raven] No character for flight")
+        return 
+    end
     
     local root = char:FindFirstChild("HumanoidRootPart")
-    if not root then return end
+    if not root then 
+        print("[Raven] No HumanoidRootPart for flight")
+        return 
+    end
     
     local humanoid = char:FindFirstChildOfClass("Humanoid")
-    if humanoid then humanoid.PlatformStand = true end
+    if humanoid then 
+        humanoid.PlatformStand = true 
+    end
     
     flyConnection = RunService:BindToRenderStep("FlySystem", Enum.RenderPriority.Last.Value, function()
         if not flyEnabled then
@@ -946,6 +980,8 @@ local function StartFly()
             root.Velocity = Vector3.new(0, 0, 0)
         end
     end)
+    
+    print("[Raven] Flight started")
 end
 
 local function StopFly()
@@ -956,10 +992,15 @@ local function StopFly()
     local char = LP.Character
     if char then
         local humanoid = char:FindFirstChildOfClass("Humanoid")
-        if humanoid then humanoid.PlatformStand = false end
+        if humanoid then 
+            humanoid.PlatformStand = false 
+        end
         local root = char:FindFirstChild("HumanoidRootPart")
-        if root then root.Velocity = Vector3.new(0, 0, 0) end
+        if root then 
+            root.Velocity = Vector3.new(0, 0, 0) 
+        end
     end
+    print("[Raven] Flight stopped")
 end
 
 local function ToggleFly()
@@ -1119,25 +1160,13 @@ RunService.Heartbeat:Connect(function()
     end
 end)
 
--- Anti AFK
-local function AntiAFK()
-    local vu = VirtualUser
-    vu:CaptureController()
-    vu:ClickButton2(Vector2.new())
-end
-
-RunService.Heartbeat:Connect(function()
-    if Cfg.Movement.AntiAFK then
-        AntiAFK()
-    end
-end)
-
 -- ================================================
---  CROSSHAIR SYSTEM
+--  CROSSHAIR SYSTEM (Optimized)
 -- ================================================
 local CrosshairLines = {}
 local CenterDot = nil
 local CrosshairAngle = 0
+local crosshairUpdateCounter = 0
 
 local function CreateCrosshair()
     for i = 1, 4 do
@@ -1166,6 +1195,11 @@ local function UpdateCrosshair()
         if CenterDot then CenterDot.Visible = false end
         return
     end
+    
+    -- Update crosshair every 2 frames
+    crosshairUpdateCounter = crosshairUpdateCounter + 1
+    if crosshairUpdateCounter < 2 then return end
+    crosshairUpdateCounter = 0
     
     local center = AimPoint()
     local size = Cfg.Visuals.CrosshairSize
@@ -1433,15 +1467,28 @@ Players.PlayerAdded:Connect(OnPlayerAdded)
 Players.PlayerRemoving:Connect(DestroyESP)
 
 -- ================================================
---  RENDER LOOPS
+--  RENDER LOOPS (Optimized - Throttled)
 -- ================================================
+local frameCount = 0
+
 RunService.RenderStepped:Connect(function()
     Camera = Workspace.CurrentCamera
+    frameCount = frameCount + 1
+    
+    -- Update FOV every frame (lightweight)
     pcall(UpdateFOV)
-    pcall(UpdateESP)
-    pcall(UpdateOffscreenArrows)
+    
+    -- Update crosshair every 2 frames
     pcall(UpdateCrosshair)
+    
+    -- Update aimbot every 2 frames
     pcall(DoAimbot)
+    
+    -- Update ESP every 3 frames (heavy)
+    if frameCount % 3 == 0 then
+        pcall(UpdateESP)
+        pcall(UpdateOffscreenArrows)
+    end
 end)
 
 -- ================================================
@@ -1539,6 +1586,7 @@ local Tabs = {
     Aim = Window:AddTab("🎯 Aim"),
     Util = Window:AddTab("🔄 Utils"),
     Move = Window:AddTab("🚀 Move"),
+    Player = Window:AddTab("🛡️ Player"),
     Vis = Window:AddTab("👁️ Visuals"),
     Settings = Window:AddTab("⚙️ Settings"),
 }
@@ -1724,14 +1772,17 @@ UnlockGroup:AddButton("🦅 UNLOCK ALL", function()
 end)
 
 -- =============================================
--- MOVE TAB (FULLY POPULATED)
+-- MOVE TAB
 -- =============================================
 local MoveGroup = Tabs.Move:AddLeftGroupbox("Locomotion Controls")
 
 MoveGroup:AddToggle("FlyToggle", { Text = "Flight", Default = Cfg.Movement.Fly })
 Toggles.FlyToggle:OnChanged(function(v)
-    Cfg.Movement.Fly = v
-    if v then ToggleFly() else ToggleFly() end
+    if v then
+        if not flyEnabled then ToggleFly() end
+    else
+        if flyEnabled then ToggleFly() end
+    end
 end)
 Toggles.FlyToggle:AddKeyPicker("FlyKeybindPicker", { Default = "F", Text = "Flight Hotkey", NoUI = false })
 Options.FlyKeybindPicker:OnChanged(function(v)
@@ -1749,7 +1800,8 @@ Options.SpeedVal:OnChanged(function(v) Cfg.Movement.SpeedValue = v end)
 
 MoveGroup:AddToggle("NoclipToggle", { Text = "Noclip", Default = Cfg.Movement.Noclip })
 Toggles.NoclipToggle:OnChanged(function(v)
-    Cfg.Movement.Noclip = v    if v then ToggleNoclip() else ToggleNoclip() end
+    Cfg.Movement.Noclip = v
+    if v then ToggleNoclip() else ToggleNoclip() end
 end)
 
 MoveGroup:AddToggle("InfiniteJump", { Text = "Infinite Jump", Default = Cfg.Movement.InfiniteJump })
@@ -1758,10 +1810,9 @@ Toggles.InfiniteJump:OnChanged(function(v)
 end)
 
 -- =============================================
--- PLAYER TAB (NEW - WITH GOD MODE ETC)
+-- PLAYER TAB
 -- =============================================
-local PlayerTab = Window:AddTab("🛡️ Player")
-local PlayerGroup = PlayerTab:AddLeftGroupbox("Player Mods")
+local PlayerGroup = Tabs.Player:AddLeftGroupbox("Player Mods")
 
 PlayerGroup:AddToggle("GodMode", { Text = "God Mode", Default = Cfg.Player.GodMode })
 Toggles.GodMode:OnChanged(function(v)
@@ -1823,4 +1874,6 @@ SaveManager:LoadAutoloadConfig()
 -- =============================================
 print("[Raven Cheats] Loaded successfully!")
 print("[Raven Cheats] Press Right Shift to toggle menu.")
+print("[Raven Cheats] Press F to toggle flight.")
 print("[Raven Cheats] AI Tracking: " .. (Cfg.AI.Humanize and "Humanized" or "Standard"))
+print("[Raven Cheats] Performance mode: Optimized (FPS friendly)")
