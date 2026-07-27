@@ -1,25 +1,32 @@
--- // Rotex Utility Framework | Solara Compatible (Target Select + Custom Offset Millisecond TP)
+-- // Raven Software | Premium Utility Suite
+-- // Black | Red | Yellow Edition
+-- // Featuring: Advanced Aimbot V4, Unlock All System, ESP Suite
 
 -- ================================================
---  STUBS
+--  COMPATIBILITY LAYER
 -- ================================================
-if not checkcaller        then checkcaller        = function() return true end end
-if not getnamecallmethod then getnamecallmethod = function() return ""    end end
-if not hookmetamethod    then hookmetamethod    = nil end
+if not checkcaller then checkcaller = function() return true end end
+if not getnamecallmethod then getnamecallmethod = function() return "" end end
+if not hookmetamethod then hookmetamethod = nil end
 
 -- ================================================
 --  SERVICES
 -- ================================================
-local Players          = game:GetService("Players")
-local RunService       = game:GetService("RunService")
+local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
 local UserInputService = game:GetService("UserInputService")
-local Workspace        = game:GetService("Workspace")
-local Lighting         = game:GetService("Lighting")
-local StarterGui       = game:GetService("StarterGui")
-local CoreGui          = game:GetService("CoreGui")
+local Workspace = game:GetService("Workspace")
+local Lighting = game:GetService("Lighting")
+local StarterGui = game:GetService("StarterGui")
+local CoreGui = game:GetService("CoreGui")
+local TweenService = game:GetService("TweenService")
+local VirtualInputManager = game:GetService("VirtualInputManager")
+local HttpService = game:GetService("HttpService")
+local MarketService = game:GetService("MarketplaceService")
+local ContentProvider = game:GetService("ContentProvider")
 
-local Camera           = Workspace.CurrentCamera
-local LP               = Players.LocalPlayer
+local Camera = Workspace.CurrentCamera
+local LP = Players.LocalPlayer
 
 -- ================================================
 --  LOAD LINORIA
@@ -27,24 +34,29 @@ local LP               = Players.LocalPlayer
 local Library, SaveManager, ThemeManager
 local LibraryLoaded = false
 
-for _, url in ipairs({
-    "https://raw.githubusercontent.com/violin-suzutsuki/LinoriaLib/main/Library.lua",
-    "https://raw.githubusercontent.com/caIIed/Linoria-Rewrite/main/Library.lua",
-}) do
-    local success, result = pcall(function()
-        return loadstring(game:HttpGet(url))()
-    end)
-    if success and result then
-        Library = result
-        LibraryLoaded = true
-        break
+local function LoadLibrary()
+    local urls = {
+        "https://raw.githubusercontent.com/violin-suzutsuki/LinoriaLib/main/Library.lua",
+        "https://raw.githubusercontent.com/caIIed/Linoria-Rewrite/main/Library.lua",
+    }
+    
+    for _, url in ipairs(urls) do
+        local success, result = pcall(function()
+            return loadstring(game:HttpGet(url))()
+        end)
+        if success and result then
+            Library = result
+            LibraryLoaded = true
+            return true
+        end
     end
+    return false
 end
 
-if not LibraryLoaded then
-    warn("[Rotex Framework] Failed to load UI library")
+if not LoadLibrary() then
+    warn("[Raven Software] Failed to load UI library")
     StarterGui:SetCore("SendNotification", {
-        Title = "Rotex Framework",
+        Title = "Raven Software",
         Text = "Failed to load UI library. Please try again.",
         Duration = 5,
     })
@@ -58,80 +70,130 @@ pcall(function()
     ThemeManager = loadstring(game:HttpGet("https://raw.githubusercontent.com/violin-suzutsuki/LinoriaLib/main/addons/ThemeManager.lua"))()
 end)
 
--- Accent Theme
-local PINK      = Color3.fromRGB(180, 40, 240)
-local PINK_DARK = Color3.fromRGB(110, 15, 160)
-local WHITE     = Color3.fromRGB(255, 255, 255)
-local BLACK     = Color3.fromRGB(0, 0, 0)
-local GREEN     = Color3.fromRGB(75, 195, 95)
-local RED       = Color3.fromRGB(255, 50, 50)
+-- ================================================
+--  RAVEN THEME (Black, Red, Yellow)
+-- ================================================
+local RavenTheme = {
+    Background = Color3.fromRGB(10, 10, 10),      -- Pure Black
+    Surface = Color3.fromRGB(20, 20, 20),         -- Dark Surface
+    Surface2 = Color3.fromRGB(30, 30, 30),        -- Lighter Surface
+    Primary = Color3.fromRGB(255, 0, 0),          -- Blood Red
+    Secondary = Color3.fromRGB(255, 215, 0),      -- Gold/Yellow
+    Accent = Color3.fromRGB(200, 0, 0),           -- Dark Red
+    Text = Color3.fromRGB(255, 255, 255),         -- White
+    TextSecondary = Color3.fromRGB(180, 180, 180),-- Light Gray
+    Success = Color3.fromRGB(0, 255, 0),          -- Green
+    Danger = Color3.fromRGB(255, 0, 0),           -- Red
+    Warning = Color3.fromRGB(255, 215, 0),        -- Yellow/Gold
+    Border = Color3.fromRGB(40, 40, 40),          -- Dark Border
+}
 
-local function ApplyPinkTheme()
+local function ApplyRavenTheme()
     if not Library then return end
     pcall(function()
-        Library.AccentColor     = PINK
-        Library.AccentColorDark = PINK_DARK
-        Library.FontColor       = Color3.fromRGB(240, 240, 240)
-        Library.MainColor       = Color3.fromRGB(22, 22, 26)
-        Library.BackgroundColor = Color3.fromRGB(16, 16, 20)
-        Library.OutlineColor    = Color3.fromRGB(40, 40, 48)
+        Library.AccentColor = RavenTheme.Primary
+        Library.AccentColorDark = RavenTheme.Accent
+        Library.FontColor = RavenTheme.Text
+        Library.MainColor = RavenTheme.Background
+        Library.BackgroundColor = RavenTheme.Surface
+        Library.OutlineColor = RavenTheme.Border
         Library:UpdateColorsUsingRegistry()
         
         if ThemeManager then
-            ThemeManager:ApplyTheme("Custom")
+            ThemeManager:ApplyTheme("Raven")
         end
     end)
 end
 
 -- ================================================
---  CONFIG
+--  CONFIGURATION
 -- ================================================
 local Cfg = {
     ESP = {
-        On = false, 
-        MaxDist = 1000,
-        Skel = true, 
-        SkelColor = WHITE,
-        Names = true, 
-        NameColor = WHITE,
-        Dist = true, 
-        DistColor = Color3.fromRGB(200, 200, 200),
-        HP = true,
-        Tracers = false, 
-        TraceColor = WHITE,
-        Chams = true, 
-        ChamsColor = PINK, 
-        ChamsTrans = 0.4, 
-        ChamsOut = Color3.fromRGB(0, 0, 0), 
-        ChamsOutT = 1, 
+        Enabled = false,
+        MaxDistance = 1000,
+        Skeleton = true,
+        SkeletonColor = RavenTheme.Secondary,
+        Names = true,
+        NameColor = RavenTheme.Text,
+        Distance = true,
+        DistanceColor = RavenTheme.TextSecondary,
+        Health = true,
+        Tracers = false,
+        TracerColor = RavenTheme.Primary,
+        Chams = true,
+        ChamsColor = RavenTheme.Primary,
+        ChamsTransparency = 0.3,
+        ChamsOutline = RavenTheme.Background,
+        ChamsOutlineTransparency = 0.5,
         Box = false,
-        BoxColor = WHITE,
+        BoxColor = RavenTheme.Secondary,
         CornerBox = false,
-        CornerColor = WHITE,
+        CornerColor = RavenTheme.Primary,
         OffscreenArrows = false,
-        OffscreenArrowColor = WHITE,
+        OffscreenArrowColor = RavenTheme.Primary,
+        Glow = false,
+        GlowColor = RavenTheme.Primary,
+        GlowIntensity = 0.3,
+        HeadDot = false,
+        HeadDotColor = RavenTheme.Primary,
     },
-    Aim = {
-        On = false, 
+    Aimbot = {
+        Enabled = false,
         Part = "Head",
-        FOV = 200, 
-        ShowFOV = true, 
-        FOVColor = WHITE,
-        Smoothness = 0.3, 
-        YOffset = 0, 
+        FOV = 200,
+        ShowFOV = true,
+        FOVColor = RavenTheme.Primary,
+        Smoothness = 0.3,
+        YOffset = 0,
         Prediction = 0.5,
         WallCheck = false,
         AimKey = "MouseButton2",
         MaxDistance = 500,
+        Silent = false,
+        Triggerbot = false,
+        TriggerKey = "MouseButton1",
+        TriggerDelay = 0.1,
+        HitChance = 85,
+        VisibleCheck = true,
+        -- Advanced Aimbot V4 Features
+        AutoShoot = false,
+        AutoShootDelay = 0.05,
+        AimAssist = false,
+        AimAssistStrength = 0.5,
+        MovementPrediction = true,
+        PredictionMultiplier = 1.2,
+        TargetLock = false,
+        LockKey = "Q",
+        LockDuration = 2,
+        FOVType = "Dynamic",
+        FOVDynamicSpeed = 1.5,
+        FOVMinSize = 50,
+        FOVMaxSize = 400,
+        -- Insane Tracking
+        InsaneTracking = false,
+        TrackingSpeed = 0.8,
+        TrackingPrediction = 2.0,
+        TrackingFOV = 300,
+        Snappiness = 0.9,
+        Humanize = false,
+        HumanizeOffset = 0.02,
     },
     Visuals = {
         FullBright = false,
         NoFog = false,
         Crosshair = false,
-        CrosshairColor = WHITE,
+        CrosshairColor = RavenTheme.Primary,
         CrosshairSize = 12,
         CrosshairGap = 4,
         CrosshairSpinSpeed = 2.0,
+        CrosshairStyle = "Raven",
+        NoBloom = false,
+        NoShadows = false,
+        RainbowLighting = false,
+        RainbowSpeed = 0.5,
+        CustomSkybox = false,
+        SkyboxColor = RavenTheme.Background,
     },
     Movement = {
         Fly = false,
@@ -140,46 +202,126 @@ local Cfg = {
         FlyKeybind = Enum.KeyCode.F,
         SpeedHack = false,
         SpeedValue = 24,
+        AntiStun = false,
+        AutoJump = false,
+        JumpHeight = 7.2,
+        AirControl = false,
+        AirControlStrength = 0.5,
+        WallJump = false,
+        DoubleJump = false,
     },
-    TargetUtility = {
-        StickyTP = false,
-        SelectedTarget = "None",
-        HeightOffset = 5,
+    Unlock = {
+        UnlockAll = false,
+        UnlockMethods = {
+            Bypass = false,
+            FakePurchases = false,
+            MemoryEdit = false,
+            RemoteSpoof = false,
+            ClientSpoof = false,
+            InventoryFake = false,
+            StatsModify = false,
+            LeaderboardFake = false,
+            ItemDuplication = false,
+            CurrencySpoof = false,
+            LevelFake = false,
+            BadgeUnlock = false,
+            TrophyUnlock = false,
+            AchievementUnlock = false,
+            CollectionComplete = false,
+            SkinUnlock = false,
+            CosmeticUnlock = false,
+            ToolUnlock = false,
+            WeaponUnlock = false,
+            VehicleUnlock = false,
+            PetUnlock = false,
+            MountUnlock = false,
+            TitleUnlock = false,
+            RankFake = false,
+            RoleFake = false,
+            PermissionsFake = false,
+            VipFake = false,
+            PremiumFake = false,
+            BattlePassFake = false,
+            SeasonRewards = false,
+            EventUnlock = false,
+            DailyRewards = false,
+            WeeklyRewards = false,
+            MonthlyRewards = false,
+            SpecialRewards = false,
+            LootBoxUnlock = false,
+            MysteryUnlock = false,
+            RareItems = false,
+            EpicItems = false,
+            LegendaryItems = false,
+            MythicItems = false,
+            ExoticItems = false,
+            UltimateItems = false,
+            AllItems = false,
+        },
+        UnlockAllGames = false,
+        UnlockAllBadges = false,
+        UnlockAllTrophies = false,
+        UnlockAllAchievements = false,
+        UnlockAllSkins = false,
+        UnlockAllCosmetics = false,
+        UnlockAllWeapons = false,
+        UnlockAllVehicles = false,
+        UnlockAllPets = false,
+        UnlockAllMounts = false,
+        ForceUnlock = false,
+        BypassAntiCheat = false,
+    },
+    Misc = {
+        AntiAFK = false,
+        AutoRejoin = false,
+        PingDisplay = false,
+        FPSDisplay = false,
+        Watermark = true,
+        NotificationStyle = "Raven",
+        MenuAnimations = true,
+        MenuBlur = true,
+        AntiCrash = true,
+        PerformanceMode = false,
     }
 }
 
 -- ================================================
 --  DRAWING HELPERS
 -- ================================================
-local function L(props)
-    local d = Drawing.new("Line")
+local DrawingObjects = {}
+
+local function GetDrawing(type, props)
+    local d = Drawing.new(type)
     d.Visible = false
-    d.Color = props.Color or WHITE
+    return d
+end
+
+local function L(props)
+    local d = GetDrawing("Line", props)
+    d.Color = props.Color or RavenTheme.Text
     d.Thickness = props.Thickness or 1
     d.ZIndex = props.ZIndex or 5
     return d
 end
 
 local function T(props)
-    local d = Drawing.new("Text")
-    d.Visible = false
+    local d = GetDrawing("Text", props)
     d.Text = props.Text or ""
     d.Size = props.Size or 13
     d.Center = props.Center ~= nil and props.Center or true
     d.Outline = true
-    d.OutlineColor = BLACK
-    d.Color = props.Color or WHITE
+    d.OutlineColor = RavenTheme.Background
+    d.Color = props.Color or RavenTheme.Text
     d.ZIndex = props.ZIndex or 6
     d.Position = Vector2.new(-9999, -9999)
     return d
 end
 
 local function C(props)
-    local d = Drawing.new("Circle")
-    d.Visible = false
+    local d = GetDrawing("Circle", props)
     d.Filled = false
     d.Thickness = props.Thickness or 2
-    d.Color = props.Color or WHITE
+    d.Color = props.Color or RavenTheme.Primary
     d.ZIndex = props.ZIndex or 10
     d.NumSides = 64
     d.Position = Vector2.new(-9999, -9999)
@@ -188,7 +330,7 @@ local function C(props)
 end
 
 -- ================================================
---  HELPERS
+--  UTILITY FUNCTIONS
 -- ================================================
 local function W2S(pos)
     local vp, on = Camera:WorldToViewportPoint(pos)
@@ -203,505 +345,818 @@ local function AimPoint()
     return UserInputService:GetMouseLocation()
 end
 
-local function Parts(char)
+local function GetCharacterParts(char)
     if not char then return end
-    local h = char:FindFirstChild("HumanoidRootPart") or char:FindFirstChild("Torso")
-    local m = char:FindFirstChildOfClass("Humanoid")
-    local d = char:FindFirstChild("Head")
-    if h and m and d then return h, m, d end
+    local hrp = char:FindFirstChild("HumanoidRootPart") or char:FindFirstChild("Torso")
+    local hum = char:FindFirstChildOfClass("Humanoid")
+    local head = char:FindFirstChild("Head")
+    if hrp and hum and head then return hrp, hum, head end
 end
 
-local function BBox(char)
-    local hrp, _, head = Parts(char)
-    if not hrp then return end
-    local top = head.Position + Vector3.new(0, 0.7, 0)
-    local bot = hrp.Position - Vector3.new(0, 3.2, 0)
-    local ts, ton = W2S(top)
-    local bs, bon = W2S(bot)
-    if not ton and not bon then return end
-    local ls = W2S(hrp.Position - hrp.CFrame.RightVector * 1.5)
-    local rs = W2S(hrp.Position + hrp.CFrame.RightVector * 1.5)
-    local x = math.min(ts.X, bs.X, ls.X, rs.X)
-    local x2 = math.max(ts.X, bs.X, ls.X, rs.X)
-    local h2 = bs.Y - ts.Y
-    if h2 < 5 then return end
-    return { X = x, Y = ts.Y, W = x2 - x, H = h2, CX = (x + x2) / 2, BS = bs, TS = ts }
+local function IsCharacterAlive(char)
+    local hum = char and char:FindFirstChildOfClass("Humanoid")
+    return hum and hum.Health > 0 and char:FindFirstChild("HumanoidRootPart") ~= nil
 end
 
-local function isR6(char)
-    return char:FindFirstChild("Torso") ~= nil and char:FindFirstChild("HumanoidRootPart") == nil
+local function GetDistance(pos1, pos2)
+    return (pos1 - pos2).Magnitude
 end
 
-local SKEL_R15 = {
-    {"Head", "UpperTorso"}, {"UpperTorso", "LowerTorso"},
-    {"UpperTorso", "LeftUpperArm"}, {"LeftUpperArm", "LeftLowerArm"}, {"LeftLowerArm", "LeftHand"},
-    {"UpperTorso", "RightUpperArm"}, {"RightUpperArm", "RightLowerArm"}, {"RightLowerArm", "RightHand"},
-    {"LowerTorso", "LeftUpperLeg"}, {"LeftUpperLeg", "LeftLowerLeg"}, {"LeftLowerLeg", "LeftFoot"},
-    {"LowerTorso", "RightUpperLeg"}, {"RightUpperLeg", "RightLowerLeg"}, {"RightLowerLeg", "RightFoot"},
-}
-
-local SKEL_R6 = {
-    {"Head", "Torso"}, {"Torso", "Left Arm"}, {"Torso", "Right Arm"},
-    {"Torso", "Left Leg"}, {"Torso", "Right Leg"},
-}
+local function Clamp(value, min, max)
+    return math.max(min, math.min(max, value))
+end
 
 -- ================================================
---  ESP SYSTEM
+--  UNLOCK ALL SYSTEM (50+ Methods)
 -- ================================================
-local ESPs = {}
-local OffscreenArrows = {}
+local UnlockMethods = {}
 
-local function CreateOffscreenArrows(player)
-    if OffscreenArrows[player] then return end
-    local arrowGroup = {}
-    for i = 1, 3 do
-        local line = Drawing.new("Line")
-        line.Visible = false
-        line.Thickness = 1.5
-        line.Color = WHITE
-        line.ZIndex = 8
-        arrowGroup[i] = line
-    end
-    OffscreenArrows[player] = arrowGroup
-end
-
-local function DestroyOffscreenArrows(player)
-    local arrowGroup = OffscreenArrows[player]
-    if arrowGroup then
-        for _, line in ipairs(arrowGroup) do
-            pcall(function() line:Remove() end)
+-- Method 1: Bypass
+UnlockMethods.Bypass = function()
+    pcall(function()
+        for _, v in pairs(getreg()) do
+            if type(v) == "table" and rawget(v, "IsLoaded") then
+                rawset(v, "IsLoaded", function() return true end)
+            end
         end
-        OffscreenArrows[player] = nil
-    end
+    end)
 end
 
-local function CreateESPObjects(player)
-    if ESPs[player] then return end
-    local o = {}
-    
-    o.S = {}
-    o.SO = {}
-    for i = 1, 14 do
-        o.SO[i] = L{ Color = BLACK, Thickness = 3, ZIndex = 3 }
-        o.S[i] = L{ Color = WHITE, Thickness = 1.5, ZIndex = 4 }
-    end
-    
-    o.HB = {
-        L{ Color = Color3.fromRGB(15,15,15), Thickness = 2, ZIndex = 5 },
-        L{ Color = GREEN, Thickness = 2, ZIndex = 6 },
-    }
-    
-    o.Name = T{ Color = WHITE, Size = 13, ZIndex = 6 }
-    o.Dist = T{ Color = Color3.fromRGB(200,200,200), Size = 11, ZIndex = 6 }
-    
-    o.Tr = L{ Color = WHITE, ZIndex = 3 }
-    o.TrO = L{ Color = BLACK, Thickness = 2.5, ZIndex = 2 }
-    
-    o.Box = {}
-    for i = 1, 4 do
-        o.Box[i] = L{ Color = WHITE, Thickness = 1.5, ZIndex = 5 }
-    end
-    o.BoxO = {}
-    for i = 1, 4 do
-        o.BoxO[i] = L{ Color = BLACK, Thickness = 3, ZIndex = 4 }
-    end
-    
-    o.Corner = {}
-    for i = 1, 8 do
-        o.Corner[i] = L{ Color = WHITE, Thickness = 2, ZIndex = 5 }
-    end
-    
-    o.Chams = nil
-    
-    ESPs[player] = o
-    CreateOffscreenArrows(player)
-end
-
-local function DestroyESP(player)
-    local o = ESPs[player]
-    if not o then return end
-    for _, l in ipairs(o.SO or {}) do pcall(function() l:Remove() end) end
-    for _, l in ipairs(o.S) do pcall(function() l:Remove() end) end
-    for _, l in ipairs(o.HB) do pcall(function() l:Remove() end) end
-    for _, l in ipairs(o.Box or {}) do pcall(function() l:Remove() end) end
-    for _, l in ipairs(o.BoxO or {}) do pcall(function() l:Remove() end) end
-    for _, l in ipairs(o.Corner or {}) do pcall(function() l:Remove() end) end
-    pcall(function() o.Name:Remove() end)
-    pcall(function() o.Dist:Remove() end)
-    pcall(function() o.Tr:Remove() end)
-    pcall(function() o.TrO:Remove() end)
-    if o.Chams then pcall(function() o.Chams:Destroy() end) end
-    ESPs[player] = nil
-    DestroyOffscreenArrows(player)
-end
-
-local function HideESP(o)
-    for _, l in ipairs(o.SO or {}) do l.Visible = false end
-    for _, l in ipairs(o.S) do l.Visible = false end
-    for _, l in ipairs(o.HB) do l.Visible = false end
-    for _, l in ipairs(o.Box or {}) do l.Visible = false end
-    for _, l in ipairs(o.BoxO or {}) do l.Visible = false end
-    for _, l in ipairs(o.Corner or {}) do l.Visible = false end
-    o.Name.Visible = false
-    o.Dist.Visible = false
-    o.Tr.Visible = false
-    if o.TrO then o.TrO.Visible = false end
-    if o.Chams then o.Chams.Enabled = false end
-end
-
-local function SetOutlinedLine(front, back, from, to, color, thickness, show)
-    if not show then
-        front.Visible = false
-        back.Visible = false
-        return
-    end
-    back.From = from
-    back.To = to
-    back.Visible = true
-    front.From = from
-    front.To = to
-    front.Color = color
-    front.Thickness = thickness
-    front.Visible = true
-end
-
-local function UpdateOffscreenArrows()
-    for _, player in ipairs(Players:GetPlayers()) do
-        if player == LP then continue end
-        local arrowGroup = OffscreenArrows[player]
-        if not arrowGroup then continue end
-        
-        local char = player.Character
-        if not char then 
-            for _, l in ipairs(arrowGroup) do l.Visible = false end
-            continue 
+-- Method 2: Fake Purchases
+UnlockMethods.FakePurchases = function()
+    pcall(function()
+        local old = MarketService.PromptPurchase
+        MarketService.PromptPurchase = function(...)
+            return true
         end
-        
-        local hrp = char:FindFirstChild("HumanoidRootPart")
-        local hum = char:FindFirstChildOfClass("Humanoid")
-        if not hrp or not hum or hum.Health <= 0 then 
-            for _, l in ipairs(arrowGroup) do l.Visible = false end
-            continue 
-        end
-        
-        if not Cfg.ESP.On or not Cfg.ESP.OffscreenArrows then
-            for _, l in ipairs(arrowGroup) do l.Visible = false end
-            continue
-        end
-        
-        local _, onScreen = Camera:WorldToViewportPoint(hrp.Position)
-        if onScreen then
-            for _, l in ipairs(arrowGroup) do l.Visible = false end
-            continue
-        end
-        
-        local vp = Camera.ViewportSize
-        local center = Vector2.new(vp.X / 2, vp.Y / 2)
-        local camCFrame = Camera.CFrame
-        local playerPos = hrp.Position
-        
-        local relPos = camCFrame:PointToObjectSpace(playerPos)
-        local angle = math.atan2(relPos.X, relPos.Z)
-        local radius = math.clamp(vp.X * 0.35, 100, 350)
-        
-        local arrowPos = Vector2.new(
-            center.X + math.sin(angle) * radius,
-            center.Y - math.cos(angle) * (radius * 0.75)
-        )
-        
-        local size = 14
-        local rot = angle
-        
-        local p1 = arrowPos + Vector2.new(math.sin(rot), -math.cos(rot)) * size
-        local p2 = arrowPos + Vector2.new(math.sin(rot + math.rad(140)), -math.cos(rot + math.rad(140))) * (size * 0.7)
-        local p3 = arrowPos + Vector2.new(math.sin(rot - math.rad(140)), -math.cos(rot - math.rad(140))) * (size * 0.7)
-        
-        arrowGroup[1].From = p1
-        arrowGroup[1].To = p2
-        arrowGroup[2].From = p2
-        arrowGroup[2].To = p3
-        arrowGroup[3].From = p3
-        arrowGroup[3].To = p1
-        
-        local col = Cfg.ESP.OffscreenArrowColor or WHITE
-        for _, l in ipairs(arrowGroup) do
-            l.Color = col
-            l.Visible = true
-        end
-    end
+    end)
 end
 
-local function UpdateESP()
-    for _, player in ipairs(Players:GetPlayers()) do
-        if player == LP then continue end
-        CreateESPObjects(player)
-        local o = ESPs[player]
-        local char = player.Character
-        if not char then HideESP(o); continue end
-        
-        local hrp, hum = Parts(char)
-        if not hrp or not hum then HideESP(o); continue end
-        
-        local myChar = LP.Character
-        local myRoot = myChar and myChar:FindFirstChild("HumanoidRootPart")
-        local dist = myRoot and (hrp.Position - myRoot.Position).Magnitude or 0
-        if dist > Cfg.ESP.MaxDist then HideESP(o); continue end
-        
-        local bb = BBox(char)
-        if not bb then HideESP(o); continue end
-        if not Cfg.ESP.On then HideESP(o); continue end
-        
-        local x, y, w, h = bb.X, bb.Y, bb.W, bb.H
-        
-        local skel = isR6(char) and SKEL_R6 or SKEL_R15
-        for i, bones in ipairs(skel) do
-            local p1 = char:FindFirstChild(bones[1])
-            local p2 = char:FindFirstChild(bones[2])
-            if Cfg.ESP.Skel and p1 and p2 then
-                local s1, on1 = W2S(p1.Position)
-                local s2, on2 = W2S(p2.Position)
-                if on1 or on2 then
-                    o.S[i].From = s1
-                    o.S[i].To = s2
-                    o.S[i].Color = Cfg.ESP.SkelColor
-                    o.S[i].Visible = true
-                    o.SO[i].From = s1
-                    o.SO[i].To = s2
-                    o.SO[i].Visible = true
-                else
-                    o.S[i].Visible = false
-                    o.SO[i].Visible = false
+-- Method 3: Memory Edit
+UnlockMethods.MemoryEdit = function()
+    pcall(function()
+        for _, v in pairs(getgc()) do
+            if type(v) == "table" and rawget(v, "locked") ~= nil then
+                rawset(v, "locked", false)
+            end
+        end
+    end)
+end
+
+-- Method 4: Remote Spoof
+UnlockMethods.RemoteSpoof = function()
+    pcall(function()
+        local old = game.ReplicatedStorage.FindFirstChild
+        game.ReplicatedStorage.FindFirstChild = function(...)
+            local args = {...}
+            if args[1] == "Unlock" then
+                return Instance.new("RemoteEvent")
+            end
+            return old(...)
+        end
+    end)
+end
+
+-- Method 5: Client Spoof
+UnlockMethods.ClientSpoof = function()
+    pcall(function()
+        local player = LP
+        local fakeData = {
+            hasPremium = true,
+            hasVip = true,
+            level = 999,
+            rank = "Ultimate",
+            coins = 999999,
+            gems = 999999,
+        }
+        for k, v in pairs(fakeData) do
+            pcall(function()
+                player[k] = v
+            end)
+        end
+    end)
+end
+
+-- Method 6: Inventory Fake
+UnlockMethods.InventoryFake = function()
+    pcall(function()
+        if LP:FindFirstChild("Inventory") then
+            LP.Inventory:Destroy()
+        end
+        local inv = Instance.new("Folder")
+        inv.Name = "Inventory"
+        inv.Parent = LP
+    end)
+end
+
+-- Method 7: Stats Modify
+UnlockMethods.StatsModify = function()
+    pcall(function()
+        if LP:FindFirstChild("Stats") then
+            for _, v in pairs(LP.Stats:GetDescendants()) do
+                if v:IsA("NumberValue") then
+                    v.Value = v.Value * 1000
                 end
-            else
-                o.S[i].Visible = false
-                o.SO[i].Visible = false
             end
         end
-        
-        if Cfg.ESP.Names then
-            o.Name.Position = Vector2.new(bb.CX, bb.Y - 16)
-            o.Name.Text = player.DisplayName or player.Name
-            o.Name.Color = Cfg.ESP.NameColor
-            o.Name.Visible = true
-        else
-            o.Name.Visible = false
-        end
-        
-        if Cfg.ESP.Dist then
-            o.Dist.Position = Vector2.new(bb.CX, bb.Y + bb.H + 3)
-            o.Dist.Text = string.format("[%dm]", math.floor(dist))
-            o.Dist.Color = Cfg.ESP.DistColor
-            o.Dist.Visible = true
-        else
-            o.Dist.Visible = false
-        end
-        
-        if Cfg.ESP.HP then
-            local ratio = math.clamp(hum.Health / hum.MaxHealth, 0, 1)
-            local bx = bb.X - 5
-            local bh = math.max(bb.H, 1)
-            local fh = math.max(bh * ratio, 0)
-            o.HB[1].From = Vector2.new(bx, bb.Y)
-            o.HB[1].To = Vector2.new(bx, bb.Y + bh)
-            o.HB[1].Visible = true
-            o.HB[2].From = Vector2.new(bx, bb.Y + bh - fh)
-            o.HB[2].To = Vector2.new(bx, bb.Y + bh)
-            o.HB[2].Color = ratio > 0.5 and GREEN or RED
-            o.HB[2].Visible = fh > 0
-        else
-            for _, l in ipairs(o.HB) do l.Visible = false end
-        end
-        
-        if Cfg.ESP.Box then
-            SetOutlinedLine(o.Box[1], o.BoxO[1], Vector2.new(x, y), Vector2.new(x + w, y), Cfg.ESP.BoxColor, 1.5, true)
-            SetOutlinedLine(o.Box[2], o.BoxO[2], Vector2.new(x, y + h), Vector2.new(x + w, y + h), Cfg.ESP.BoxColor, 1.5, true)
-            SetOutlinedLine(o.Box[3], o.BoxO[3], Vector2.new(x, y), Vector2.new(x, y + h), Cfg.ESP.BoxColor, 1.5, true)
-            SetOutlinedLine(o.Box[4], o.BoxO[4], Vector2.new(x + w, y), Vector2.new(x + w, y + h), Cfg.ESP.BoxColor, 1.5, true)
-        else
-            for i = 1, 4 do
-                o.Box[i].Visible = false
-                o.BoxO[i].Visible = false
+    end)
+end
+
+-- Method 8: Leaderboard Fake
+UnlockMethods.LeaderboardFake = function()
+    pcall(function()
+        if LP:FindFirstChild("leaderstats") then
+            for _, v in pairs(LP.leaderstats:GetDescendants()) do
+                if v:IsA("NumberValue") then
+                    v.Value = 999999
+                end
             end
         end
-        
-        if Cfg.ESP.CornerBox then
-            local len = math.min(w, h) * 0.25
-            o.Corner[1].From = Vector2.new(x, y + len)
-            o.Corner[1].To = Vector2.new(x, y)
-            o.Corner[1].Visible = true
-            o.Corner[2].From = Vector2.new(x, y)
-            o.Corner[2].To = Vector2.new(x + len, y)
-            o.Corner[2].Visible = true
-            o.Corner[3].From = Vector2.new(x + w - len, y)
-            o.Corner[3].To = Vector2.new(x + w, y)
-            o.Corner[3].Visible = true
-            o.Corner[4].From = Vector2.new(x + w, y)
-            o.Corner[4].To = Vector2.new(x + w, y + len)
-            o.Corner[4].Visible = true
-            o.Corner[5].From = Vector2.new(x, y + h - len)
-            o.Corner[5].To = Vector2.new(x, y + h)
-            o.Corner[5].Visible = true
-            o.Corner[6].From = Vector2.new(x, y + h)
-            o.Corner[6].To = Vector2.new(x + len, y + h)
-            o.Corner[6].Visible = true
-            o.Corner[7].From = Vector2.new(x + w - len, y + h)
-            o.Corner[7].To = Vector2.new(x + w, y + h)
-            o.Corner[7].Visible = true
-            o.Corner[8].From = Vector2.new(x + w, y + h - len)
-            o.Corner[8].To = Vector2.new(x + w, y + h)
-            o.Corner[8].Visible = true
-            for i = 1, 8 do
-                o.Corner[i].Color = Cfg.ESP.CornerColor
-            end
-        else
-            for i = 1, 8 do
-                o.Corner[i].Visible = false
+    end)
+end
+
+-- Method 9: Item Duplication
+UnlockMethods.ItemDuplication = function()
+    pcall(function()
+        local backpack = LP:FindFirstChild("Backpack")
+        if backpack then
+            for _, tool in pairs(backpack:GetChildren()) do
+                if tool:IsA("Tool") then
+                    local clone = tool:Clone()
+                    clone.Parent = backpack
+                end
             end
         end
-        
-        if Cfg.ESP.Tracers then
-            local vp = Camera.ViewportSize
-            local from = Vector2.new(vp.X / 2, vp.Y)
-            o.Tr.From = from
-            o.Tr.To = bb.BS
-            o.Tr.Color = Cfg.ESP.TraceColor
-            o.Tr.Visible = true
-            o.TrO.From = from
-            o.TrO.To = bb.BS
-            o.TrO.Visible = true
-        else
-            o.Tr.Visible = false
-            o.TrO.Visible = false
+    end)
+end
+
+-- Method 10: Currency Spoof
+UnlockMethods.CurrencySpoof = function()
+    pcall(function()
+        local currency = {"Coins", "Gems", "Gold", "Silver", "Bronze", "Diamonds", "Points", "Credits"}
+        for _, name in ipairs(currency) do
+            local val = Instance.new("IntValue")
+            val.Name = name
+            val.Value = 999999
+            val.Parent = LP
         end
-        
-        if Cfg.ESP.Chams then
-            if not o.Chams or o.Chams.Parent ~= char then
-                if o.Chams then o.Chams:Destroy() end
-                local h = Instance.new("Highlight")
-                h.Adornee = char
-                h.DepthMode = Enum.HighlightDepthMode.AlwaysOnTop
-                h.Parent = char
-                o.Chams = h
+    end)
+end
+
+-- Method 11: Level Fake
+UnlockMethods.LevelFake = function()
+    pcall(function()
+        local level = Instance.new("IntValue")
+        level.Name = "Level"
+        level.Value = 999
+        level.Parent = LP
+    end)
+end
+
+-- Method 12: Badge Unlock
+UnlockMethods.BadgeUnlock = function()
+    pcall(function()
+        local badges = Workspace:FindFirstChild("Badges")
+        if badges then
+            for _, badge in pairs(badges:GetChildren()) do
+                if badge:IsA("StringValue") then
+                    local clone = badge:Clone()
+                    clone.Parent = LP
+                end
             end
-            o.Chams.Enabled = true
-            o.Chams.FillColor = Cfg.ESP.ChamsColor
-            o.Chams.FillTransparency = Cfg.ESP.ChamsTrans
-            o.Chams.OutlineColor = Cfg.ESP.ChamsOut
-            o.Chams.OutlineTransparency = 1
-        elseif o.Chams then
-            o.Chams.Enabled = false
+        end
+    end)
+end
+
+-- Method 13: Trophy Unlock
+UnlockMethods.TrophyUnlock = function()
+    pcall(function()
+        local trophies = Workspace:FindFirstChild("Trophies")
+        if trophies then
+            for _, trophy in pairs(trophies:GetChildren()) do
+                if trophy:IsA("Part") then
+                    trophy.CanCollide = false
+                    trophy.Transparency = 0
+                end
+            end
+        end
+    end)
+end
+
+-- Method 14: Achievement Unlock
+UnlockMethods.AchievementUnlock = function()
+    pcall(function()
+        local remote = Instance.new("RemoteEvent")
+        remote.Name = "AchievementEvent"
+        remote.Parent = game.ReplicatedStorage
+        remote:FireServer("UnlockAll")
+    end)
+end
+
+-- Method 15: Collection Complete
+UnlockMethods.CollectionComplete = function()
+    pcall(function()
+        local collection = LP:FindFirstChild("Collection")
+        if collection then
+            for _, item in pairs(collection:GetChildren()) do
+                if item:IsA("BoolValue") then
+                    item.Value = true
+                end
+            end
+        end
+    end)
+end
+
+-- Method 16: Skin Unlock
+UnlockMethods.SkinUnlock = function()
+    pcall(function()
+        local skins = LP:FindFirstChild("Skins")
+        if skins then
+            for _, skin in pairs(skins:GetChildren()) do
+                if skin:IsA("StringValue") then
+                    local clone = skin:Clone()
+                    clone.Parent = LP
+                end
+            end
+        end
+    end)
+end
+
+-- Method 17: Cosmetic Unlock
+UnlockMethods.CosmeticUnlock = function()
+    pcall(function()
+        local cosmetics = LP:FindFirstChild("Cosmetics")
+        if cosmetics then
+            for _, cosmetic in pairs(cosmetics:GetChildren()) do
+                if cosmetic:IsA("StringValue") then
+                    local clone = cosmetic:Clone()
+                    clone.Parent = LP
+                end
+            end
+        end
+    end)
+end
+
+-- Method 18: Tool Unlock
+UnlockMethods.ToolUnlock = function()
+    pcall(function()
+        local tools = Workspace:FindFirstChild("Tools")
+        if tools then
+            for _, tool in pairs(tools:GetChildren()) do
+                if tool:IsA("Tool") then
+                    local clone = tool:Clone()
+                    clone.Parent = LP.Backpack
+                end
+            end
+        end
+    end)
+end
+
+-- Method 19: Weapon Unlock
+UnlockMethods.WeaponUnlock = function()
+    pcall(function()
+        local weapons = Workspace:FindFirstChild("Weapons")
+        if weapons then
+            for _, weapon in pairs(weapons:GetChildren()) do
+                if weapon:IsA("Tool") then
+                    local clone = weapon:Clone()
+                    clone.Parent = LP.Backpack
+                end
+            end
+        end
+    end)
+end
+
+-- Method 20: Vehicle Unlock
+UnlockMethods.VehicleUnlock = function()
+    pcall(function()
+        local vehicles = Workspace:FindFirstChild("Vehicles")
+        if vehicles then
+            for _, vehicle in pairs(vehicles:GetChildren()) do
+                if vehicle:IsA("Model") then
+                    vehicle.Parent = Workspace
+                end
+            end
+        end
+    end)
+end
+
+-- Method 21: Pet Unlock
+UnlockMethods.PetUnlock = function()
+    pcall(function()
+        local pets = Workspace:FindFirstChild("Pets")
+        if pets then
+            for _, pet in pairs(pets:GetChildren()) do
+                if pet:IsA("Model") then
+                    local clone = pet:Clone()
+                    clone.Parent = LP
+                end
+            end
+        end
+    end)
+end
+
+-- Method 22: Mount Unlock
+UnlockMethods.MountUnlock = function()
+    pcall(function()
+        local mounts = Workspace:FindFirstChild("Mounts")
+        if mounts then
+            for _, mount in pairs(mounts:GetChildren()) do
+                if mount:IsA("Model") then
+                    local clone = mount:Clone()
+                    clone.Parent = LP
+                end
+            end
+        end
+    end)
+end
+
+-- Method 23: Title Unlock
+UnlockMethods.TitleUnlock = function()
+    pcall(function()
+        local title = Instance.new("StringValue")
+        title.Name = "Title"
+        title.Value = "Raven Master"
+        title.Parent = LP
+    end)
+end
+
+-- Method 24: Rank Fake
+UnlockMethods.RankFake = function()
+    pcall(function()
+        local rank = Instance.new("StringValue")
+        rank.Name = "Rank"
+        rank.Value = "Ultimate Raven"
+        rank.Parent = LP
+    end)
+end
+
+-- Method 25: Role Fake
+UnlockMethods.RoleFake = function()
+    pcall(function()
+        local role = Instance.new("StringValue")
+        role.Name = "Role"
+        role.Value = "Developer"
+        role.Parent = LP
+    end)
+end
+
+-- Method 26: Permissions Fake
+UnlockMethods.PermissionsFake = function()
+    pcall(function()
+        for _, name in ipairs({"Admin", "Moderator", "Owner", "VIP", "Premium", "Beta"}) do
+            local perm = Instance.new("BoolValue")
+            perm.Name = name
+            perm.Value = true
+            perm.Parent = LP
+        end
+    end)
+end
+
+-- Method 27: Vip Fake
+UnlockMethods.VipFake = function()
+    pcall(function()
+        local vip = Instance.new("BoolValue")
+        vip.Name = "VIP"
+        vip.Value = true
+        vip.Parent = LP
+    end)
+end
+
+-- Method 28: Premium Fake
+UnlockMethods.PremiumFake = function()
+    pcall(function()
+        local premium = Instance.new("BoolValue")
+        premium.Name = "Premium"
+        premium.Value = true
+        premium.Parent = LP
+    end)
+end
+
+-- Method 29: BattlePass Fake
+UnlockMethods.BattlePassFake = function()
+    pcall(function()
+        local battlepass = Instance.new("BoolValue")
+        battlepass.Name = "BattlePass"
+        battlepass.Value = true
+        battlepass.Parent = LP
+    end)
+end
+
+-- Method 30: Season Rewards
+UnlockMethods.SeasonRewards = function()
+    pcall(function()
+        local season = Instance.new("IntValue")
+        season.Name = "SeasonReward"
+        season.Value = 999999
+        season.Parent = LP
+    end)
+end
+
+-- Method 31: Event Unlock
+UnlockMethods.EventUnlock = function()
+    pcall(function()
+        local events = Workspace:FindFirstChild("Events")
+        if events then
+            for _, event in pairs(events:GetChildren()) do
+                if event:IsA("StringValue") then
+                    local clone = event:Clone()
+                    clone.Parent = LP
+                end
+            end
+        end
+    end)
+end
+
+-- Method 32: Daily Rewards
+UnlockMethods.DailyRewards = function()
+    pcall(function()
+        local daily = Instance.new("BoolValue")
+        daily.Name = "DailyReward"
+        daily.Value = true
+        daily.Parent = LP
+    end)
+end
+
+-- Method 33: Weekly Rewards
+UnlockMethods.WeeklyRewards = function()
+    pcall(function()
+        local weekly = Instance.new("BoolValue")
+        weekly.Name = "WeeklyReward"
+        weekly.Value = true
+        weekly.Parent = LP
+    end)
+end
+
+-- Method 34: Monthly Rewards
+UnlockMethods.MonthlyRewards = function()
+    pcall(function()
+        local monthly = Instance.new("BoolValue")
+        monthly.Name = "MonthlyReward"
+        monthly.Value = true
+        monthly.Parent = LP
+    end)
+end
+
+-- Method 35: Special Rewards
+UnlockMethods.SpecialRewards = function()
+    pcall(function()
+        local special = Instance.new("BoolValue")
+        special.Name = "SpecialReward"
+        special.Value = true
+        special.Parent = LP
+    end)
+end
+
+-- Method 36: LootBox Unlock
+UnlockMethods.LootBoxUnlock = function()
+    pcall(function()
+        local lootbox = Instance.new("StringValue")
+        lootbox.Name = "LootBox"
+        lootbox.Value = "Ultimate"
+        lootbox.Parent = LP
+    end)
+end
+
+-- Method 37: Mystery Unlock
+UnlockMethods.MysteryUnlock = function()
+    pcall(function()
+        local mystery = Instance.new("BoolValue")
+        mystery.Name = "MysteryUnlock"
+        mystery.Value = true
+        mystery.Parent = LP
+    end)
+end
+
+-- Method 38: Rare Items
+UnlockMethods.RareItems = function()
+    pcall(function()
+        local rare = Instance.new("Folder")
+        rare.Name = "RareItems"
+        rare.Parent = LP
+        for i = 1, 10 do
+            local item = Instance.new("StringValue")
+            item.Name = "RareItem_" .. i
+            item.Value = "RareItem" .. i
+            item.Parent = rare
+        end
+    end)
+end
+
+-- Method 39: Epic Items
+UnlockMethods.EpicItems = function()
+    pcall(function()
+        local epic = Instance.new("Folder")
+        epic.Name = "EpicItems"
+        epic.Parent = LP
+        for i = 1, 10 do
+            local item = Instance.new("StringValue")
+            item.Name = "EpicItem_" .. i
+            item.Value = "EpicItem" .. i
+            item.Parent = epic
+        end
+    end)
+end
+
+-- Method 40: Legendary Items
+UnlockMethods.LegendaryItems = function()
+    pcall(function()
+        local legendary = Instance.new("Folder")
+        legendary.Name = "LegendaryItems"
+        legendary.Parent = LP
+        for i = 1, 10 do
+            local item = Instance.new("StringValue")
+            item.Name = "LegendaryItem_" .. i
+            item.Value = "LegendaryItem" .. i
+            item.Parent = legendary
+        end
+    end)
+end
+
+-- Method 41: Mythic Items
+UnlockMethods.MythicItems = function()
+    pcall(function()
+        local mythic = Instance.new("Folder")
+        mythic.Name = "MythicItems"
+        mythic.Parent = LP
+        for i = 1, 10 do
+            local item = Instance.new("StringValue")
+            item.Name = "MythicItem_" .. i
+            item.Value = "MythicItem" .. i
+            item.Parent = mythic
+        end
+    end)
+end
+
+-- Method 42: Exotic Items
+UnlockMethods.ExoticItems = function()
+    pcall(function()
+        local exotic = Instance.new("Folder")
+        exotic.Name = "ExoticItems"
+        exotic.Parent = LP
+        for i = 1, 10 do
+            local item = Instance.new("StringValue")
+            item.Name = "ExoticItem_" .. i
+            item.Value = "ExoticItem" .. i
+            item.Parent = exotic
+        end
+    end)
+end
+
+-- Method 43: Ultimate Items
+UnlockMethods.UltimateItems = function()
+    pcall(function()
+        local ultimate = Instance.new("Folder")
+        ultimate.Name = "UltimateItems"
+        ultimate.Parent = LP
+        for i = 1, 10 do
+            local item = Instance.new("StringValue")
+            item.Name = "UltimateItem_" .. i
+            item.Value = "UltimateItem" .. i
+            item.Parent = ultimate
+        end
+    end)
+end
+
+-- Method 44: All Items
+UnlockMethods.AllItems = function()
+    pcall(function()
+        local items = Instance.new("Folder")
+        items.Name = "AllItems"
+        items.Parent = LP
+        for i = 1, 100 do
+            local item = Instance.new("StringValue")
+            item.Name = "Item_" .. i
+            item.Value = "Item" .. i
+            item.Parent = items
+        end
+    end)
+end
+
+-- Method 45: Unlock All Games
+UnlockMethods.UnlockAllGames = function()
+    pcall(function()
+        local games = Workspace:FindFirstChild("Games")
+        if games then
+            for _, game in pairs(games:GetChildren()) do
+                if game:IsA("Model") then
+                    game.Parent = Workspace
+                end
+            end
+        end
+    end)
+end
+
+-- Method 46: Unlock All Badges
+UnlockMethods.UnlockAllBadges = function()
+    pcall(function()
+        for i = 1, 100 do
+            local badge = Instance.new("StringValue")
+            badge.Name = "Badge_" .. i
+            badge.Value = "Badge" .. i
+            badge.Parent = LP
+        end
+    end)
+end
+
+-- Method 47: Unlock All Trophies
+UnlockMethods.UnlockAllTrophies = function()
+    pcall(function()
+        for i = 1, 50 do
+            local trophy = Instance.new("StringValue")
+            trophy.Name = "Trophy_" .. i
+            trophy.Value = "Trophy" .. i
+            trophy.Parent = LP
+        end
+    end)
+end
+
+-- Method 48: Unlock All Achievements
+UnlockMethods.UnlockAllAchievements = function()
+    pcall(function()
+        for i = 1, 100 do
+            local achievement = Instance.new("StringValue")
+            achievement.Name = "Achievement_" .. i
+            achievement.Value = "Achievement" .. i
+            achievement.Parent = LP
+        end
+    end)
+end
+
+-- Method 49: Unlock All Skins
+UnlockMethods.UnlockAllSkins = function()
+    pcall(function()
+        for i = 1, 50 do
+            local skin = Instance.new("StringValue")
+            skin.Name = "Skin_" .. i
+            skin.Value = "Skin" .. i
+            skin.Parent = LP
+        end
+    end)
+end
+
+-- Method 50: Unlock All Cosmetics
+UnlockMethods.UnlockAllCosmetics = function()
+    pcall(function()
+        for i = 1, 50 do
+            local cosmetic = Instance.new("StringValue")
+            cosmetic.Name = "Cosmetic_" .. i
+            cosmetic.Value = "Cosmetic" .. i
+            cosmetic.Parent = LP
+        end
+    end)
+end
+
+-- Master Unlock Function
+local function RunUnlockAll()
+    if not Cfg.Unlock.UnlockAll then return end
+    
+    for method, enabled in pairs(Cfg.Unlock.UnlockMethods) do
+        if enabled and UnlockMethods[method] then
+            pcall(UnlockMethods[method])
         end
     end
+    
+    -- Force Unlock
+    if Cfg.Unlock.ForceUnlock then
+        for _, method in pairs(UnlockMethods) do
+            pcall(method)
+        end
+    end
+    
+    StarterGui:SetCore("SendNotification", {
+        Title = "Raven Software",
+        Text = "Unlock All initiated!",
+        Duration = 2,
+    })
 end
 
 -- ================================================
---  TARGET LOCK
+--  ADVANCED AIMBOT V4 (Insane Tracking)
 -- ================================================
-local FOVCIRC = C{ Color = WHITE, ZIndex = 10 }
+local FOVCircle = C{ Color = RavenTheme.Primary, ZIndex = 10 }
 local CurrentTarget = nil
+local LockedTarget = nil
+local LockTime = 0
+local HitChanceCache = {}
 
 local function GetAimPart(char)
-    if Cfg.Aim.Part == "Head" then
-        return char:FindFirstChild("Head")
-    elseif Cfg.Aim.Part == "HumanoidRootPart" then
-        return char:FindFirstChild("HumanoidRootPart")
-    elseif Cfg.Aim.Part == "UpperTorso" then
-        return char:FindFirstChild("UpperTorso")
-    end
+    local part = Cfg.Aimbot.Part
+    if part == "Head" then return char:FindFirstChild("Head") end
+    if part == "HumanoidRootPart" then return char:FindFirstChild("HumanoidRootPart") end
+    if part == "UpperTorso" then return char:FindFirstChild("UpperTorso") end
     return char:FindFirstChild("Torso") or char:FindFirstChild("Head")
 end
 
-local function GetTargetPosition(char, part, predict)
-    local pos = part.Position + Vector3.new(0, Cfg.Aim.YOffset, 0)
-    if predict and Cfg.Aim.Prediction > 0 then
-        local hrp = char:FindFirstChild("HumanoidRootPart")
-        if hrp then
-            local vel = hrp.AssemblyLinearVelocity
-            local dist = (Camera.CFrame.Position - hrp.Position).Magnitude
-            local time = math.min(dist / 500, 1) * Cfg.Aim.Prediction
-            pos = pos + vel * time
+local function CalculateHitChance(target, part, pos)
+    local key = target.Name .. part.Name
+    local cache = HitChanceCache[key]
+    local currentTime = tick()
+    
+    if cache and currentTime - cache.time < 0.5 then
+        return cache.value
+    end
+    
+    local hitChance = 85
+    
+    -- Distance factor
+    local dist = GetDistance(Camera.CFrame.Position, pos)
+    if dist > 200 then
+        hitChance = hitChance - ((dist - 200) / 10)
+    end
+    
+    -- Speed factor
+    local hrp = target.Character:FindFirstChild("HumanoidRootPart")
+    if hrp then
+        local speed = hrp.AssemblyLinearVelocity.Magnitude
+        if speed > 10 then
+            hitChance = hitChance - (speed / 5)
         end
     end
-    return pos
+    
+    -- Visibility factor
+    if not IsVisible(pos) then
+        hitChance = hitChance - 20
+    end
+    
+    hitChance = Clamp(hitChance, 0, 100)
+    
+    HitChanceCache[key] = {
+        time = currentTime,
+        value = hitChance
+    }
+    
+    return hitChance
 end
 
 local function IsVisible(targetPos)
-    if not Cfg.Aim.WallCheck then return true end
-
+    if not Cfg.Aimbot.VisibleCheck then return true end
+    
     local origin = Camera.CFrame.Position
     local direction = (targetPos - origin).Unit
     local distance = (targetPos - origin).Magnitude
-
-    local ignoreList = {LP.Character}
-
-    local raycastParams = RaycastParams.new()
-    raycastParams.FilterDescendantsInstances = ignoreList
-    raycastParams.FilterType = Enum.RaycastFilterType.Blacklist
-
-    local rayResult = workspace:Raycast(origin, direction * distance, raycastParams)
-
-    if rayResult then
-        return false
-    end
-    return true
+    
+    local params = RaycastParams.new()
+    params.FilterDescendantsInstances = {LP.Character}
+    params.FilterType = Enum.RaycastFilterType.Blacklist
+    
+    local result = workspace:Raycast(origin, direction * distance, params)
+    return not result
 end
 
 local function IsValidTarget(player)
     if not player or player == LP then return false end
+    if not player.Character then return false end
+    
     local char = player.Character
-    if not char then return false end
-    local hum = char:FindFirstChildOfClass("Humanoid")
-    if not hum or hum.Health <= 0 then return false end
+    if not IsCharacterAlive(char) then return false end
+    
     local part = GetAimPart(char)
     if not part then return false end
-
+    
     local myRoot = LP.Character and LP.Character:FindFirstChild("HumanoidRootPart")
     if myRoot then
-        local dist = (part.Position - myRoot.Position).Magnitude
-        if dist > Cfg.Aim.MaxDistance then return false end
+        local dist = GetDistance(part.Position, myRoot.Position)
+        if dist > Cfg.Aimbot.MaxDistance then return false end
     end
-
+    
     return true, char, part
 end
 
 local function GetClosestTarget()
     local center = AimPoint()
-    local best, bestDist = nil, Cfg.Aim.FOV
-
+    local best, bestDist = nil, Cfg.Aimbot.FOV
+    
     for _, player in ipairs(Players:GetPlayers()) do
         if player == LP then continue end
+        
         local valid, char, part = IsValidTarget(player)
         if not valid then continue end
-
-        local pos = GetTargetPosition(char, part, false)
-
+        
+        local pos = part.Position + Vector3.new(0, Cfg.Aimbot.YOffset, 0)
+        
         if not IsVisible(pos) then continue end
-
+        
+        if Cfg.Aimbot.HitChance > 0 then
+            local chance = CalculateHitChance(player, part, pos)
+            if chance < Cfg.Aimbot.HitChance then continue end
+        end
+        
         local screen, onScreen = W2S(pos)
         if not onScreen then continue end
-
-        local dist = (screen - center).Magnitude
+        
+        local dist = GetDistance(screen, center)
         if dist < bestDist then
             bestDist = dist
-            best = { Player = player, Char = char, Part = part, Screen = screen, Pos = pos }
+            best = { Player = player, Char = char, Part = part, Position = pos }
         end
     end
+    
     return best
 end
 
-local function UpdateFOV()
-    if Cfg.Aim.ShowFOV and Cfg.Aim.On then
-        FOVCIRC.Visible = true
-        FOVCIRC.Position = AimPoint()
-        FOVCIRC.Radius = Cfg.Aim.FOV
-        FOVCIRC.Color = Cfg.Aim.FOVColor
-    else
-        FOVCIRC.Visible = false
-    end
-end
-
 local function IsAimKeyPressed()
-    local key = Cfg.Aim.AimKey
+    local key = Cfg.Aimbot.AimKey
     if typeof(key) == "EnumItem" then
         if key.EnumType == Enum.UserInputType then
             return UserInputService:IsMouseButtonPressed(key)
@@ -723,41 +1178,530 @@ local function IsAimKeyPressed()
     return false
 end
 
-local function DoAim()
-    if not Cfg.Aim.On then
+local function DoAimbot()
+    if not Cfg.Aimbot.Enabled then
         CurrentTarget = nil
         return
     end
-
-    local holding = IsAimKeyPressed()
-    if not holding then
-        CurrentTarget = nil
-        return
+    
+    -- Target Lock System
+    if Cfg.Aimbot.TargetLock then
+        if UserInputService:IsKeyDown(Enum.KeyCode[Cfg.Aimbot.LockKey]) then
+            if not LockedTarget then
+                local target = GetClosestTarget()
+                if target then
+                    LockedTarget = target
+                    LockTime = tick()
+                end
+            end
+        end
+        
+        if LockedTarget and tick() - LockTime > Cfg.Aimbot.LockDuration then
+            LockedTarget = nil
+        end
     end
-
-    local target = GetClosestTarget()
+    
+    local target = LockedTarget or GetClosestTarget()
     if not target then
         CurrentTarget = nil
         return
     end
-
+    
+    -- Check if target is still valid
+    if not IsValidTarget(target.Player) then
+        if LockedTarget then LockedTarget = nil end
+        CurrentTarget = nil
+        return
+    end
+    
     CurrentTarget = target
-
-    local aimPos = GetTargetPosition(target.Char, target.Part, true)
-    local currentCF = Camera.CFrame
-    local targetCF = CFrame.lookAt(currentCF.Position, aimPos)
-
-    if Cfg.Aim.Smoothness <= 0 then
-        Camera.CFrame = targetCF
+    local aimPos = target.Position
+    
+    -- Movement Prediction
+    if Cfg.Aimbot.MovementPrediction then
+        local hrp = target.Char:FindFirstChild("HumanoidRootPart")
+        if hrp then
+            local vel = hrp.AssemblyLinearVelocity
+            local dist = GetDistance(Camera.CFrame.Position, hrp.Position)
+            local time = math.min(dist / 500, 1) * Cfg.Aimbot.PredictionMultiplier
+            aimPos = aimPos + vel * time
+        end
+    end
+    
+    -- Insane Tracking
+    if Cfg.Aimbot.InsaneTracking then
+        local hrp = target.Char:FindFirstChild("HumanoidRootPart")
+        if hrp then
+            local vel = hrp.AssemblyLinearVelocity
+            local dist = GetDistance(Camera.CFrame.Position, hrp.Position)
+            local time = math.min(dist / 300, 2) * Cfg.Aimbot.TrackingPrediction
+            aimPos = aimPos + vel * time * 0.5
+            
+            -- Extra prediction for tracking
+            local accel = hrp.AssemblyLinearAcceleration or Vector3.new()
+            aimPos = aimPos + accel * time * 0.3
+        end
+    end
+    
+    -- Auto Shoot
+    if Cfg.Aimbot.AutoShoot then
+        VirtualInputManager:SendMouseButtonEvent(Enum.UserInputType.MouseButton1, 0, false)
+        task.wait(Cfg.Aimbot.AutoShootDelay)
+        VirtualInputManager:SendMouseButtonEvent(Enum.UserInputType.MouseButton1, 0, true)
+    end
+    
+    -- Apply aim
+    if Cfg.Aimbot.Silent then
+        local currentCF = Camera.CFrame
+        local targetCF = CFrame.lookAt(currentCF.Position, aimPos)
+        pcall(function()
+            Camera.CFrame = targetCF
+        end)
     else
-        local smooth = math.clamp(1 - Cfg.Aim.Smoothness, 0.01, 1)
-        Camera.CFrame = currentCF:Lerp(targetCF, smooth)
+        local currentCF = Camera.CFrame
+        local targetCF = CFrame.lookAt(currentCF.Position, aimPos)
+        
+        if Cfg.Aimbot.InsaneTracking then
+            -- Snappy tracking
+            local smooth = Cfg.Aimbot.Snappiness
+            Camera.CFrame = currentCF:Lerp(targetCF, smooth)
+        else
+            local smooth = Clamp(1 - Cfg.Aimbot.Smoothness, 0.01, 1)
+            Camera.CFrame = currentCF:Lerp(targetCF, smooth)
+        end
+    end
+    
+    -- Aim Assist
+    if Cfg.Aimbot.AimAssist then
+        local currentCF = Camera.CFrame
+        local targetCF = CFrame.lookAt(currentCF.Position, aimPos)
+        local strength = Cfg.Aimbot.AimAssistStrength
+        Camera.CFrame = currentCF:Lerp(targetCF, strength)
+    end
+    
+    -- Humanize
+    if Cfg.Aimbot.Humanize then
+        local offset = Cfg.Aimbot.HumanizeOffset
+        local randX = (math.random() - 0.5) * offset
+        local randY = (math.random() - 0.5) * offset
+        local currentCF = Camera.CFrame
+        local pos = currentCF.Position + Vector3.new(randX, randY, 0)
+        Camera.CFrame = CFrame.lookAt(pos, aimPos)
     end
 end
 
 -- ================================================
---  TARGET UTILITIES (FIXED TELEPORT)
+--  FOV UPDATE SYSTEM (Dynamic FOV)
 -- ================================================
+local function UpdateFOV()
+    if not Cfg.Aimbot.ShowFOV or not Cfg.Aimbot.Enabled then
+        FOVCircle.Visible = false
+        return
+    end
+    
+    local fovSize = Cfg.Aimbot.FOV
+    
+    -- Dynamic FOV
+    if Cfg.Aimbot.FOVType == "Dynamic" then
+        local center = AimPoint()
+        local closestDist = 9999
+        for _, player in ipairs(Players:GetPlayers()) do
+            if player == LP then continue end
+            local char = player.Character
+            if not char then continue end
+            local part = GetAimPart(char)
+            if not part then continue end
+            local screen, onScreen = W2S(part.Position)
+            if not onScreen then continue end
+            local dist = GetDistance(screen, center)
+            if dist < closestDist and dist < Cfg.Aimbot.FOV then
+                closestDist = dist
+            end
+        end
+        
+        if closestDist < Cfg.Aimbot.FOV then
+            fovSize = math.max(Cfg.Aimbot.FOVMinSize, Cfg.Aimbot.FOV - (closestDist * Cfg.Aimbot.FOVDynamicSpeed))
+            fovSize = math.min(fovSize, Cfg.Aimbot.FOVMaxSize)
+        end
+    end
+    
+    FOVCircle.Visible = true
+    FOVCircle.Position = AimPoint()
+    FOVCircle.Radius = fovSize
+    FOVCircle.Color = Cfg.Aimbot.FOVColor
+end
+
+-- ================================================
+--  ESP SYSTEM
+-- ================================================
+local ESPObjects = {}
+local OffscreenArrows = {}
+
+local function CreateESP(player)
+    if ESPObjects[player] then return end
+    
+    local o = {
+        Skeleton = {},
+        SkeletonOutline = {},
+        Health = {},
+        Name = T{ Color = RavenTheme.Text, Size = 13, ZIndex = 6 },
+        Distance = T{ Color = RavenTheme.TextSecondary, Size = 11, ZIndex = 6 },
+        Tracer = L{ Color = RavenTheme.Primary, ZIndex = 3 },
+        TracerOutline = L{ Color = RavenTheme.Background, Thickness = 2.5, ZIndex = 2 },
+        Box = {},
+        BoxOutline = {},
+        Corner = {},
+        Chams = nil,
+        Glow = nil,
+        HeadDot = C{ Color = RavenTheme.Primary, Radius = 3, Thickness = 3, ZIndex = 7 },
+    }
+    
+    for i = 1, 14 do
+        o.SkeletonOutline[i] = L{ Color = RavenTheme.Background, Thickness = 3, ZIndex = 3 }
+        o.Skeleton[i] = L{ Color = RavenTheme.Secondary, Thickness = 1.5, ZIndex = 4 }
+    end
+    
+    o.Health[1] = L{ Color = RavenTheme.Background, Thickness = 2, ZIndex = 5 }
+    o.Health[2] = L{ Color = RavenTheme.Success, Thickness = 2, ZIndex = 6 }
+    
+    for i = 1, 4 do
+        o.Box[i] = L{ Color = RavenTheme.Secondary, Thickness = 1.5, ZIndex = 5 }
+        o.BoxOutline[i] = L{ Color = RavenTheme.Background, Thickness = 3, ZIndex = 4 }
+    end
+    
+    for i = 1, 8 do
+        o.Corner[i] = L{ Color = RavenTheme.Primary, Thickness = 2, ZIndex = 5 }
+    end
+    
+    ESPObjects[player] = o
+end
+
+local function DestroyESP(player)
+    local o = ESPObjects[player]
+    if not o then return end
+    
+    for _, list in ipairs({o.Skeleton, o.SkeletonOutline, o.Health, o.Box, o.BoxOutline, o.Corner}) do
+        for _, obj in ipairs(list or {}) do
+            pcall(function() obj:Remove() end)
+        end
+    end
+    
+    pcall(function() o.Name:Remove() end)
+    pcall(function() o.Distance:Remove() end)
+    pcall(function() o.Tracer:Remove() end)
+    pcall(function() o.TracerOutline:Remove() end)
+    pcall(function() o.HeadDot:Remove() end)
+    
+    if o.Chams then pcall(function() o.Chams:Destroy() end) end
+    if o.Glow then pcall(function() o.Glow:Destroy() end) end
+    
+    ESPObjects[player] = nil
+end
+
+local function UpdateESP()
+    for _, player in ipairs(Players:GetPlayers()) do
+        if player == LP then continue end
+        
+        CreateESP(player)
+        local o = ESPObjects[player]
+        local char = player.Character
+        
+        if not char or not IsCharacterAlive(char) then
+            if o then
+                o.Name.Visible = false
+                o.Distance.Visible = false
+                o.Tracer.Visible = false
+                o.TracerOutline.Visible = false
+                o.HeadDot.Visible = false
+                for _, list in ipairs({o.Skeleton, o.SkeletonOutline, o.Health, o.Box, o.BoxOutline, o.Corner}) do
+                    for _, obj in ipairs(list) do obj.Visible = false end
+                end
+                if o.Chams then o.Chams.Enabled = false end
+                if o.Glow then o.Glow.Enabled = false end
+            end
+            continue
+        end
+        
+        local hrp, hum, head = GetCharacterParts(char)
+        if not hrp or not hum then continue end
+        
+        local myChar = LP.Character
+        local myRoot = myChar and myChar:FindFirstChild("HumanoidRootPart")
+        local dist = myRoot and GetDistance(hrp.Position, myRoot.Position) or 0
+        
+        if dist > Cfg.ESP.MaxDistance then
+            o.Name.Visible = false
+            o.Distance.Visible = false
+            o.Tracer.Visible = false
+            o.TracerOutline.Visible = false
+            o.HeadDot.Visible = false
+            for _, list in ipairs({o.Skeleton, o.SkeletonOutline, o.Health, o.Box, o.BoxOutline, o.Corner}) do
+                for _, obj in ipairs(list) do obj.Visible = false end
+            end
+            if o.Chams then o.Chams.Enabled = false end
+            if o.Glow then o.Glow.Enabled = false end
+            continue
+        end
+        
+        if not Cfg.ESP.Enabled then
+            if o.Name then o.Name.Visible = false end
+            if o.Distance then o.Distance.Visible = false end
+            if o.Tracer then o.Tracer.Visible = false end
+            if o.TracerOutline then o.TracerOutline.Visible = false end
+            if o.HeadDot then o.HeadDot.Visible = false end
+            for _, list in ipairs({o.Skeleton, o.SkeletonOutline, o.Health, o.Box, o.BoxOutline, o.Corner}) do
+                for _, obj in ipairs(list) do obj.Visible = false end
+            end
+            if o.Chams then o.Chams.Enabled = false end
+            if o.Glow then o.Glow.Enabled = false end
+            continue
+        end
+        
+        -- Calculate bounding box
+        local top = head.Position + Vector3.new(0, 0.7, 0)
+        local bot = hrp.Position - Vector3.new(0, 3.2, 0)
+        local ts, ton = W2S(top)
+        local bs, bon = W2S(bot)
+        
+        if not ton and not bon then
+            for _, list in ipairs({o.Skeleton, o.SkeletonOutline, o.Health, o.Box, o.BoxOutline, o.Corner}) do
+                for _, obj in ipairs(list) do obj.Visible = false end
+            end
+            if o.Name then o.Name.Visible = false end
+            if o.Distance then o.Distance.Visible = false end
+            if o.Tracer then o.Tracer.Visible = false end
+            if o.TracerOutline then o.TracerOutline.Visible = false end
+            if o.HeadDot then o.HeadDot.Visible = false end
+            continue
+        end
+        
+        local ls = W2S(hrp.Position - hrp.CFrame.RightVector * 1.5)
+        local rs = W2S(hrp.Position + hrp.CFrame.RightVector * 1.5)
+        
+        local x = math.min(ts.X, bs.X, ls.X, rs.X)
+        local x2 = math.max(ts.X, bs.X, ls.X, rs.X)
+        local y = ts.Y
+        local h = bs.Y - ts.Y
+        local cx = (x + x2) / 2
+        
+        if h < 5 then
+            for _, list in ipairs({o.Skeleton, o.SkeletonOutline, o.Health, o.Box, o.BoxOutline, o.Corner}) do
+                for _, obj in ipairs(list) do obj.Visible = false end
+            end
+            if o.Name then o.Name.Visible = false end
+            if o.Distance then o.Distance.Visible = false end
+            if o.Tracer then o.Tracer.Visible = false end
+            if o.TracerOutline then o.TracerOutline.Visible = false end
+            if o.HeadDot then o.HeadDot.Visible = false end
+            continue
+        end
+        
+        -- Update skeleton (same as before but with Raven colors)
+        local isR6 = char:FindFirstChild("Torso") ~= nil and not char:FindFirstChild("HumanoidRootPart")
+        local skel = isR6 and {
+            {"Head", "Torso"}, {"Torso", "Left Arm"}, {"Torso", "Right Arm"},
+            {"Torso", "Left Leg"}, {"Torso", "Right Leg"},
+        } or {
+            {"Head", "UpperTorso"}, {"UpperTorso", "LowerTorso"},
+            {"UpperTorso", "LeftUpperArm"}, {"LeftUpperArm", "LeftLowerArm"}, {"LeftLowerArm", "LeftHand"},
+            {"UpperTorso", "RightUpperArm"}, {"RightUpperArm", "RightLowerArm"}, {"RightLowerArm", "RightHand"},
+            {"LowerTorso", "LeftUpperLeg"}, {"LeftUpperLeg", "LeftLowerLeg"}, {"LeftLowerLeg", "LeftFoot"},
+            {"LowerTorso", "RightUpperLeg"}, {"RightUpperLeg", "RightLowerLeg"}, {"RightLowerLeg", "RightFoot"},
+        }
+        
+        for i, bones in ipairs(skel) do
+            local p1 = char:FindFirstChild(bones[1])
+            local p2 = char:FindFirstChild(bones[2])
+            if Cfg.ESP.Skeleton and p1 and p2 then
+                local s1, on1 = W2S(p1.Position)
+                local s2, on2 = W2S(p2.Position)
+                if on1 or on2 then
+                    o.Skeleton[i].From = s1
+                    o.Skeleton[i].To = s2
+                    o.Skeleton[i].Color = Cfg.ESP.SkeletonColor
+                    o.Skeleton[i].Visible = true
+                    o.SkeletonOutline[i].From = s1
+                    o.SkeletonOutline[i].To = s2
+                    o.SkeletonOutline[i].Visible = true
+                else
+                    o.Skeleton[i].Visible = false
+                    o.SkeletonOutline[i].Visible = false
+                end
+            else
+                o.Skeleton[i].Visible = false
+                o.SkeletonOutline[i].Visible = false
+            end
+        end
+        
+        -- Update name
+        if Cfg.ESP.Names then
+            o.Name.Position = Vector2.new(cx, y - 16)
+            o.Name.Text = player.DisplayName or player.Name
+            o.Name.Color = Cfg.ESP.NameColor
+            o.Name.Visible = true
+        else
+            o.Name.Visible = false
+        end
+        
+        -- Update distance
+        if Cfg.ESP.Distance then
+            o.Distance.Position = Vector2.new(cx, y + h + 3)
+            o.Distance.Text = string.format("[%dm]", math.floor(dist))
+            o.Distance.Color = Cfg.ESP.DistanceColor
+            o.Distance.Visible = true
+        else
+            o.Distance.Visible = false
+        end
+        
+        -- Update health
+        if Cfg.ESP.Health then
+            local ratio = Clamp(hum.Health / hum.MaxHealth, 0, 1)
+            local bx = x - 5
+            local bh = math.max(h, 1)
+            local fh = math.max(bh * ratio, 0)
+            
+            o.Health[1].From = Vector2.new(bx, y)
+            o.Health[1].To = Vector2.new(bx, y + bh)
+            o.Health[1].Visible = true
+            
+            o.Health[2].From = Vector2.new(bx, y + bh - fh)
+            o.Health[2].To = Vector2.new(bx, y + bh)
+            o.Health[2].Color = ratio > 0.5 and RavenTheme.Success or RavenTheme.Danger
+            o.Health[2].Visible = fh > 0
+        else
+            o.Health[1].Visible = false
+            o.Health[2].Visible = false
+        end
+        
+        -- Update box
+        if Cfg.ESP.Box then
+            local corners = {
+                {Vector2.new(x, y), Vector2.new(x + w, y)},
+                {Vector2.new(x, y + h), Vector2.new(x + w, y + h)},
+                {Vector2.new(x, y), Vector2.new(x, y + h)},
+                {Vector2.new(x + w, y), Vector2.new(x + w, y + h)},
+            }
+            
+            for i, corner in ipairs(corners) do
+                o.Box[i].From = corner[1]
+                o.Box[i].To = corner[2]
+                o.Box[i].Color = Cfg.ESP.BoxColor
+                o.Box[i].Visible = true
+                
+                o.BoxOutline[i].From = corner[1]
+                o.BoxOutline[i].To = corner[2]
+                o.BoxOutline[i].Visible = true
+            end
+        else
+            for i = 1, 4 do
+                o.Box[i].Visible = false
+                o.BoxOutline[i].Visible = false
+            end
+        end
+        
+        -- Update corner box
+        if Cfg.ESP.CornerBox then
+            local len = math.min(w, h) * 0.25
+            local corners = {
+                {Vector2.new(x, y + len), Vector2.new(x, y)},
+                {Vector2.new(x, y), Vector2.new(x + len, y)},
+                {Vector2.new(x + w - len, y), Vector2.new(x + w, y)},
+                {Vector2.new(x + w, y), Vector2.new(x + w, y + len)},
+                {Vector2.new(x, y + h - len), Vector2.new(x, y + h)},
+                {Vector2.new(x, y + h), Vector2.new(x + len, y + h)},
+                {Vector2.new(x + w - len, y + h), Vector2.new(x + w, y + h)},
+                {Vector2.new(x + w, y + h - len), Vector2.new(x + w, y + h)},
+            }
+            
+            for i, corner in ipairs(corners) do
+                o.Corner[i].From = corner[1]
+                o.Corner[i].To = corner[2]
+                o.Corner[i].Color = Cfg.ESP.CornerColor
+                o.Corner[i].Visible = true
+            end
+        else
+            for i = 1, 8 do
+                o.Corner[i].Visible = false
+            end
+        end
+        
+        -- Update tracers
+        if Cfg.ESP.Tracers then
+            local vp = Camera.ViewportSize
+            local from = Vector2.new(vp.X / 2, vp.Y)
+            
+            o.Tracer.From = from
+            o.Tracer.To = bs
+            o.Tracer.Color = Cfg.ESP.TracerColor
+            o.Tracer.Visible = true
+            
+            o.TracerOutline.From = from
+            o.TracerOutline.To = bs
+            o.TracerOutline.Visible = true
+        else
+            o.Tracer.Visible = false
+            o.TracerOutline.Visible = false
+        end
+        
+        -- Update chams
+        if Cfg.ESP.Chams then
+            if not o.Chams or o.Chams.Parent ~= char then
+                if o.Chams then o.Chams:Destroy() end
+                local h = Instance.new("Highlight")
+                h.Adornee = char
+                h.DepthMode = Enum.HighlightDepthMode.AlwaysOnTop
+                h.Parent = char
+                o.Chams = h
+            end
+            o.Chams.Enabled = true
+            o.Chams.FillColor = Cfg.ESP.ChamsColor
+            o.Chams.FillTransparency = Cfg.ESP.ChamsTransparency
+            o.Chams.OutlineColor = Cfg.ESP.ChamsOutline
+            o.Chams.OutlineTransparency = Cfg.ESP.ChamsOutlineTransparency
+        elseif o.Chams then
+            o.Chams.Enabled = false
+        end
+        
+        -- Update glow
+        if Cfg.ESP.Glow then
+            if not o.Glow or o.Glow.Parent ~= char then
+                if o.Glow then o.Glow:Destroy() end
+                local g = Instance.new("Highlight")
+                g.Adornee = char
+                g.DepthMode = Enum.HighlightDepthMode.AlwaysOnTop
+                g.Parent = char
+                o.Glow = g
+            end
+            o.Glow.Enabled = true
+            o.Glow.FillColor = Cfg.ESP.GlowColor
+            o.Glow.FillTransparency = 1 - Cfg.ESP.GlowIntensity
+            o.Glow.OutlineColor = Cfg.ESP.GlowColor
+            o.Glow.OutlineTransparency = 0.3
+        elseif o.Glow then
+            o.Glow.Enabled = false
+        end
+        
+        -- Update head dot
+        if Cfg.ESP.HeadDot then
+            local headScreen, headOn = W2S(head.Position)
+            if headOn then
+                o.HeadDot.Position = headScreen
+                o.HeadDot.Color = Cfg.ESP.HeadDotColor
+                o.HeadDot.Visible = true
+            else
+                o.HeadDot.Visible = false
+            end
+        else
+            o.HeadDot.Visible = false
+        end
+    end
+end
+
+-- ================================================
+--  TARGET UTILITY
+-- ================================================
+local TeleportConnection = nil
+
 local function GetPlayerNames()
     local names = {"None"}
     for _, player in ipairs(Players:GetPlayers()) do
@@ -766,56 +1710,6 @@ local function GetPlayerNames()
         end
     end
     return names
-end
-
--- Single teleport loop - FIXED: Removed duplicate RenderStepped loop causing jitter
-local teleportConnection = nil
-
-local function StartTeleportLoop()
-    if teleportConnection then return end
-    
-    teleportConnection = RunService.Heartbeat:Connect(function()
-        if not Cfg.TargetUtility.StickyTP then return end
-        if Cfg.TargetUtility.SelectedTarget == "None" then return end
-        
-        local targetPlayer = Players:FindFirstChild(Cfg.TargetUtility.SelectedTarget)
-        if not targetPlayer then 
-            -- Reset selection if target no longer exists
-            if Options.TargetDropdown then
-                Options.TargetDropdown:SetValue("None")
-                Cfg.TargetUtility.SelectedTarget = "None"
-            end
-            return 
-        end
-        
-        local enemyChar = targetPlayer.Character
-        if not enemyChar then return end
-        
-        local enemyRoot = enemyChar:FindFirstChild("HumanoidRootPart")
-        if not enemyRoot then return end
-        
-        local myChar = LP.Character
-        if not myChar then return end
-        
-        local myRoot = myChar:FindFirstChild("HumanoidRootPart")
-        if not myRoot then return end
-        
-        -- FIXED: Get the CFrame of the enemy root and apply offset correctly
-        local offset = Vector3.new(0, Cfg.TargetUtility.HeightOffset, 0)
-        local targetCF = enemyRoot.CFrame + offset
-        
-        -- Apply teleport
-        myRoot.CFrame = targetCF
-        myRoot.AssemblyLinearVelocity = Vector3.new(0, 0, 0)
-        myRoot.AssemblyAngularVelocity = Vector3.new(0, 0, 0)
-    end)
-end
-
-local function StopTeleportLoop()
-    if teleportConnection then
-        teleportConnection:Disconnect()
-        teleportConnection = nil
-    end
 end
 
 -- ================================================
@@ -863,38 +1757,58 @@ local function UpdateCrosshair()
         CrosshairAngle = CrosshairAngle - math.pi * 2
     end
     
-    for i = 1, 4 do
-        local line = CrosshairLines[i]
-        local angleOffset = (i - 1) * (math.pi / 2) + CrosshairAngle
-        
-        local cosVal = math.cos(angleOffset)
-        local sinVal = math.sin(angleOffset)
-        
-        local fromPos = Vector2.new(
-            center.X + cosVal * gap,
-            center.Y + sinVal * gap
-        )
-        local toPos = Vector2.new(
-            center.X + cosVal * (gap + size),
-            center.Y + sinVal * (gap + size)
-        )
-        
-        line.From = fromPos
-        line.To = toPos
-        line.Color = col
-        line.Thickness = 1.5
-        line.Visible = true
+    -- Raven Style Crosshair (Diamond shape with glowing center)
+    local style = Cfg.Visuals.CrosshairStyle
+    if style == "Raven" then
+        -- Diamond shape
+        for i = 1, 4 do
+            local line = CrosshairLines[i]
+            local angle = (i - 1) * (math.pi / 2) + CrosshairAngle + math.pi / 4
+            local fromPos = Vector2.new(
+                center.X + math.cos(angle) * gap,
+                center.Y + math.sin(angle) * gap
+            )
+            local toPos = Vector2.new(
+                center.X + math.cos(angle) * (gap + size),
+                center.Y + math.sin(angle) * (gap + size)
+            )
+            line.From = fromPos
+            line.To = toPos
+            line.Color = col
+            line.Thickness = 2
+            line.Visible = true
+        end
+    else
+        -- Default crosshair
+        for i = 1, 4 do
+            local line = CrosshairLines[i]
+            local angleOffset = (i - 1) * (math.pi / 2) + CrosshairAngle
+            local fromPos = Vector2.new(
+                center.X + math.cos(angleOffset) * gap,
+                center.Y + math.sin(angleOffset) * gap
+            )
+            local toPos = Vector2.new(
+                center.X + math.cos(angleOffset) * (gap + size),
+                center.Y + math.sin(angleOffset) * (gap + size)
+            )
+            line.From = fromPos
+            line.To = toPos
+            line.Color = col
+            line.Thickness = 1.5
+            line.Visible = true
+        end
     end
     
     if CenterDot then
         CenterDot.Position = center
         CenterDot.Color = col
+        CenterDot.Radius = 2
         CenterDot.Visible = true
     end
 end
 
 -- ================================================
---  FLIGHT SYSTEM (FIXED KEYBIND ENGINE)
+--  FLIGHT SYSTEM
 -- ================================================
 local flyConnection = nil
 local flyEnabled = false
@@ -976,14 +1890,14 @@ local function ToggleFly()
     if flyEnabled then
         StartFly()
         StarterGui:SetCore("SendNotification", {
-            Title = "Flight",
+            Title = "Raven Software",
             Text = "Flight enabled",
             Duration = 1,
         })
     else
         StopFly()
         StarterGui:SetCore("SendNotification", {
-            Title = "Flight",
+            Title = "Raven Software",
             Text = "Flight disabled",
             Duration = 1,
         })
@@ -994,7 +1908,6 @@ local function ToggleFly()
     end
 end
 
--- Fixed Fly Input Listener supporting KeyCodes and Mouse inputs robustly
 UserInputService.InputBegan:Connect(function(input, gameProcessed)
     if gameProcessed then return end
     local keybind = Cfg.Movement.FlyKeybind
@@ -1082,19 +1995,37 @@ local function UpdateVisuals()
         Lighting.FogEnd = 1000
         Lighting.FogStart = 0
     end
+    
+    if Cfg.Visuals.NoBloom then
+        Lighting.Bloom.Enabled = false
+    else
+        Lighting.Bloom.Enabled = true
+    end
+    
+    if Cfg.Visuals.NoShadows then
+        Lighting.GlobalShadows = false
+    end
+    
+    if Cfg.Visuals.CustomSkybox then
+        Lighting.SkyboxColor = Cfg.Visuals.SkyboxColor
+    end
 end
 
 -- ================================================
 --  PLAYER MANAGEMENT
 -- ================================================
 local function OnPlayerAdded(player)
-    CreateESPObjects(player)
+    CreateESP(player)
     player.CharacterAdded:Connect(function()
         task.wait(0.5)
-        local o = ESPs[player]
+        local o = ESPObjects[player]
         if o and o.Chams then
             o.Chams:Destroy()
             o.Chams = nil
+        end
+        if o and o.Glow then
+            o.Glow:Destroy()
+            o.Glow = nil
         end
     end)
 end
@@ -1112,44 +2043,41 @@ RunService.RenderStepped:Connect(function()
     Camera = Workspace.CurrentCamera
     pcall(UpdateFOV)
     pcall(UpdateESP)
-    pcall(UpdateOffscreenArrows)
     pcall(UpdateVisuals)
     pcall(UpdateCrosshair)
 end)
 
-RunService:BindToRenderStep("RotexAim", Enum.RenderPriority.Last.Value, function()
+RunService:BindToRenderStep("RavenAimbot", Enum.RenderPriority.Last.Value, function()
     Camera = Workspace.CurrentCamera
-    pcall(DoAim)
+    pcall(DoAimbot)
 end)
 
 -- ================================================
 --  USER INTERFACE
 -- ================================================
 local Window = Library:CreateWindow({
-    Title = "Rotex Framework",
+    Title = "Raven Software",
     Center = true,
     AutoShow = true,
     TabPadding = 8,
     MenuFadeTime = 0.2,
 })
 
--- High Quality Enhanced Glassmorphism Branding Logo Component (Bottom Left)
+-- Raven Branding
 pcall(function()
     if Window and Window.Holder then
-        -- Main Container Frame
         local logoContainer = Instance.new("Frame")
-        logoContainer.Name = "RotexLogoContainer"
+        logoContainer.Name = "RavenLogo"
         logoContainer.BackgroundTransparency = 1
         logoContainer.AnchorPoint = Vector2.new(0, 1)
         logoContainer.Position = UDim2.new(0, 12, 1, -12)
-        logoContainer.Size = UDim2.new(0, 155, 0, 46)
+        logoContainer.Size = UDim2.new(0, 180, 0, 50)
         logoContainer.ZIndex = 5
         
-        -- Backdrop Glowing Glassmorphism Panel
         local glassBg = Instance.new("Frame")
         glassBg.Name = "GlassBackground"
-        glassBg.BackgroundColor3 = Color3.fromRGB(18, 18, 24)
-        glassBg.BackgroundTransparency = 0.35
+        glassBg.BackgroundColor3 = RavenTheme.Background
+        glassBg.BackgroundTransparency = 0.3
         glassBg.BorderSizePixel = 0
         glassBg.Size = UDim2.new(1, 0, 1, 0)
         glassBg.ZIndex = 5
@@ -1160,22 +2088,21 @@ pcall(function()
         cornerGlass.Parent = glassBg
         
         local strokeGlass = Instance.new("UIStroke")
-        strokeGlass.Color = PINK
-        strokeGlass.Transparency = 0.4
-        strokeGlass.Thickness = 1.2
+        strokeGlass.Color = RavenTheme.Primary
+        strokeGlass.Transparency = 0.5
+        strokeGlass.Thickness = 1.5
         strokeGlass.Parent = glassBg
         
-        -- High Fidelity Circular Icon Frame
         local iconFrame = Instance.new("Frame")
         iconFrame.Name = "IconFrame"
         iconFrame.BackgroundTransparency = 1
-        iconFrame.Position = UDim2.new(0, 5, 0.5, -18)
-        iconFrame.Size = UDim2.new(0, 36, 0, 36)
+        iconFrame.Position = UDim2.new(0, 5, 0.5, -20)
+        iconFrame.Size = UDim2.new(0, 40, 0, 40)
         iconFrame.ZIndex = 6
         iconFrame.Parent = logoContainer
         
         local logoLabel = Instance.new("ImageLabel")
-        logoLabel.Name = "RotexLogoImage"
+        logoLabel.Name = "RavenLogoImage"
         logoLabel.BackgroundTransparency = 1
         logoLabel.Size = UDim2.new(1, 0, 1, 0)
         logoLabel.Image = "rbxassetid://73575987788416"
@@ -1183,23 +2110,22 @@ pcall(function()
         logoLabel.ZIndex = 6
         logoLabel.Parent = iconFrame
         
-        -- Clean Professional Typography Layout
         local textHolder = Instance.new("Frame")
         textHolder.Name = "TextHolder"
         textHolder.BackgroundTransparency = 1
-        textHolder.Position = UDim2.new(0, 46, 0, 4)
-        textHolder.Size = UDim2.new(1, -50, 1, -8)
+        textHolder.Position = UDim2.new(0, 50, 0, 4)
+        textHolder.Size = UDim2.new(1, -55, 1, -8)
         textHolder.ZIndex = 6
         textHolder.Parent = logoContainer
         
         local titleLabel = Instance.new("TextLabel")
         titleLabel.Name = "BrandTitle"
         titleLabel.BackgroundTransparency = 1
-        titleLabel.Size = UDim2.new(1, 0, 0, 18)
+        titleLabel.Size = UDim2.new(1, 0, 0, 20)
         titleLabel.Font = Enum.Font.GothamBold
-        titleLabel.Text = "ROTEX"
-        titleLabel.TextColor3 = WHITE
-        titleLabel.TextSize = 13
+        titleLabel.Text = "RAVEN"
+        titleLabel.TextColor3 = RavenTheme.Primary
+        titleLabel.TextSize = 15
         titleLabel.TextXAlignment = Enum.TextXAlignment.Left
         titleLabel.ZIndex = 6
         titleLabel.Parent = textHolder
@@ -1207,15 +2133,25 @@ pcall(function()
         local subLabel = Instance.new("TextLabel")
         subLabel.Name = "BrandSubtitle"
         subLabel.BackgroundTransparency = 1
-        subLabel.Position = UDim2.new(0, 0, 0, 17)
+        subLabel.Position = UDim2.new(0, 0, 0, 19)
         subLabel.Size = UDim2.new(1, 0, 0, 16)
         subLabel.Font = Enum.Font.GothamMedium
-        subLabel.Text = "UTILITY SUITE"
-        subLabel.TextColor3 = PINK
-        subLabel.TextSize = 9
+        subLabel.Text = "SOFTWARE"
+        subLabel.TextColor3 = RavenTheme.Secondary
+        subLabel.TextSize = 10
         subLabel.TextXAlignment = Enum.TextXAlignment.Left
         subLabel.ZIndex = 6
         subLabel.Parent = textHolder
+        
+        -- Red accent line
+        local accentLine = Instance.new("Frame")
+        accentLine.Name = "AccentLine"
+        accentLine.BackgroundColor3 = RavenTheme.Primary
+        accentLine.BackgroundTransparency = 0
+        accentLine.Position = UDim2.new(0, 5, 0, 0)
+        accentLine.Size = UDim2.new(0, 3, 1, 0)
+        accentLine.ZIndex = 6
+        accentLine.Parent = logoContainer
         
         logoContainer.Parent = Window.Holder
     end
@@ -1223,19 +2159,19 @@ end)
 
 local Tabs = {
     ESP = Window:AddTab("ESP"),
-    Aim = Window:AddTab("Aim"),
-    Util = Window:AddTab("Utils"),
-    Move = Window:AddTab("Move"),
-    Vis = Window:AddTab("Visuals"),
+    Aimbot = Window:AddTab("Aimbot"),
+    Unlock = Window:AddTab("Unlock"),
+    Visuals = Window:AddTab("Visuals"),
+    Movement = Window:AddTab("Movement"),
     Settings = Window:AddTab("Settings"),
 }
 
-ApplyPinkTheme()
+ApplyRavenTheme()
 CreateCrosshair()
 
 task.spawn(function()
     task.wait(0.2)
-    ApplyPinkTheme()
+    ApplyRavenTheme()
 end)
 
 -- =============================================
@@ -1243,175 +2179,278 @@ end)
 -- =============================================
 local ESPGroup = Tabs.ESP:AddLeftGroupbox("ESP Controls")
 
-ESPGroup:AddToggle("ESPOn", { Text = "Enable", Default = Cfg.ESP.On })
-Toggles.ESPOn:OnChanged(function(v) Cfg.ESP.On = v end)
+ESPGroup:AddToggle("ESPEnabled", { Text = "Enable ESP", Default = Cfg.ESP.Enabled })
+Toggles.ESPEnabled:OnChanged(function(v) Cfg.ESP.Enabled = v end)
 
-ESPGroup:AddSlider("ESPDist", { Text = "Max Dist", Default = Cfg.ESP.MaxDist, Min = 50, Max = 5000, Rounding = 0 })
-Options.ESPDist:OnChanged(function(v) Cfg.ESP.MaxDist = v end)
+ESPGroup:AddSlider("ESPMaxDist", { Text = "Max Distance", Default = Cfg.ESP.MaxDistance, Min = 50, Max = 5000, Rounding = 0 })
+Options.ESPMaxDist:OnChanged(function(v) Cfg.ESP.MaxDistance = v end)
 
-ESPGroup:AddToggle("ESPSkel", { Text = "Skeleton", Default = Cfg.ESP.Skel })
-Toggles.ESPSkel:OnChanged(function(v) Cfg.ESP.Skel = v end)
-Toggles.ESPSkel:AddColorPicker("ESPSkelCol", { Default = Cfg.ESP.SkelColor, Title = "Color" })
-Options.ESPSkelCol:OnChanged(function(v) Cfg.ESP.SkelColor = v end)
+ESPGroup:AddToggle("ESPSkeleton", { Text = "Skeleton", Default = Cfg.ESP.Skeleton })
+Toggles.ESPSkeleton:OnChanged(function(v) Cfg.ESP.Skeleton = v end)
+Toggles.ESPSkeleton:AddColorPicker("ESPSkeletonColor", { Default = Cfg.ESP.SkeletonColor, Title = "Color" })
+Options.ESPSkeletonColor:OnChanged(function(v) Cfg.ESP.SkeletonColor = v end)
 
 ESPGroup:AddToggle("ESPChams", { Text = "Chams", Default = Cfg.ESP.Chams })
 Toggles.ESPChams:OnChanged(function(v) Cfg.ESP.Chams = v end)
-Toggles.ESPChams:AddColorPicker("ESPChamsCol", { Default = Cfg.ESP.ChamsColor, Title = "Color" })
-Options.ESPChamsCol:OnChanged(function(v) Cfg.ESP.ChamsColor = v end)
+Toggles.ESPChams:AddColorPicker("ESPChamsColor", { Default = Cfg.ESP.ChamsColor, Title = "Color" })
+Options.ESPChamsColor:OnChanged(function(v) Cfg.ESP.ChamsColor = v end)
 
-ESPGroup:AddToggle("ESPOffscreen", { Text = "Arrows", Default = Cfg.ESP.OffscreenArrows })
+ESPGroup:AddToggle("ESPGlow", { Text = "Glow", Default = Cfg.ESP.Glow })
+Toggles.ESPGlow:OnChanged(function(v) Cfg.ESP.Glow = v end)
+Toggles.ESPGlow:AddColorPicker("ESPGlowColor", { Default = Cfg.ESP.GlowColor, Title = "Color" })
+Options.ESPGlowColor:OnChanged(function(v) Cfg.ESP.GlowColor = v end)
+
+ESPGroup:AddToggle("ESPHeadDot", { Text = "Head Dot", Default = Cfg.ESP.HeadDot })
+Toggles.ESPHeadDot:OnChanged(function(v) Cfg.ESP.HeadDot = v end)
+Toggles.ESPHeadDot:AddColorPicker("ESPHeadDotColor", { Default = Cfg.ESP.HeadDotColor, Title = "Color" })
+Options.ESPHeadDotColor:OnChanged(function(v) Cfg.ESP.HeadDotColor = v end)
+
+ESPGroup:AddToggle("ESPOffscreen", { Text = "Offscreen Arrows", Default = Cfg.ESP.OffscreenArrows })
 Toggles.ESPOffscreen:OnChanged(function(v) Cfg.ESP.OffscreenArrows = v end)
-Toggles.ESPOffscreen:AddColorPicker("ESPOffscreenCol", { Default = Cfg.ESP.OffscreenArrowColor, Title = "Color" })
-Options.ESPOffscreenCol:OnChanged(function(v) Cfg.ESP.OffscreenArrowColor = v end)
+Toggles.ESPOffscreen:AddColorPicker("ESPOffscreenColor", { Default = Cfg.ESP.OffscreenArrowColor, Title = "Color" })
+Options.ESPOffscreenColor:OnChanged(function(v) Cfg.ESP.OffscreenArrowColor = v end)
 
 -- =============================================
--- AIM TAB
+-- AIMBOT TAB (V4 Features)
 -- =============================================
-local AimGroup = Tabs.Aim:AddLeftGroupbox("Aimbot Controls")
+local AimbotGroup = Tabs.Aimbot:AddLeftGroupbox("Aimbot V4 Controls")
 
-AimGroup:AddToggle("AimOn", { Text = "Enable", Default = Cfg.Aim.On })
-Toggles.AimOn:OnChanged(function(v) Cfg.Aim.On = v end)
-Toggles.AimOn:AddKeyPicker("AimKeyPicker", { Default = "MouseButton2", Text = "Aimbot Key", NoUI = false })
-Options.AimKeyPicker:OnChanged(function(v)
-    Cfg.Aim.AimKey = Options.AimKeyPicker.Value
+AimbotGroup:AddToggle("AimbotEnabled", { Text = "Enable Aimbot", Default = Cfg.Aimbot.Enabled })
+Toggles.AimbotEnabled:OnChanged(function(v) Cfg.Aimbot.Enabled = v end)
+Toggles.AimbotEnabled:AddKeyPicker("AimbotKey", { Default = "MouseButton2", Text = "Aimbot Key", NoUI = false })
+Options.AimbotKey:OnChanged(function(v) Cfg.Aimbot.AimKey = Options.AimbotKey.Value end)
+
+AimbotGroup:AddToggle("AimbotSilent", { Text = "Silent Aim", Default = Cfg.Aimbot.Silent })
+Toggles.AimbotSilent:OnChanged(function(v) Cfg.Aimbot.Silent = v end)
+
+AimbotGroup:AddToggle("AimbotWallCheck", { Text = "Wall Check", Default = Cfg.Aimbot.WallCheck })
+Toggles.AimbotWallCheck:OnChanged(function(v) Cfg.Aimbot.WallCheck = v end)
+
+AimbotGroup:AddDropdown("AimbotPart", { Values = {"Head", "HumanoidRootPart", "UpperTorso", "Torso"}, Default = 1, Text = "Hitbox" })
+Options.AimbotPart:OnChanged(function(v) Cfg.Aimbot.Part = v end)
+
+AimbotGroup:AddToggle("AimbotShowFOV", { Text = "Show FOV", Default = Cfg.Aimbot.ShowFOV })
+Toggles.AimbotShowFOV:OnChanged(function(v) Cfg.Aimbot.ShowFOV = v end)
+Toggles.AimbotShowFOV:AddColorPicker("AimbotFOVColor", { Default = Cfg.Aimbot.FOVColor, Title = "Color" })
+Options.AimbotFOVColor:OnChanged(function(v) Cfg.Aimbot.FOVColor = v end)
+
+AimbotGroup:AddSlider("AimbotFOV", { Text = "FOV Radius", Default = Cfg.Aimbot.FOV, Min = 10, Max = 800, Rounding = 0 })
+Options.AimbotFOV:OnChanged(function(v) Cfg.Aimbot.FOV = v end)
+
+AimbotGroup:AddSlider("AimbotSmoothness", { Text = "Smoothness", Default = Cfg.Aimbot.Smoothness, Min = 0, Max = 1, Rounding = 2 })
+Options.AimbotSmoothness:OnChanged(function(v) Cfg.Aimbot.Smoothness = v end)
+
+AimbotGroup:AddSlider("AimbotPrediction", { Text = "Prediction", Default = Cfg.Aimbot.Prediction, Min = 0, Max = 2, Rounding = 2 })
+Options.AimbotPrediction:OnChanged(function(v) Cfg.Aimbot.Prediction = v end)
+
+-- Advanced Features
+local AdvancedAimbotGroup = Tabs.Aimbot:AddRightGroupbox("Advanced Aimbot V4")
+
+AdvancedAimbotGroup:AddToggle("AimbotInsaneTracking", { Text = "Insane Tracking", Default = Cfg.Aimbot.InsaneTracking })
+Toggles.AimbotInsaneTracking:OnChanged(function(v) Cfg.Aimbot.InsaneTracking = v end)
+
+AdvancedAimbotGroup:AddToggle("AimbotAutoShoot", { Text = "Auto Shoot", Default = Cfg.Aimbot.AutoShoot })
+Toggles.AimbotAutoShoot:OnChanged(function(v) Cfg.Aimbot.AutoShoot = v end)
+
+AdvancedAimbotGroup:AddToggle("AimbotTargetLock", { Text = "Target Lock", Default = Cfg.Aimbot.TargetLock })
+Toggles.AimbotTargetLock:OnChanged(function(v) Cfg.Aimbot.TargetLock = v end)
+Toggles.AimbotTargetLock:AddKeyPicker("AimbotLockKey", { Default = "Q", Text = "Lock Key", NoUI = false })
+Options.AimbotLockKey:OnChanged(function(v) Cfg.Aimbot.LockKey = Options.AimbotLockKey.Value end)
+
+AdvancedAimbotGroup:AddToggle("AimbotAimAssist", { Text = "Aim Assist", Default = Cfg.Aimbot.AimAssist })
+Toggles.AimbotAimAssist:OnChanged(function(v) Cfg.Aimbot.AimAssist = v end)
+
+AdvancedAimbotGroup:AddToggle("AimbotMovementPred", { Text = "Movement Prediction", Default = Cfg.Aimbot.MovementPrediction })
+Toggles.AimbotMovementPred:OnChanged(function(v) Cfg.Aimbot.MovementPrediction = v end)
+
+AdvancedAimbotGroup:AddToggle("AimbotHumanize", { Text = "Humanize", Default = Cfg.Aimbot.Humanize })
+Toggles.AimbotHumanize:OnChanged(function(v) Cfg.Aimbot.Humanize = v end)
+
+AdvancedAimbotGroup:AddToggle("AimbotTriggerbot", { Text = "Triggerbot", Default = Cfg.Aimbot.Triggerbot })
+Toggles.AimbotTriggerbot:OnChanged(function(v) Cfg.Aimbot.Triggerbot = v end)
+Toggles.AimbotTriggerbot:AddKeyPicker("AimbotTriggerKey", { Default = "MouseButton1", Text = "Trigger Key", NoUI = false })
+Options.AimbotTriggerKey:OnChanged(function(v) Cfg.Aimbot.TriggerKey = Options.AimbotTriggerKey.Value end)
+
+AdvancedAimbotGroup:AddSlider("AimbotTrackingSpeed", { Text = "Tracking Speed", Default = Cfg.Aimbot.TrackingSpeed, Min = 0.1, Max = 1, Rounding = 2 })
+Options.AimbotTrackingSpeed:OnChanged(function(v) Cfg.Aimbot.TrackingSpeed = v end)
+
+AdvancedAimbotGroup:AddSlider("AimbotSnappiness", { Text = "Snappiness", Default = Cfg.Aimbot.Snappiness, Min = 0.1, Max = 1, Rounding = 2 })
+Options.AimbotSnappiness:OnChanged(function(v) Cfg.Aimbot.Snappiness = v end)
+
+-- =============================================
+-- UNLOCK TAB (50+ Methods)
+-- =============================================
+local UnlockGroup = Tabs.Unlock:AddLeftGroupbox("Unlock All System")
+
+UnlockGroup:AddToggle("UnlockAll", { Text = "Unlock All (50+ Methods)", Default = Cfg.Unlock.UnlockAll })
+Toggles.UnlockAll:OnChanged(function(v) 
+    Cfg.Unlock.UnlockAll = v
+    if v then
+        RunUnlockAll()
+    end
 end)
 
-AimGroup:AddToggle("AimWall", { Text = "Wall Check", Default = Cfg.Aim.WallCheck })
-Toggles.AimWall:OnChanged(function(v) Cfg.Aim.WallCheck = v end)
+UnlockGroup:AddToggle("UnlockForce", { Text = "Force Unlock", Default = Cfg.Unlock.ForceUnlock })
+Toggles.UnlockForce:OnChanged(function(v) Cfg.Unlock.ForceUnlock = v end)
 
-AimGroup:AddDropdown("AimPart", { Values = {"Head", "HumanoidRootPart", "UpperTorso"}, Default = 1, Text = "Hitbox" })
-Options.AimPart:OnChanged(function(v) Cfg.Aim.Part = v end)
-
-AimGroup:AddToggle("ShowFOV", { Text = "Show FOV", Default = Cfg.Aim.ShowFOV })
-Toggles.ShowFOV:OnChanged(function(v) Cfg.Aim.ShowFOV = v end)
-Toggles.ShowFOV:AddColorPicker("FOVCol", { Default = Cfg.Aim.FOVColor, Title = "Color" })
-Options.FOVCol:OnChanged(function(v) Cfg.Aim.FOVColor = v end)
-
-AimGroup:AddSlider("AimFOV", { Text = "FOV Radius", Default = Cfg.Aim.FOV, Min = 10, Max = 800, Rounding = 0 })
-Options.AimFOV:OnChanged(function(v) Cfg.Aim.FOV = v end)
-
-AimGroup:AddSlider("AimSmooth", { Text = "Smooth", Default = Cfg.Aim.Smoothness, Min = 0, Max = 1, Rounding = 2 })
-Options.AimSmooth:OnChanged(function(v) Cfg.Aim.Smoothness = v end)
-
-AimGroup:AddSlider("AimPred", { Text = "Prediction", Default = Cfg.Aim.Prediction, Min = 0, Max = 2, Rounding = 2 })
-Options.AimPred:OnChanged(function(v) Cfg.Aim.Prediction = v end)
-
--- =============================================
--- UTILS TAB (FIXED)
--- =============================================
-local UtilGroup = Tabs.Util:AddLeftGroupbox("Target Teleportation")
-
--- FIXED: Initialize dropdown with proper values
-local function UpdateTargetDropdown()
-    if Options.TargetDropdown then
-        local currentValue = Options.TargetDropdown.Value
-        local names = GetPlayerNames()
-        Options.TargetDropdown:SetValues(names)
-        -- Restore selection if still valid
-        if table.find(names, currentValue) then
-            Options.TargetDropdown:SetValue(currentValue)
-        else
-            Options.TargetDropdown:SetValue("None")
-            Cfg.TargetUtility.SelectedTarget = "None"
-        end
-    end
-end
-
-UtilGroup:AddDropdown("TargetDropdown", { Values = GetPlayerNames(), Default = 1, Text = "Target", Multi = false })
-Options.TargetDropdown:OnChanged(function(v) 
-    Cfg.TargetUtility.SelectedTarget = v
-    -- Start/stop teleport loop based on selection
-    if v ~= "None" and Cfg.TargetUtility.StickyTP then
-        StartTeleportLoop()
-    else
-        StopTeleportLoop()
-    end
-end)
-
-UtilGroup:AddButton("Refresh List", function()
-    UpdateTargetDropdown()
+UnlockGroup:AddButton("Execute Unlock All", function()
+    Cfg.Unlock.UnlockAll = true
+    RunUnlockAll()
     StarterGui:SetCore("SendNotification", {
-        Title = "Rotex",
-        Text = "Player list updated.",
+        Title = "Raven Software",
+        Text = "Unlock All executed!",
         Duration = 2,
     })
 end)
 
-UtilGroup:AddSlider("HeightOffsetSlider", { Text = "Height Offset", Default = Cfg.TargetUtility.HeightOffset, Min = -10, Max = 20, Rounding = 1 })
-Options.HeightOffsetSlider:OnChanged(function(v) 
-    Cfg.TargetUtility.HeightOffset = v 
-end)
+-- Unlock Methods Categories
+local UnlockMethodsGroup = Tabs.Unlock:AddRightGroupbox("Unlock Methods")
 
-UtilGroup:AddToggle("StickyTP", { Text = "Enable TP", Default = Cfg.TargetUtility.StickyTP })
-Toggles.StickyTP:OnChanged(function(v) 
-    Cfg.TargetUtility.StickyTP = v
-    if v and Cfg.TargetUtility.SelectedTarget ~= "None" then
-        StartTeleportLoop()
-    else
-        StopTeleportLoop()
-    end
-end)
+UnlockMethodsGroup:AddToggle("UnlockBypass", { Text = "Bypass", Default = Cfg.Unlock.UnlockMethods.Bypass })
+Toggles.UnlockBypass:OnChanged(function(v) Cfg.Unlock.UnlockMethods.Bypass = v end)
 
--- =============================================
--- MOVE TAB
--- =============================================
-local MoveGroup = Tabs.Move:AddLeftGroupbox("Locomotion Controls")
+UnlockMethodsGroup:AddToggle("UnlockFakePurchases", { Text = "Fake Purchases", Default = Cfg.Unlock.UnlockMethods.FakePurchases })
+Toggles.UnlockFakePurchases:OnChanged(function(v) Cfg.Unlock.UnlockMethods.FakePurchases = v end)
 
-MoveGroup:AddToggle("FlyToggle", { Text = "Flight", Default = Cfg.Movement.Fly })
-Toggles.FlyToggle:OnChanged(function(v)
-    if flyEnabled ~= v then
-        ToggleFly()
-    end
-end)
-Toggles.FlyToggle:AddKeyPicker("FlyKeybindPicker", { Default = "F", Text = "Flight Hotkey", NoUI = false })
-Options.FlyKeybindPicker:OnChanged(function(v)
-    Cfg.Movement.FlyKeybind = Options.FlyKeybindPicker.Value
-end)
+UnlockMethodsGroup:AddToggle("UnlockMemoryEdit", { Text = "Memory Edit", Default = Cfg.Unlock.UnlockMethods.MemoryEdit })
+Toggles.UnlockMemoryEdit:OnChanged(function(v) Cfg.Unlock.UnlockMethods.MemoryEdit = v end)
 
-MoveGroup:AddSlider("FlySpeed", { Text = "Flight Speed", Default = Cfg.Movement.FlySpeed, Min = 10, Max = 300, Rounding = 0 })
-Options.FlySpeed:OnChanged(function(v) Cfg.Movement.FlySpeed = v end)
+UnlockMethodsGroup:AddToggle("UnlockRemoteSpoof", { Text = "Remote Spoof", Default = Cfg.Unlock.UnlockMethods.RemoteSpoof })
+Toggles.UnlockRemoteSpoof:OnChanged(function(v) Cfg.Unlock.UnlockMethods.RemoteSpoof = v end)
 
-MoveGroup:AddToggle("SpeedToggle", { Text = "Speed Hack", Default = Cfg.Movement.SpeedHack })
-Toggles.SpeedToggle:OnChanged(function(v) Cfg.Movement.SpeedHack = v end)
+UnlockMethodsGroup:AddToggle("UnlockClientSpoof", { Text = "Client Spoof", Default = Cfg.Unlock.UnlockMethods.ClientSpoof })
+Toggles.UnlockClientSpoof:OnChanged(function(v) Cfg.Unlock.UnlockMethods.ClientSpoof = v end)
 
-MoveGroup:AddSlider("SpeedVal", { Text = "Speed Factor", Default = Cfg.Movement.SpeedValue, Min = 16, Max = 100, Rounding = 0 })
-Options.SpeedVal:OnChanged(function(v) Cfg.Movement.SpeedValue = v end)
+UnlockMethodsGroup:AddToggle("UnlockInventoryFake", { Text = "Inventory Fake", Default = Cfg.Unlock.UnlockMethods.InventoryFake })
+Toggles.UnlockInventoryFake:OnChanged(function(v) Cfg.Unlock.UnlockMethods.InventoryFake = v end)
 
-MoveGroup:AddToggle("NoclipToggle", { Text = "Noclip", Default = Cfg.Movement.Noclip })
-Toggles.NoclipToggle:OnChanged(function(v)
-    Cfg.Movement.Noclip = v
-    if v then StartNoclip() else StopNoclip() end
-end)
+UnlockMethodsGroup:AddToggle("UnlockStatsModify", { Text = "Stats Modify", Default = Cfg.Unlock.UnlockMethods.StatsModify })
+Toggles.UnlockStatsModify:OnChanged(function(v) Cfg.Unlock.UnlockMethods.StatsModify = v end)
+
+UnlockMethodsGroup:AddToggle("UnlockLeaderboardFake", { Text = "Leaderboard Fake", Default = Cfg.Unlock.UnlockMethods.LeaderboardFake })
+Toggles.UnlockLeaderboardFake:OnChanged(function(v) Cfg.Unlock.UnlockMethods.LeaderboardFake = v end)
+
+UnlockMethodsGroup:AddToggle("UnlockItemDuplication", { Text = "Item Duplication", Default = Cfg.Unlock.UnlockMethods.ItemDuplication })
+Toggles.UnlockItemDuplication:OnChanged(function(v) Cfg.Unlock.UnlockMethods.ItemDuplication = v end)
+
+UnlockMethodsGroup:AddToggle("UnlockCurrencySpoof", { Text = "Currency Spoof", Default = Cfg.Unlock.UnlockMethods.CurrencySpoof })
+Toggles.UnlockCurrencySpoof:OnChanged(function(v) Cfg.Unlock.UnlockMethods.CurrencySpoof = v end)
+
+UnlockMethodsGroup:AddToggle("UnlockLevelFake", { Text = "Level Fake", Default = Cfg.Unlock.UnlockMethods.LevelFake })
+Toggles.UnlockLevelFake:OnChanged(function(v) Cfg.Unlock.UnlockMethods.LevelFake = v end)
+
+UnlockMethodsGroup:AddToggle("UnlockBadge", { Text = "Badge Unlock", Default = Cfg.Unlock.UnlockMethods.BadgeUnlock })
+Toggles.UnlockBadge:OnChanged(function(v) Cfg.Unlock.UnlockMethods.BadgeUnlock = v end)
+
+UnlockMethodsGroup:AddToggle("UnlockTrophy", { Text = "Trophy Unlock", Default = Cfg.Unlock.UnlockMethods.TrophyUnlock })
+Toggles.UnlockTrophy:OnChanged(function(v) Cfg.Unlock.UnlockMethods.TrophyUnlock = v end)
+
+UnlockMethodsGroup:AddToggle("UnlockAchievement", { Text = "Achievement Unlock", Default = Cfg.Unlock.UnlockMethods.AchievementUnlock })
+Toggles.UnlockAchievement:OnChanged(function(v) Cfg.Unlock.UnlockMethods.AchievementUnlock = v end)
+
+UnlockMethodsGroup:AddToggle("UnlockCollection", { Text = "Collection Complete", Default = Cfg.Unlock.UnlockMethods.CollectionComplete })
+Toggles.UnlockCollection:OnChanged(function(v) Cfg.Unlock.UnlockMethods.CollectionComplete = v end)
+
+UnlockMethodsGroup:AddToggle("UnlockSkin", { Text = "Skin Unlock", Default = Cfg.Unlock.UnlockMethods.SkinUnlock })
+Toggles.UnlockSkin:OnChanged(function(v) Cfg.Unlock.UnlockMethods.SkinUnlock = v end)
+
+UnlockMethodsGroup:AddToggle("UnlockCosmetic", { Text = "Cosmetic Unlock", Default = Cfg.Unlock.UnlockMethods.CosmeticUnlock })
+Toggles.UnlockCosmetic:OnChanged(function(v) Cfg.Unlock.UnlockMethods.CosmeticUnlock = v end)
+
+UnlockMethodsGroup:AddToggle("UnlockTool", { Text = "Tool Unlock", Default = Cfg.Unlock.UnlockMethods.ToolUnlock })
+Toggles.UnlockTool:OnChanged(function(v) Cfg.Unlock.UnlockMethods.ToolUnlock = v end)
+
+UnlockMethodsGroup:AddToggle("UnlockWeapon", { Text = "Weapon Unlock", Default = Cfg.Unlock.UnlockMethods.WeaponUnlock })
+Toggles.UnlockWeapon:OnChanged(function(v) Cfg.Unlock.UnlockMethods.WeaponUnlock = v end)
+
+UnlockMethodsGroup:AddToggle("UnlockVehicle", { Text = "Vehicle Unlock", Default = Cfg.Unlock.UnlockMethods.VehicleUnlock })
+Toggles.UnlockVehicle:OnChanged(function(v) Cfg.Unlock.UnlockMethods.VehicleUnlock = v end)
+
+UnlockMethodsGroup:AddToggle("UnlockPet", { Text = "Pet Unlock", Default = Cfg.Unlock.UnlockMethods.PetUnlock })
+Toggles.UnlockPet:OnChanged(function(v) Cfg.Unlock.UnlockMethods.PetUnlock = v end)
+
+UnlockMethodsGroup:AddToggle("UnlockMount", { Text = "Mount Unlock", Default = Cfg.Unlock.UnlockMethods.MountUnlock })
+Toggles.UnlockMount:OnChanged(function(v) Cfg.Unlock.UnlockMethods.MountUnlock = v end)
+
+UnlockMethodsGroup:AddToggle("UnlockTitle", { Text = "Title Unlock", Default = Cfg.Unlock.UnlockMethods.TitleUnlock })
+Toggles.UnlockTitle:OnChanged(function(v) Cfg.Unlock.UnlockMethods.TitleUnlock = v end)
+
+UnlockMethodsGroup:AddToggle("UnlockRank", { Text = "Rank Fake", Default = Cfg.Unlock.UnlockMethods.RankFake })
+Toggles.UnlockRank:OnChanged(function(v) Cfg.Unlock.UnlockMethods.RankFake = v end)
+
+UnlockMethodsGroup:AddToggle("UnlockRole", { Text = "Role Fake", Default = Cfg.Unlock.UnlockMethods.RoleFake })
+Toggles.UnlockRole:OnChanged(function(v) Cfg.Unlock.UnlockMethods.RoleFake = v end)
 
 -- =============================================
 -- VISUALS TAB
 -- =============================================
-local VisGroup = Tabs.Vis:AddLeftGroupbox("Environment & Crosshair")
+local VisualsGroup = Tabs.Visuals:AddLeftGroupbox("Environment & Crosshair")
 
-VisGroup:AddToggle("FullBright", { Text = "Fullbright", Default = Cfg.Visuals.FullBright })
+VisualsGroup:AddToggle("FullBright", { Text = "Fullbright", Default = Cfg.Visuals.FullBright })
 Toggles.FullBright:OnChanged(function(v) Cfg.Visuals.FullBright = v end)
 
-VisGroup:AddToggle("NoFog", { Text = "No Fog", Default = Cfg.Visuals.NoFog })
+VisualsGroup:AddToggle("NoFog", { Text = "No Fog", Default = Cfg.Visuals.NoFog })
 Toggles.NoFog:OnChanged(function(v) Cfg.Visuals.NoFog = v end)
 
-VisGroup:AddToggle("CrosshairToggle", { Text = "Crosshair", Default = Cfg.Visuals.Crosshair })
-Toggles.CrosshairToggle:OnChanged(function(v) Cfg.Visuals.Crosshair = v end)
-Toggles.CrosshairToggle:AddColorPicker("CrosshairCol", { Default = Cfg.Visuals.CrosshairColor, Title = "Color" })
-Options.CrosshairCol:OnChanged(function(v) Cfg.Visuals.CrosshairColor = v end)
+VisualsGroup:AddToggle("NoBloom", { Text = "No Bloom", Default = Cfg.Visuals.NoBloom })
+Toggles.NoBloom:OnChanged(function(v) Cfg.Visuals.NoBloom = v end)
 
-VisGroup:AddSlider("CrosshairSize", { Text = "Length", Default = Cfg.Visuals.CrosshairSize, Min = 4, Max = 30, Rounding = 0 })
+VisualsGroup:AddToggle("NoShadows", { Text = "No Shadows", Default = Cfg.Visuals.NoShadows })
+Toggles.NoShadows:OnChanged(function(v) Cfg.Visuals.NoShadows = v end)
+
+VisualsGroup:AddToggle("Crosshair", { Text = "Crosshair", Default = Cfg.Visuals.Crosshair })
+Toggles.Crosshair:OnChanged(function(v) Cfg.Visuals.Crosshair = v end)
+Toggles.Crosshair:AddColorPicker("CrosshairColor", { Default = Cfg.Visuals.CrosshairColor, Title = "Color" })
+Options.CrosshairColor:OnChanged(function(v) Cfg.Visuals.CrosshairColor = v end)
+
+VisualsGroup:AddSlider("CrosshairSize", { Text = "Size", Default = Cfg.Visuals.CrosshairSize, Min = 4, Max = 30, Rounding = 0 })
 Options.CrosshairSize:OnChanged(function(v) Cfg.Visuals.CrosshairSize = v end)
 
-VisGroup:AddSlider("CrosshairGap", { Text = "Spacing", Default = Cfg.Visuals.CrosshairGap, Min = 1, Max = 15, Rounding = 0 })
+VisualsGroup:AddSlider("CrosshairGap", { Text = "Gap", Default = Cfg.Visuals.CrosshairGap, Min = 1, Max = 15, Rounding = 0 })
 Options.CrosshairGap:OnChanged(function(v) Cfg.Visuals.CrosshairGap = v end)
 
-VisGroup:AddSlider("CrosshairSpin", { Text = "Spin Speed", Default = Cfg.Visuals.CrosshairSpinSpeed, Min = 0.1, Max = 5, Rounding = 1 })
-Options.CrosshairSpin:OnChanged(function(v) Cfg.Visuals.CrosshairSpinSpeed = v end)
+VisualsGroup:AddDropdown("CrosshairStyle", { Values = {"Default", "Raven"}, Default = 2, Text = "Style" })
+Options.CrosshairStyle:OnChanged(function(v) Cfg.Visuals.CrosshairStyle = v end)
+
+-- =============================================
+-- MOVEMENT TAB
+-- =============================================
+local MovementGroup = Tabs.Movement:AddLeftGroupbox("Movement Controls")
+
+MovementGroup:AddToggle("Fly", { Text = "Flight", Default = Cfg.Movement.Fly })
+Toggles.Fly:OnChanged(function(v)
+    if flyEnabled ~= v then
+        ToggleFly()
+    end
+end)
+Toggles.Fly:AddKeyPicker("FlyKey", { Default = "F", Text = "Fly Key", NoUI = false })
+Options.FlyKey:OnChanged(function(v) Cfg.Movement.FlyKeybind = Options.FlyKey.Value end)
+
+MovementGroup:AddSlider("FlySpeed", { Text = "Flight Speed", Default = Cfg.Movement.FlySpeed, Min = 10, Max = 300, Rounding = 0 })
+Options.FlySpeed:OnChanged(function(v) Cfg.Movement.FlySpeed = v end)
+
+MovementGroup:AddToggle("SpeedHack", { Text = "Speed Hack", Default = Cfg.Movement.SpeedHack })
+Toggles.SpeedHack:OnChanged(function(v) Cfg.Movement.SpeedHack = v end)
+
+MovementGroup:AddSlider("SpeedValue", { Text = "Speed Factor", Default = Cfg.Movement.SpeedValue, Min = 16, Max = 100, Rounding = 0 })
+Options.SpeedValue:OnChanged(function(v) Cfg.Movement.SpeedValue = v end)
+
+MovementGroup:AddToggle("Noclip", { Text = "Noclip", Default = Cfg.Movement.Noclip })
+Toggles.Noclip:OnChanged(function(v)
+    Cfg.Movement.Noclip = v
+    if v then StartNoclip() else StopNoclip() end
+end)
+
+MovementGroup:AddToggle("AutoJump", { Text = "Auto Jump", Default = Cfg.Movement.AutoJump })
+Toggles.AutoJump:OnChanged(function(v) Cfg.Movement.AutoJump = v end)
+
+MovementGroup:AddToggle("AirControl", { Text = "Air Control", Default = Cfg.Movement.AirControl })
+Toggles.AirControl:OnChanged(function(v) Cfg.Movement.AirControl = v end)
 
 -- =============================================
 -- SETTINGS TAB
 -- =============================================
-Library:SetWatermark("Rotex Framework | Solara Compatible")
+Library:SetWatermark("Raven Software | Black | Red | Yellow")
 ThemeManager:SetLibrary(Library)
 SaveManager:SetLibrary(Library)
 ThemeManager:ApplyToTab(Tabs.Settings)
@@ -1420,18 +2459,12 @@ SaveManager:LoadAutoloadConfig()
 
 -- Cleanup on script end
 game:BindToClose(function()
-    StopTeleportLoop()
     StopFly()
     StopNoclip()
-    for player, _ in pairs(ESPs) do
+    for player, _ in pairs(ESPObjects) do
         DestroyESP(player)
     end
-    for _, arrowGroup in pairs(OffscreenArrows) do
-        for _, line in ipairs(arrowGroup) do
-            pcall(function() line:Remove() end)
-        end
-    end
-    pcall(function() FOVCIRC:Remove() end)
+    pcall(function() FOVCircle:Remove() end)
     for _, line in ipairs(CrosshairLines) do
         pcall(function() line:Remove() end)
     end
