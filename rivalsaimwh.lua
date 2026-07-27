@@ -1,5 +1,6 @@
 -- // Raven Cheats | Solara Compatible
--- // Red/Black/Yellow Theme | Team Check | Third Person | Unlock All
+-- // AI Tracking Aimbot | Fixed Third Person
+-- // Red/Black/Yellow Theme | Team Check | Unlock All
 -- // Discord: https://discord.gg/FnKfhZ7Fb6
 
 -- ================================================
@@ -132,6 +133,16 @@ local Cfg = {
         AimKey = "MouseButton2",
         MaxDistance = 500,
     },
+    AI = {
+        Prediction = 0.75,
+        Humanize = true,
+        MicroJitter = 0.15,
+        MaxAngleChange = 3.5,
+        Priority = "Closest",
+        TargetSwitching = false,
+        SwitchDelay = 0.5,
+        ShowPrediction = true,
+    },
     Visuals = {
         FullBright = false,
         NoFog = false,
@@ -142,6 +153,7 @@ local Cfg = {
         CrosshairSpinSpeed = 2.0,
         ThirdPerson = false,
         ThirdPersonDistance = 10,
+        ThirdPersonSmoothness = 0.15,
     },
     Movement = {
         Fly = false,
@@ -160,12 +172,15 @@ local Cfg = {
 }
 
 -- ================================================
---  THIRD PERSON SYSTEM
+--  FIXED THIRD PERSON SYSTEM
 -- ================================================
 
 local thirdPersonEnabled = false
 local thirdPersonDistance = 10
+local thirdPersonSmoothness = 0.15
 local currentCameraMode = nil
+local thirdPersonTarget = nil
+local thirdPersonCurrent = nil
 
 local function ToggleThirdPerson()
     thirdPersonEnabled = not thirdPersonEnabled
@@ -173,6 +188,8 @@ local function ToggleThirdPerson()
     if thirdPersonEnabled then
         currentCameraMode = Camera.CameraType
         Camera.CameraType = Enum.CameraType.Scriptable
+        thirdPersonCurrent = nil
+        thirdPersonTarget = nil
         StarterGui:SetCore("SendNotification", {
             Title = "Raven Cheats",
             Text = "🦅 Third Person ENABLED",
@@ -198,46 +215,61 @@ local function UpdateThirdPerson()
     if not root then return end
     
     local hum = char:FindFirstChildOfClass("Humanoid")
+    if not hum then return end
     
+    -- Get the direction the player is facing
     local lookVector = root.CFrame.LookVector
-    if hum and hum.MoveDirection.Magnitude > 0.1 then
+    
+    -- Use humanoid move direction if moving
+    if hum.MoveDirection.Magnitude > 0.1 then
         lookVector = hum.MoveDirection.Unit
     end
     
-    local behindPos = root.Position - lookVector * thirdPersonDistance + Vector3.new(0, 3, 0)
-    local currentPos = Camera.CFrame.Position
-    local newPos = currentPos + (behindPos - currentPos) * 0.15
+    -- Calculate ideal camera position (behind and above)
+    local idealPos = root.Position - lookVector * thirdPersonDistance + Vector3.new(0, 3, 0)
     
-    Camera.CFrame = CFrame.new(newPos, root.Position + Vector3.new(0, 1.5, 0))
+    -- Smooth follow
+    if thirdPersonCurrent == nil then
+        thirdPersonCurrent = idealPos
+        thirdPersonTarget = idealPos
+    end
+    
+    -- Update target
+    thirdPersonTarget = idealPos
+    
+    -- Smoothly interpolate current position toward target
+    thirdPersonCurrent = thirdPersonCurrent + (thirdPersonTarget - thirdPersonCurrent) * thirdPersonSmoothness
+    
+    -- Look at the player's head/upper body
+    local lookTarget = root.Position + Vector3.new(0, 1.5, 0)
+    
+    -- Set the camera
+    Camera.CFrame = CFrame.new(thirdPersonCurrent, lookTarget)
 end
 
 -- ================================================
---  TEAM CHECK (FIXED)
+--  TEAM CHECK
 -- ================================================
 
 local function IsTeammate(player)
     if not player or player == LP then return false end
     
-    -- If team check is OFF, return false (not a teammate)
     if not Cfg.TargetUtility.TeamCheck then
         return false
     end
     
-    -- Check Team
     if LP.Team and player.Team then
         if LP.Team == player.Team then
             return true
         end
     end
     
-    -- Check TeamColor
     if LP.TeamColor and player.TeamColor then
         if LP.TeamColor == player.TeamColor then
             return true
         end
     end
     
-    -- Check if same team via Teams service
     if Teams then
         for _, team in pairs(Teams:GetTeams()) do
             if team:FindFirstChild(LP.Name) and team:FindFirstChild(player.Name) then
@@ -304,6 +336,24 @@ local function AimPoint()
     return UserInputService:GetMouseLocation()
 end
 
+local function IsAlive(player)
+    if not player or not player.Character then return false end
+    local h = player.Character:FindFirstChild("Humanoid")
+    return h and h.Health > 0
+end
+
+local function GetRootPart(character)
+    if not character then return nil end
+    return character:FindFirstChild("HumanoidRootPart") or character:FindFirstChild("Torso") or character:FindFirstChild("UpperTorso")
+end
+
+local function GetAimPart(character, partName)
+    if not character then return nil end
+    if partName == "Head" then return character:FindFirstChild("Head") end
+    if partName == "Body" then return character:FindFirstChild("UpperTorso") or character:FindFirstChild("Torso") end
+    return character:FindFirstChild(partName) or GetRootPart(character)
+end
+
 local function Parts(char)
     if not char then return end
     local h = char:FindFirstChild("HumanoidRootPart") or char:FindFirstChild("Torso")
@@ -347,7 +397,211 @@ local SKEL_R6 = {
 }
 
 -- ================================================
---  ESP SYSTEM (Skips teammates if team check is ON)
+--  AI TRACKING SYSTEM
+-- ================================================
+
+local function GetVelocity(player)
+    local char = player.Character
+    if not char then return Vector3.new() end
+    local root = char:FindFirstChild("HumanoidRootPart")
+    if not root then return Vector3.new() end
+    return root.AssemblyLinearVelocity
+end
+
+local function GetTargetVelocity(player, targetPart)
+    if not targetPart then return Vector3.new() end
+    local vel = targetPart.AssemblyLinearVelocity
+    if vel.Magnitude < 0.1 then
+        local char = player.Character
+        if char then
+            local hum = char:FindFirstChildOfClass("Humanoid")
+            if hum then
+                vel = hum.MoveDirection * hum.WalkSpeed
+            end
+        end
+    end
+    return vel
+end
+
+local function PredictPosition(targetPos, targetVel, distance)
+    local bulletSpeed = 500
+    local timeToReach = distance / bulletSpeed
+    local predictedPos = targetPos + targetVel * timeToReach
+    predictedPos = predictedPos + Vector3.new(0, -Workspace.Gravity * 0.5 * timeToReach^2, 0)
+    return predictedPos
+end
+
+local function HumanizeAim(currentPos, targetPos)
+    if not Cfg.AI.Humanize then return targetPos end
+    local jitterX = (math.random() - 0.5) * Cfg.AI.MicroJitter * 2
+    local jitterY = (math.random() - 0.5) * Cfg.AI.MicroJitter * 2
+    return targetPos + Vector3.new(jitterX, jitterY, 0)
+end
+
+local function GetTargetPriority(player, distance)
+    if Cfg.AI.Priority == "Closest" then
+        return distance
+    elseif Cfg.AI.Priority == "LowestHealth" then
+        local char = player.Character
+        if char then
+            local hum = char:FindFirstChildOfClass("Humanoid")
+            if hum then
+                return 100 - (hum.Health / hum.MaxHealth) * 100
+            end
+        end
+        return distance
+    end
+    return distance
+end
+
+-- ================================================
+--  AI AIMBOT
+-- ================================================
+
+local aimbotActive = false
+local aimKeyHeld = false
+local lastTarget = nil
+local targetLockTimer = 0
+local predictionDot = nil
+
+local function CreatePredictionDot()
+    if predictionDot then return end
+    predictionDot = Drawing.new("Circle")
+    predictionDot.Visible = false
+    predictionDot.Filled = true
+    predictionDot.Radius = 3
+    predictionDot.Color = YELLOW
+    predictionDot.ZIndex = 20
+    predictionDot.NumSides = 12
+end
+
+local function GetBestTarget()
+    local best = nil
+    local bestScore = math.huge
+    local fov = Cfg.Aim.FOV
+    local maxDist = Cfg.Aim.MaxDistance
+    local camPos = Camera.CFrame.Position
+    local cx, cy = Camera.ViewportSize.X / 2, Camera.ViewportSize.Y / 2
+    
+    for _, player in pairs(Players:GetPlayers()) do
+        if player == LP then continue end
+        if Cfg.Aim.TeamCheck and IsTeammate(player) then continue end
+        if not IsAlive(player) then continue end
+        
+        local aimPart = GetAimPart(player.Character, Cfg.Aim.AimPart)
+        if not aimPart then continue end
+        
+        if Cfg.Aim.WallCheck then
+            local ray = Ray.new(camPos, (aimPart.Position - camPos).Unit * maxDist)
+            local hit = Workspace:FindPartOnRay(ray, LP.Character)
+            if hit and hit.Parent ~= player.Character then continue end
+        end
+        
+        local sp, onScreen = Camera:WorldToScreenPoint(aimPart.Position)
+        if not onScreen then continue end
+        
+        local d = math.sqrt((sp.X - cx)^2 + (sp.Y - cy)^2)
+        if d > fov then continue end
+        
+        local wd = (camPos - aimPart.Position).Magnitude
+        if wd > maxDist then continue end
+        
+        local vel = GetVelocity(player)
+        local predictedPos = nil
+        if Cfg.Aim.Prediction > 0 and vel.Magnitude > 1 then
+            predictedPos = PredictPosition(aimPart.Position, vel, wd)
+        end
+        
+        local score = GetTargetPriority(player, wd)
+        if predictedPos then
+            local predScreen, predOn = Camera:WorldToScreenPoint(predictedPos)
+            if predOn then
+                local predDist = math.sqrt((predScreen.X - cx)^2 + (predScreen.Y - cy)^2)
+                score = score * (predDist / d)
+            end
+        end
+        
+        if score < bestScore then
+            bestScore = score
+            best = {
+                Player = player,
+                Character = player.Character,
+                AimPart = aimPart,
+                Distance = wd,
+                Velocity = vel,
+                PredictedPos = predictedPos,
+                ScreenPos = sp,
+            }
+        end
+    end
+    
+    return best
+end
+
+local function DoAimbot()
+    if not aimbotActive or not Cfg.Aim.On then return end
+    if not aimKeyHeld then
+        lastTarget = nil
+        targetLockTimer = 0
+        return
+    end
+    
+    local target = GetBestTarget()
+    if not target then
+        lastTarget = nil
+        targetLockTimer = 0
+        return
+    end
+    
+    if Cfg.AI.TargetSwitching and lastTarget and lastTarget.Player ~= target.Player then
+        targetLockTimer = targetLockTimer + 0.1
+        if targetLockTimer < Cfg.AI.SwitchDelay then
+            target = lastTarget
+        else
+            targetLockTimer = 0
+            lastTarget = target
+        end
+    end
+    
+    local aimPos = target.PredictedPos or target.AimPart.Position
+    
+    if Cfg.AI.Humanize then
+        aimPos = HumanizeAim(Camera.CFrame.Position, aimPos)
+    end
+    
+    local currentPos = Camera.CFrame.Position
+    local targetDir = (aimPos - currentPos).Unit
+    local targetCFrame = CFrame.lookAt(currentPos, currentPos + targetDir)
+    
+    local smooth = Cfg.Aim.Smoothness
+    if smooth > 0 then
+        local curr = Camera.CFrame.LookVector
+        local newLook = curr + (targetDir - curr) * (1 - smooth)
+        if newLook.Magnitude > 0 then
+            targetDir = newLook.Unit
+        end
+        targetCFrame = CFrame.lookAt(currentPos, currentPos + targetDir)
+    end
+    
+    Camera.CFrame = targetCFrame
+    lastTarget = target
+    
+    -- Update prediction dot
+    if Cfg.AI.ShowPrediction and predictionDot and target.PredictedPos then
+        local screen, onScreen = Camera:WorldToScreenPoint(target.PredictedPos)
+        if onScreen then
+            predictionDot.Position = Vector2.new(screen.X, screen.Y)
+            predictionDot.Visible = true
+        else
+            predictionDot.Visible = false
+        end
+    elseif predictionDot then
+        predictionDot.Visible = false
+    end
+end
+
+-- ================================================
+--  ESP SYSTEM
 -- ================================================
 local ESPs = {}
 local OffscreenArrows = {}
@@ -469,11 +723,7 @@ end
 local function UpdateOffscreenArrows()
     for _, player in ipairs(Players:GetPlayers()) do
         if player == LP then continue end
-        
-        if IsTeammate(player) then
-            continue
-        end
-        
+        if IsTeammate(player) then continue end
         local arrowGroup = OffscreenArrows[player]
         if not arrowGroup then continue end
         
@@ -540,10 +790,7 @@ end
 local function UpdateESP()
     for _, player in ipairs(Players:GetPlayers()) do
         if player == LP then continue end
-        
-        if IsTeammate(player) then
-            continue
-        end
+        if IsTeammate(player) then continue end
         
         CreateESPObjects(player)
         local o = ESPs[player]
@@ -706,104 +953,10 @@ local function UpdateESP()
 end
 
 -- ================================================
---  TARGET LOCK (Skips teammates if team check is ON)
+--  FOV CIRCLE
 -- ================================================
 local FOVCIRC = C{ Color = WHITE, ZIndex = 10 }
 local CurrentTarget = nil
-
-local function GetAimPart(char)
-    if Cfg.Aim.Part == "Head" then
-        return char:FindFirstChild("Head")
-    elseif Cfg.Aim.Part == "HumanoidRootPart" then
-        return char:FindFirstChild("HumanoidRootPart")
-    elseif Cfg.Aim.Part == "UpperTorso" then
-        return char:FindFirstChild("UpperTorso")
-    end
-    return char:FindFirstChild("Torso") or char:FindFirstChild("Head")
-end
-
-local function GetTargetPosition(char, part, predict)
-    local pos = part.Position + Vector3.new(0, Cfg.Aim.YOffset, 0)
-    if predict and Cfg.Aim.Prediction > 0 then
-        local hrp = char:FindFirstChild("HumanoidRootPart")
-        if hrp then
-            local vel = hrp.AssemblyLinearVelocity
-            local dist = (Camera.CFrame.Position - hrp.Position).Magnitude
-            local time = math.min(dist / 500, 1) * Cfg.Aim.Prediction
-            pos = pos + vel * time
-        end
-    end
-    return pos
-end
-
-local function IsVisible(targetPos)
-    if not Cfg.Aim.WallCheck then return true end
-
-    local origin = Camera.CFrame.Position
-    local direction = (targetPos - origin).Unit
-    local distance = (targetPos - origin).Magnitude
-
-    local ignoreList = {LP.Character}
-
-    local raycastParams = RaycastParams.new()
-    raycastParams.FilterDescendantsInstances = ignoreList
-    raycastParams.FilterType = Enum.RaycastFilterType.Blacklist
-
-    local rayResult = workspace:Raycast(origin, direction * distance, raycastParams)
-
-    if rayResult then
-        return false
-    end
-    return true
-end
-
-local function IsValidTarget(player)
-    if not player or player == LP then return false end
-    
-    if IsTeammate(player) then
-        return false
-    end
-    
-    local char = player.Character
-    if not char then return false end
-    local hum = char:FindFirstChildOfClass("Humanoid")
-    if not hum or hum.Health <= 0 then return false end
-    local part = GetAimPart(char)
-    if not part then return false end
-
-    local myRoot = LP.Character and LP.Character:FindFirstChild("HumanoidRootPart")
-    if myRoot then
-        local dist = (part.Position - myRoot.Position).Magnitude
-        if dist > Cfg.Aim.MaxDistance then return false end
-    end
-
-    return true, char, part
-end
-
-local function GetClosestTarget()
-    local center = AimPoint()
-    local best, bestDist = nil, Cfg.Aim.FOV
-
-    for _, player in ipairs(Players:GetPlayers()) do
-        if player == LP then continue end
-        local valid, char, part = IsValidTarget(player)
-        if not valid then continue end
-
-        local pos = GetTargetPosition(char, part, false)
-
-        if not IsVisible(pos) then continue end
-
-        local screen, onScreen = W2S(pos)
-        if not onScreen then continue end
-
-        local dist = (screen - center).Magnitude
-        if dist < bestDist then
-            bestDist = dist
-            best = { Player = player, Char = char, Part = part, Screen = screen, Pos = pos }
-        end
-    end
-    return best
-end
 
 local function UpdateFOV()
     if Cfg.Aim.ShowFOV and Cfg.Aim.On then
@@ -816,60 +969,29 @@ local function UpdateFOV()
     end
 end
 
-local function IsAimKeyPressed()
-    local key = Cfg.Aim.AimKey
-    if typeof(key) == "EnumItem" then
-        if key.EnumType == Enum.UserInputType then
-            return UserInputService:IsMouseButtonPressed(key)
-        elseif key.EnumType == Enum.KeyCode then
-            return UserInputService:IsKeyDown(key)
-        end
-    elseif typeof(key) == "string" then
-        if key == "MouseButton2" then
-            return UserInputService:IsMouseButtonPressed(Enum.UserInputType.MouseButton2)
-        elseif key == "MouseButton1" then
-            return UserInputService:IsMouseButtonPressed(Enum.UserInputType.MouseButton1)
-        else
-            local success, keyCode = pcall(function() return Enum.KeyCode[key] end)
-            if success and keyCode then
-                return UserInputService:IsKeyDown(keyCode)
-            end
+-- ================================================
+--  KEY HANDLING
+-- ================================================
+UserInputService.InputBegan:Connect(function(input, gameProcessed)
+    if gameProcessed then return end
+    
+    if input.UserInputType == Enum.UserInputType.MouseButton2 then
+        aimKeyHeld = true
+    end
+    
+    if input.KeyCode == Enum.KeyCode.RightShift then
+        if Library then
+            Library:Toggle()
         end
     end
-    return false
-end
+end)
 
-local function DoAim()
-    if not Cfg.Aim.On then
-        CurrentTarget = nil
-        return
+UserInputService.InputEnded:Connect(function(input, gameProcessed)
+    if gameProcessed then return end
+    if input.UserInputType == Enum.UserInputType.MouseButton2 then
+        aimKeyHeld = false
     end
-
-    local holding = IsAimKeyPressed()
-    if not holding then
-        CurrentTarget = nil
-        return
-    end
-
-    local target = GetClosestTarget()
-    if not target then
-        CurrentTarget = nil
-        return
-    end
-
-    CurrentTarget = target
-
-    local aimPos = GetTargetPosition(target.Char, target.Part, true)
-    local currentCF = Camera.CFrame
-    local targetCF = CFrame.lookAt(currentCF.Position, aimPos)
-
-    if Cfg.Aim.Smoothness <= 0 then
-        Camera.CFrame = targetCF
-    else
-        local smooth = math.clamp(1 - Cfg.Aim.Smoothness, 0.01, 1)
-        Camera.CFrame = currentCF:Lerp(targetCF, smooth)
-    end
-end
+end)
 
 -- ================================================
 --  TARGET UTILITIES
@@ -883,51 +1005,6 @@ local function GetPlayerNames()
     end
     return names
 end
-
-RunService.RenderStepped:Connect(function()
-    if Cfg.Movement.SpeedHack then
-        local char = LP.Character
-        if char then
-            local hum = char:FindFirstChildOfClass("Humanoid")
-            local hrp = char:FindFirstChild("HumanoidRootPart")
-            if hum and hrp and hum.MoveDirection.Magnitude > 0 then
-                hrp.CFrame = hrp.CFrame + (hum.MoveDirection * (Cfg.Movement.SpeedValue / 50))
-            end
-        end
-    end
-
-    if Cfg.TargetUtility.StickyTP and Cfg.TargetUtility.SelectedTarget ~= "None" then
-        local targetPlayer = Players:FindFirstChild(Cfg.TargetUtility.SelectedTarget)
-        if targetPlayer and targetPlayer.Character then
-            local enemyRoot = targetPlayer.Character:FindFirstChild("HumanoidRootPart")
-            local myChar = LP.Character
-            local myRoot = myChar and myChar:FindFirstChild("HumanoidRootPart")
-            if enemyRoot and myRoot then
-                local offsetPos = enemyRoot.CFrame + Vector3.new(0, Cfg.TargetUtility.HeightOffset, 0)
-                myRoot.CFrame = offsetPos
-                myRoot.AssemblyLinearVelocity = Vector3.new(0, 0, 0)
-            end
-        end
-    end
-    
-    if Cfg.Visuals.ThirdPerson then
-        UpdateThirdPerson()
-    end
-end)
-
-RunService.Heartbeat:Connect(function()
-    if Cfg.TargetUtility.StickyTP and Cfg.TargetUtility.SelectedTarget ~= "None" then
-        local targetPlayer = Players:FindFirstChild(Cfg.TargetUtility.SelectedTarget)
-        if targetPlayer and targetPlayer.Character then
-            local enemyRoot = targetPlayer.Character:FindFirstChild("HumanoidRootPart")
-            local myChar = LP.Character
-            local myRoot = myChar and myChar:FindFirstChild("HumanoidRootPart")
-            if enemyRoot and myRoot then
-                myRoot.CFrame = enemyRoot.CFrame + Vector3.new(0, Cfg.TargetUtility.HeightOffset, 0)
-            end
-        end
-    end
-end)
 
 -- ================================================
 --  CROSSHAIR SYSTEM
@@ -1225,11 +1302,13 @@ RunService.RenderStepped:Connect(function()
     pcall(UpdateOffscreenArrows)
     pcall(UpdateVisuals)
     pcall(UpdateCrosshair)
+    pcall(UpdateThirdPerson)
+    pcall(DoAimbot)
 end)
 
 RunService:BindToRenderStep("RavenAim", Enum.RenderPriority.Last.Value, function()
     Camera = Workspace.CurrentCamera
-    pcall(DoAim)
+    pcall(DoAimbot)
 end)
 
 -- ================================================
@@ -1405,7 +1484,7 @@ local Window = Library:CreateWindow({
     MenuFadeTime = 0.2,
 })
 
--- Branding Logo (Simplified)
+-- Branding Logo
 pcall(function()
     if Window and Window.Holder then
         local logoContainer = Instance.new("Frame")
@@ -1495,6 +1574,7 @@ local Tabs = {
 
 ApplyRavenTheme()
 CreateCrosshair()
+CreatePredictionDot()
 
 task.spawn(function()
     task.wait(0.2)
@@ -1558,6 +1638,74 @@ Options.AimSmooth:OnChanged(function(v) Cfg.Aim.Smoothness = v end)
 
 AimGroup:AddSlider("AimPred", { Text = "Prediction", Default = Cfg.Aim.Prediction, Min = 0, Max = 2, Rounding = 2 })
 Options.AimPred:OnChanged(function(v) Cfg.Aim.Prediction = v end)
+
+-- =============================================
+-- AI TRACKING TAB
+-- =============================================
+local AIGroup = Tabs.Aim:AddRightGroupbox("AI Tracking")
+
+AIGroup:AddToggle("AIHumanize", { 
+    Text = "Humanize Aim", 
+    Default = Cfg.AI.Humanize,
+    Tooltip = "Adds natural micro-jitter to look more human"
+})
+Toggles.AIHumanize:OnChanged(function(v) Cfg.AI.Humanize = v end)
+
+AIGroup:AddSlider("AIMicroJitter", { 
+    Text = "Micro Jitter", 
+    Default = Cfg.AI.MicroJitter, 
+    Min = 0.05, 
+    Max = 0.5, 
+    Rounding = 2,
+    Tooltip = "Amount of natural hand shake"
+})
+Options.AIMicroJitter:OnChanged(function(v) Cfg.AI.MicroJitter = v end)
+
+AIGroup:AddSlider("AIMaxAngleChange", { 
+    Text = "Max Angle Change", 
+    Default = Cfg.AI.MaxAngleChange, 
+    Min = 0.5, 
+    Max = 10, 
+    Rounding = 1,
+    Tooltip = "Limits how fast the aim can turn (degrees per frame)"
+})
+Options.AIMaxAngleChange:OnChanged(function(v) Cfg.AI.MaxAngleChange = v end)
+
+AIGroup:AddDropdown("AIPriority", { 
+    Values = {"Closest", "LowestHealth", "HighestThreat"}, 
+    Default = 1, 
+    Text = "Target Priority" 
+})
+Options.AIPriority:OnChanged(function(v) Cfg.AI.Priority = v end)
+
+AIGroup:AddToggle("AITargetSwitching", { 
+    Text = "Target Switching", 
+    Default = Cfg.AI.TargetSwitching,
+    Tooltip = "Allows switching between targets"
+})
+Toggles.AITargetSwitching:OnChanged(function(v) Cfg.AI.TargetSwitching = v end)
+
+AIGroup:AddSlider("AISwitchDelay", { 
+    Text = "Switch Delay", 
+    Default = Cfg.AI.SwitchDelay, 
+    Min = 0.1, 
+    Max = 2, 
+    Rounding = 1,
+    Tooltip = "Time before switching to a new target (seconds)"
+})
+Options.AISwitchDelay:OnChanged(function(v) Cfg.AI.SwitchDelay = v end)
+
+AIGroup:AddToggle("AIShowPrediction", { 
+    Text = "Show Prediction Dot", 
+    Default = Cfg.AI.ShowPrediction,
+    Tooltip = "Shows a yellow dot where the AI predicts the target will be"
+})
+Toggles.AIShowPrediction:OnChanged(function(v) 
+    Cfg.AI.ShowPrediction = v 
+    if not v and predictionDot then
+        predictionDot.Visible = false
+    end
+end)
 
 -- =============================================
 -- UTILS TAB
@@ -1649,7 +1797,7 @@ Toggles.NoclipToggle:OnChanged(function(v)
 end)
 
 -- =============================================
--- VISUALS TAB (WITH THIRD PERSON)
+-- VISUALS TAB (WITH FIXED THIRD PERSON)
 -- =============================================
 local VisGroup = Tabs.Vis:AddLeftGroupbox("Environment & Crosshair")
 
@@ -1667,6 +1815,7 @@ VisGroup:AddToggle("ThirdPerson", {
 Toggles.ThirdPerson:OnChanged(function(v)
     Cfg.Visuals.ThirdPerson = v
     thirdPersonEnabled = v
+    thirdPersonCurrent = nil
     if v then
         ToggleThirdPerson()
     else
@@ -1685,6 +1834,19 @@ VisGroup:AddSlider("ThirdPersonDist", {
 Options.ThirdPersonDist:OnChanged(function(v)
     Cfg.Visuals.ThirdPersonDistance = v
     thirdPersonDistance = v
+end)
+
+VisGroup:AddSlider("ThirdPersonSmooth", { 
+    Text = "Smoothness", 
+    Default = Cfg.Visuals.ThirdPersonSmoothness, 
+    Min = 0.01, 
+    Max = 0.5, 
+    Rounding = 2,
+    Tooltip = "How smoothly the camera follows (higher = faster)"
+})
+Options.ThirdPersonSmooth:OnChanged(function(v)
+    Cfg.Visuals.ThirdPersonSmoothness = v
+    thirdPersonSmoothness = v
 end)
 
 VisGroup:AddToggle("CrosshairToggle", { Text = "Crosshair", Default = Cfg.Visuals.Crosshair })
@@ -1718,3 +1880,4 @@ print("[Raven Cheats] Loaded successfully!")
 print("[Raven Cheats] Press Right Shift to toggle menu.")
 print("[Raven Cheats] Team Check: " .. (Cfg.TargetUtility.TeamCheck and "ON (skips teammates)" or "OFF (aims at everyone)"))
 print("[Raven Cheats] Third Person: " .. (Cfg.Visuals.ThirdPerson and "ON" or "OFF"))
+print("[Raven Cheats] AI Tracking: " .. (Cfg.AI.Humanize and "Humanized" or "Standard"))
