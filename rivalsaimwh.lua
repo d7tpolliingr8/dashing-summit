@@ -1,6 +1,6 @@
 --[[
     Skelly Hub Rivals Script v6.0
-    Hybrid Menu (ScreenGui) + Drawing ESP
+    Auto-Open Menu on Load
     Press Right Shift to toggle
 ]]
 
@@ -61,6 +61,7 @@ local Config = {
     Visual = {
         MenuKey = Enum.KeyCode.RightShift,
         Watermark = "💀 skelly-hub.lol",
+        AutoOpenMenu = true,
     }
 }
 
@@ -77,6 +78,7 @@ local aimbotActive = false
 local silentAimActive = false
 local currentTab = 1
 local tabs = {"Aimbot", "ESP", "Player", "Misc"}
+local menuLoaded = false
 
 -- ======================================================================
 -- UTILITY FUNCTIONS
@@ -218,7 +220,6 @@ UserInputService.InputBegan:Connect(function(input, gameProcessed)
     end
     
     if input.KeyCode == Config.Visual.MenuKey then
-        print("[SkellyHub] Right Shift pressed! Toggling menu...")
         ToggleMenu()
     end
 end)
@@ -460,7 +461,7 @@ end
 RunService.Heartbeat:Connect(NoClip)
 
 -- ======================================================================
--- HYBRID MENU (ScreenGui - WORKING)
+-- MENU
 -- ======================================================================
 
 local function CreateMenu()
@@ -478,7 +479,6 @@ local function CreateMenu()
     menuGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
     menuGui.DisplayOrder = 999
     
-    -- Main Frame
     local main = Instance.new("Frame")
     main.Size = UDim2.new(0, 420, 0, 440)
     main.Position = UDim2.new(0.5, -210, 0.5, -220)
@@ -492,7 +492,6 @@ local function CreateMenu()
     mainCorner.CornerRadius = UDim.new(0, 12)
     mainCorner.Parent = main
     
-    -- Title
     local titleBar = Instance.new("Frame")
     titleBar.Size = UDim2.new(1, 0, 0, 45)
     titleBar.BackgroundColor3 = Color3.fromRGB(15, 15, 28)
@@ -513,7 +512,6 @@ local function CreateMenu()
     title.Font = Enum.Font.GothamBold
     title.Parent = titleBar
     
-    -- Tabs
     local tabBar = Instance.new("Frame")
     tabBar.Size = UDim2.new(1, 0, 0, 30)
     tabBar.Position = UDim2.new(0, 0, 0, 45)
@@ -553,7 +551,6 @@ local function CreateMenu()
         end)
     end
     
-    -- Content
     local contentContainer = Instance.new("ScrollingFrame")
     contentContainer.Size = UDim2.new(1, -20, 1, -105)
     contentContainer.Position = UDim2.new(0, 10, 0, 80)
@@ -569,7 +566,6 @@ local function CreateMenu()
     layout.Padding = UDim.new(0, 10)
     layout.SortOrder = Enum.SortOrder.LayoutOrder
     
-    -- Close
     local closeBtn = Instance.new("TextButton")
     closeBtn.Size = UDim2.new(0.2, 0, 0, 32)
     closeBtn.Position = UDim2.new(0.4, 0, 1, -38)
@@ -689,8 +685,6 @@ local function CreateMenu()
     -- ======================================================================
     
     function RefreshContent()
-        print("[SkellyHub] Refreshing content for tab: " .. tabs[currentTab])
-        
         for _, child in pairs(contentContainer:GetChildren()) do
             if child:IsA("TextButton") or child:IsA("TextLabel") or child:IsA("Frame") then
                 child:Destroy()
@@ -700,7 +694,6 @@ local function CreateMenu()
         if currentTab == 1 then -- Aimbot
             AddLabel("💀 AIMBOT SETTINGS")
             
-            -- Head/Body
             local selectorLabel = AddLabel("Aim Part: " .. Config.Aimbot.AimPart)
             
             local btnContainer = Instance.new("Frame")
@@ -892,7 +885,6 @@ end
 
 local function ToggleMenu()
     menuOpen = not menuOpen
-    print("[SkellyHub] Menu: " .. tostring(menuOpen))
     
     if menuOpen then
         CreateMenu()
@@ -903,15 +895,33 @@ local function ToggleMenu()
 end
 
 -- ======================================================================
+-- AUTO-OPEN MENU
+-- ======================================================================
+
+local function AutoOpenMenu()
+    print("[SkellyHub] Auto-opening menu...")
+    task.wait(0.5) -- Small delay to ensure everything is loaded
+    if not menuLoaded then
+        menuLoaded = true
+        ToggleMenu()
+    end
+end
+
+-- ======================================================================
 -- START
 -- ======================================================================
 
 print("[SkellyHub] Rivals Script v6.0 Loading...")
-print("[SkellyHub] Press Right Shift to open menu.")
+print("[SkellyHub] Press Right Shift to toggle menu.")
+print("[SkellyHub] Menu will auto-open in 1 second...")
 
 RunService.RenderStepped:Connect(UpdateFOVCircle)
 RunService.RenderStepped:Connect(DoAimbot)
 RunService.RenderStepped:Connect(DoSilentAim)
 RunService.RenderStepped:Connect(UpdateESP)
+
+-- Auto-open menu after loading
+task.wait(1)
+AutoOpenMenu()
 
 print("[SkellyHub] Loaded!")
