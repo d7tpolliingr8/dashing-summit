@@ -118,13 +118,13 @@ local Cfg = {
         OffscreenArrowColor = WHITE,
     },
     Aim = {
-        On = false, 
+        Enabled = false,
         Part = "Head",
-        FOV = 200, 
-        ShowFOV = true, 
+        FOV = 200,
+        ShowFOV = true,
         FOVColor = WHITE,
-        Smoothness = 0.3, 
-        YOffset = 0, 
+        Smoothness = 0.3,
+        YOffset = 0,
         Prediction = 0.5,
         WallCheck = false,
         AimKey = "MouseButton2",
@@ -163,6 +163,15 @@ local Cfg = {
         HeightOffset = 5,
     }
 }
+
+-- ================================================
+--  STATE VARIABLES
+-- ================================================
+local aimbotActive = false
+local espActive = false
+local flyEnabled = false
+local noclipEnabled = false
+local aimKeyHeld = false
 
 -- ================================================
 --  DRAWING HELPERS
@@ -323,13 +332,8 @@ local function GetTargetPriority(player, distance)
 end
 
 -- ================================================
---  AI AIMBOT
+--  PREDICTION DOT
 -- ================================================
-
-local aimbotActive = false
-local aimKeyHeld = false
-local lastTarget = nil
-local targetLockTimer = 0
 local predictionDot = nil
 
 local function CreatePredictionDot()
@@ -343,6 +347,12 @@ local function CreatePredictionDot()
     predictionDot.NumSides = 12
 end
 
+-- ================================================
+--  AI AIMBOT
+-- ================================================
+local lastTarget = nil
+local targetLockTimer = 0
+
 local function GetBestTarget()
     local best = nil
     local bestScore = math.huge
@@ -355,7 +365,7 @@ local function GetBestTarget()
         if player == LP then continue end
         if not IsAlive(player) then continue end
         
-        local aimPart = GetAimPart(player.Character, Cfg.Aim.AimPart)
+        local aimPart = GetAimPart(player.Character, Cfg.Aim.Part)
         if not aimPart then continue end
         
         if Cfg.Aim.WallCheck then
@@ -406,7 +416,7 @@ local function GetBestTarget()
 end
 
 local function DoAimbot()
-    if not aimbotActive or not Cfg.Aim.On then return end
+    if not aimbotActive or not Cfg.Aim.Enabled then return end
     if not aimKeyHeld then
         lastTarget = nil
         targetLockTimer = 0
@@ -463,6 +473,22 @@ local function DoAimbot()
         end
     elseif predictionDot then
         predictionDot.Visible = false
+    end
+end
+
+-- ================================================
+--  FOV CIRCLE
+-- ================================================
+local FOVCIRC = C{ Color = WHITE, ZIndex = 10 }
+
+local function UpdateFOV()
+    if Cfg.Aim.ShowFOV and Cfg.Aim.Enabled then
+        FOVCIRC.Visible = true
+        FOVCIRC.Position = AimPoint()
+        FOVCIRC.Radius = Cfg.Aim.FOV
+        FOVCIRC.Color = Cfg.Aim.FOVColor
+    else
+        FOVCIRC.Visible = false
     end
 end
 
@@ -653,6 +679,14 @@ local function UpdateOffscreenArrows()
 end
 
 local function UpdateESP()
+    if not espActive or not Cfg.ESP.On then
+        for _, player in pairs(Players:GetPlayers()) do
+            local o = ESPs[player]
+            if o then HideESP(o) end
+        end
+        return
+    end
+    
     for _, player in ipairs(Players:GetPlayers()) do
         if player == LP then continue end
         
@@ -671,7 +705,6 @@ local function UpdateESP()
         
         local bb = BBox(char)
         if not bb then HideESP(o); continue end
-        if not Cfg.ESP.On then HideESP(o); continue end
         
         local x, y, w, h = bb.X, bb.Y, bb.W, bb.H
         
@@ -817,22 +850,6 @@ local function UpdateESP()
 end
 
 -- ================================================
---  FOV CIRCLE
--- ================================================
-local FOVCIRC = C{ Color = WHITE, ZIndex = 10 }
-
-local function UpdateFOV()
-    if Cfg.Aim.ShowFOV and Cfg.Aim.On then
-        FOVCIRC.Visible = true
-        FOVCIRC.Position = AimPoint()
-        FOVCIRC.Radius = Cfg.Aim.FOV
-        FOVCIRC.Color = Cfg.Aim.FOVColor
-    else
-        FOVCIRC.Visible = false
-    end
-end
-
--- ================================================
 --  KEY HANDLING
 -- ================================================
 UserInputService.InputBegan:Connect(function(input, gameProcessed)
@@ -857,18 +874,171 @@ UserInputService.InputEnded:Connect(function(input, gameProcessed)
 end)
 
 -- ================================================
---  TARGET UTILITIES
+--  PLAYER MODS
 -- ================================================
-local function GetPlayerNames()
-    local names = {"None"}
-    for _, player in ipairs(Players:GetPlayers()) do
-        if player ~= LP then
-            table.insert(names, player.Name)
-        end
+-- Infinite Jump
+UserInputService.JumpRequest:Connect(function()
+    if Cfg.Movement.InfiniteJump and LP.Character then
+        local h = LP.Character:FindFirstChild("Humanoid")
+        if h then h:ChangeState(Enum.HumanoidStateType.Jumping) end
     end
-    return names
+end)
+
+-- Fly
+local flyConnection = nil
+
+local function StartFly()
+    if flyConnection then return end
+    local char = LP.Character
+    if not char then return end
+    
+    local root = char:FindFirstChild("HumanoidRootPart")
+    if not root then return end
+    
+    local humanoid = char:FindFirstChildOfClass("Humanoid")
+    if humanoid then humanoid.PlatformStand = true end
+    
+    flyConnection = RunService:BindToRenderStep("FlySystem", Enum.RenderPriority.Last.Value, function()
+        if not flyEnabled then
+            StopFly()
+            return
+        end
+        
+        local speed = Cfg.Movement.FlySpeed
+        local camLook = Camera.CFrame.LookVector
+        local camRight = Camera.CFrame.RightVector
+        local camUp = Camera.CFrame.UpVector
+        
+        local moveDirection = Vector3.new()
+        
+        if UserInputService:IsKeyDown(Enum.KeyCode.W) then
+            moveDirection = moveDirection + camLook
+        end
+        if UserInputService:IsKeyDown(Enum.KeyCode.S) then
+            moveDirection = moveDirection - camLook
+        end
+        if UserInputService:IsKeyDown(Enum.KeyCode.A) then
+            moveDirection = moveDirection - camRight
+        end
+        if UserInputService:IsKeyDown(Enum.KeyCode.D) then
+            moveDirection = moveDirection + camRight
+        end
+        if UserInputService:IsKeyDown(Enum.KeyCode.Space) then
+            moveDirection = moveDirection + camUp
+        end
+        if UserInputService:IsKeyDown(Enum.KeyCode.LeftShift) then
+            moveDirection = moveDirection - camUp
+        end
+        
+        if moveDirection.Magnitude > 0 then
+            moveDirection = moveDirection.Unit * speed
+            root.Velocity = moveDirection
+        else
+            root.Velocity = Vector3.new(0, 0, 0)
+        end
+    end)
 end
 
+local function StopFly()
+    if flyConnection then
+        RunService:UnbindFromRenderStep("FlySystem")
+        flyConnection = nil
+    end
+    local char = LP.Character
+    if char then
+        local humanoid = char:FindFirstChildOfClass("Humanoid")
+        if humanoid then humanoid.PlatformStand = false end
+        local root = char:FindFirstChild("HumanoidRootPart")
+        if root then root.Velocity = Vector3.new(0, 0, 0) end
+    end
+end
+
+local function ToggleFly()
+    flyEnabled = not flyEnabled
+    if flyEnabled then
+        StartFly()
+        StarterGui:SetCore("SendNotification", {
+            Title = "Raven Cheats",
+            Text = "🦅 Flight enabled",
+            Duration = 1,
+        })
+    else
+        StopFly()
+        StarterGui:SetCore("SendNotification", {
+            Title = "Raven Cheats",
+            Text = "🦅 Flight disabled",
+            Duration = 1,
+        })
+    end
+    Cfg.Movement.Fly = flyEnabled
+    if Toggles and Toggles.FlyToggle then
+        pcall(function() Toggles.FlyToggle:SetValue(flyEnabled) end)
+    end
+end
+
+-- Noclip
+local noclipConnection = nil
+
+local function StartNoclip()
+    if noclipConnection then return end
+    
+    noclipConnection = RunService:BindToRenderStep("NoclipSystem", Enum.RenderPriority.Last.Value, function()
+        if not noclipEnabled then
+            StopNoclip()
+            return
+        end
+        
+        local char = LP.Character
+        if not char then return end
+        
+        for _, part in ipairs(char:GetDescendants()) do
+            if part:IsA("BasePart") then
+                part.CanCollide = false
+            end
+        end
+    end)
+end
+
+local function StopNoclip()
+    if noclipConnection then
+        RunService:UnbindFromRenderStep("NoclipSystem")
+        noclipConnection = nil
+    end
+    
+    local char = LP.Character
+    if char then
+        for _, part in ipairs(char:GetDescendants()) do
+            if part:IsA("BasePart") then
+                part.CanCollide = true
+            end
+        end
+    end
+end
+
+local function ToggleNoclip()
+    noclipEnabled = not noclipEnabled
+    if noclipEnabled then
+        StartNoclip()
+        StarterGui:SetCore("SendNotification", {
+            Title = "Raven Cheats",
+            Text = "🦅 Noclip enabled",
+            Duration = 1,
+        })
+    else
+        StopNoclip()
+        StarterGui:SetCore("SendNotification", {
+            Title = "Raven Cheats",
+            Text = "🦅 Noclip disabled",
+            Duration = 1,
+        })
+    end
+    Cfg.Movement.Noclip = noclipEnabled
+    if Toggles and Toggles.NoclipToggle then
+        pcall(function() Toggles.NoclipToggle:SetValue(noclipEnabled) end)
+    end
+end
+
+-- Speed Hack
 RunService.RenderStepped:Connect(function()
     if Cfg.Movement.SpeedHack then
         local char = LP.Character
@@ -880,32 +1050,39 @@ RunService.RenderStepped:Connect(function()
             end
         end
     end
+end)
 
-    if Cfg.TargetUtility.StickyTP and Cfg.TargetUtility.SelectedTarget ~= "None" then
-        local targetPlayer = Players:FindFirstChild(Cfg.TargetUtility.SelectedTarget)
-        if targetPlayer and targetPlayer.Character then
-            local enemyRoot = targetPlayer.Character:FindFirstChild("HumanoidRootPart")
-            local myChar = LP.Character
-            local myRoot = myChar and myChar:FindFirstChild("HumanoidRootPart")
-            if enemyRoot and myRoot then
-                local offsetPos = enemyRoot.CFrame + Vector3.new(0, Cfg.TargetUtility.HeightOffset, 0)
-                myRoot.CFrame = offsetPos
-                myRoot.AssemblyLinearVelocity = Vector3.new(0, 0, 0)
-            end
-        end
+-- God Mode & No Fall Damage
+RunService.Heartbeat:Connect(function()
+    local character = LP.Character
+    if not character then return end
+    if Cfg.Player and Cfg.Player.GodMode then
+        local h = character:FindFirstChild("Humanoid")
+        if h then h.Health = h.MaxHealth; h.BreakJointsOnDeath = false end
+    end
+    if Cfg.Player and Cfg.Player.NoFallDamage then
+        local h = character:FindFirstChild("Humanoid")
+        if h then h:SetStateEnabled(Enum.HumanoidStateType.FallingDown, false) end
     end
 end)
 
+-- Full Bright
 RunService.Heartbeat:Connect(function()
-    if Cfg.TargetUtility.StickyTP and Cfg.TargetUtility.SelectedTarget ~= "None" then
-        local targetPlayer = Players:FindFirstChild(Cfg.TargetUtility.SelectedTarget)
-        if targetPlayer and targetPlayer.Character then
-            local enemyRoot = targetPlayer.Character:FindFirstChild("HumanoidRootPart")
-            local myChar = LP.Character
-            local myRoot = myChar and myChar:FindFirstChild("HumanoidRootPart")
-            if enemyRoot and myRoot then
-                myRoot.CFrame = enemyRoot.CFrame + Vector3.new(0, Cfg.TargetUtility.HeightOffset, 0)
-            end
+    if Cfg.Visuals.FullBright then
+        Lighting.Brightness = 2
+        Lighting.Ambient = Color3.new(1,1,1)
+        Lighting.OutdoorAmbient = Color3.new(1,1,1)
+    end
+end)
+
+-- WalkSpeed
+RunService.Heartbeat:Connect(function()
+    if Cfg.Player and Cfg.Player.WalkSpeed then
+        local character = LP.Character
+        if not character then return end
+        local h = character:FindFirstChild("Humanoid")
+        if h and Cfg.Player.WalkSpeed ~= 16 then
+            h.WalkSpeed = Cfg.Player.WalkSpeed
         end
     end
 end)
@@ -986,238 +1163,8 @@ local function UpdateCrosshair()
 end
 
 -- ================================================
---  FLIGHT SYSTEM
--- ================================================
-local flyConnection = nil
-local flyEnabled = false
-
-local function StartFly()
-    if flyConnection then return end
-    local char = LP.Character
-    if not char then return end
-    
-    local root = char:FindFirstChild("HumanoidRootPart")
-    if not root then return end
-    
-    local humanoid = char:FindFirstChildOfClass("Humanoid")
-    if humanoid then
-        humanoid.PlatformStand = true
-    end
-    
-    flyConnection = RunService:BindToRenderStep("FlySystem", Enum.RenderPriority.Last.Value, function()
-        if not flyEnabled then
-            StopFly()
-            return
-        end
-        
-        local speed = Cfg.Movement.FlySpeed
-        local camLook = Camera.CFrame.LookVector
-        local camRight = Camera.CFrame.RightVector
-        local camUp = Camera.CFrame.UpVector
-        
-        local moveDirection = Vector3.new()
-        
-        if UserInputService:IsKeyDown(Enum.KeyCode.W) then
-            moveDirection = moveDirection + camLook
-        end
-        if UserInputService:IsKeyDown(Enum.KeyCode.S) then
-            moveDirection = moveDirection - camLook
-        end
-        if UserInputService:IsKeyDown(Enum.KeyCode.A) then
-            moveDirection = moveDirection - camRight
-        end
-        if UserInputService:IsKeyDown(Enum.KeyCode.D) then
-            moveDirection = moveDirection + camRight
-        end
-        if UserInputService:IsKeyDown(Enum.KeyCode.Space) then
-            moveDirection = moveDirection + camUp
-        end
-        if UserInputService:IsKeyDown(Enum.KeyCode.LeftShift) then
-            moveDirection = moveDirection - camUp
-        end
-        
-        if moveDirection.Magnitude > 0 then
-            moveDirection = moveDirection.Unit * speed
-            root.Velocity = moveDirection
-        else
-            root.Velocity = Vector3.new(0, 0, 0)
-        end
-    end)
-end
-
-local function StopFly()
-    if flyConnection then
-        RunService:UnbindFromRenderStep("FlySystem")
-        flyConnection = nil
-    end
-    local char = LP.Character
-    if char then
-        local humanoid = char:FindFirstChildOfClass("Humanoid")
-        if humanoid then
-            humanoid.PlatformStand = false
-        end
-        local root = char:FindFirstChild("HumanoidRootPart")
-        if root then
-            root.Velocity = Vector3.new(0, 0, 0)
-        end
-    end
-end
-
-local function ToggleFly()
-    flyEnabled = not flyEnabled
-    if flyEnabled then
-        StartFly()
-        StarterGui:SetCore("SendNotification", {
-            Title = "Raven Cheats",
-            Text = "🦅 Flight enabled",
-            Duration = 1,
-        })
-    else
-        StopFly()
-        StarterGui:SetCore("SendNotification", {
-            Title = "Raven Cheats",
-            Text = "🦅 Flight disabled",
-            Duration = 1,
-        })
-    end
-    Cfg.Movement.Fly = flyEnabled
-    if Toggles and Toggles.FlyToggle then
-        pcall(function() Toggles.FlyToggle:SetValue(flyEnabled) end)
-    end
-end
-
-UserInputService.InputBegan:Connect(function(input, gameProcessed)
-    if gameProcessed then return end
-    local keybind = Cfg.Movement.FlyKeybind
-    if not keybind then return end
-    
-    if typeof(keybind) == "EnumItem" then
-        if input.KeyCode == keybind or input.UserInputType == keybind then
-            ToggleFly()
-        end
-    elseif typeof(keybind) == "string" then
-        if keybind == "MouseButton2" and input.UserInputType == Enum.UserInputType.MouseButton2 then
-            ToggleFly()
-        elseif keybind == "MouseButton1" and input.UserInputType == Enum.UserInputType.MouseButton1 then
-            ToggleFly()
-        else
-            pcall(function()
-                local kc = Enum.KeyCode[keybind]
-                if kc and input.KeyCode == kc then
-                    ToggleFly()
-                end
-            end)
-        end
-    end
-end)
-
--- ================================================
---  NOCLIP SYSTEM
--- ================================================
-local noclipConnection = nil
-
-local function StartNoclip()
-    if noclipConnection then return end
-    
-    noclipConnection = RunService:BindToRenderStep("NoclipSystem", Enum.RenderPriority.Last.Value, function()
-        if not Cfg.Movement.Noclip then
-            StopNoclip()
-            return
-        end
-        
-        local char = LP.Character
-        if not char then return end
-        
-        for _, part in ipairs(char:GetDescendants()) do
-            if part:IsA("BasePart") then
-                part.CanCollide = false
-            end
-        end
-    end)
-end
-
-local function StopNoclip()
-    if noclipConnection then
-        RunService:UnbindFromRenderStep("NoclipSystem")
-        noclipConnection = nil
-    end
-    
-    local char = LP.Character
-    if char then
-        for _, part in ipairs(char:GetDescendants()) do
-            if part:IsA("BasePart") then
-                part.CanCollide = true
-            end
-        end
-    end
-end
-
--- ================================================
---  VISUALS
--- ================================================
-local function UpdateVisuals()
-    if Cfg.Visuals.FullBright then
-        Lighting.Ambient = Color3.fromRGB(255, 255, 255)
-        Lighting.Brightness = 2
-        Lighting.GlobalShadows = false
-    else
-        Lighting.Ambient = Color3.fromRGB(128, 128, 128)
-        Lighting.Brightness = 1
-        Lighting.GlobalShadows = true
-    end
-    
-    if Cfg.Visuals.NoFog then
-        Lighting.FogEnd = 100000
-        Lighting.FogStart = 0
-    else
-        Lighting.FogEnd = 1000
-        Lighting.FogStart = 0
-    end
-end
-
--- ================================================
---  PLAYER MANAGEMENT
--- ================================================
-local function OnPlayerAdded(player)
-    CreateESPObjects(player)
-    player.CharacterAdded:Connect(function()
-        task.wait(0.5)
-        local o = ESPs[player]
-        if o and o.Chams then
-            o.Chams:Destroy()
-            o.Chams = nil
-        end
-    end)
-end
-
-for _, player in ipairs(Players:GetPlayers()) do
-    if player ~= LP then OnPlayerAdded(player) end
-end
-Players.PlayerAdded:Connect(OnPlayerAdded)
-Players.PlayerRemoving:Connect(DestroyESP)
-
--- ================================================
---  RENDER LOOPS
--- ================================================
-RunService.RenderStepped:Connect(function()
-    Camera = Workspace.CurrentCamera
-    pcall(UpdateFOV)
-    pcall(UpdateESP)
-    pcall(UpdateOffscreenArrows)
-    pcall(UpdateVisuals)
-    pcall(UpdateCrosshair)
-    pcall(DoAimbot)
-end)
-
-RunService:BindToRenderStep("RavenAim", Enum.RenderPriority.Last.Value, function()
-    Camera = Workspace.CurrentCamera
-    pcall(DoAimbot)
-end)
-
--- ================================================
 --  UNLOCK ALL
 -- ================================================
-
 local function UnlockAllRivals()
     print("[Raven] 🦅 Starting Unlock All for Rivals...")
     
@@ -1377,6 +1324,39 @@ local function UnlockAllRivals()
 end
 
 -- ================================================
+--  PLAYER MANAGEMENT
+-- ================================================
+local function OnPlayerAdded(player)
+    CreateESPObjects(player)
+    player.CharacterAdded:Connect(function()
+        task.wait(0.5)
+        local o = ESPs[player]
+        if o and o.Chams then
+            o.Chams:Destroy()
+            o.Chams = nil
+        end
+    end)
+end
+
+for _, player in ipairs(Players:GetPlayers()) do
+    if player ~= LP then OnPlayerAdded(player) end
+end
+Players.PlayerAdded:Connect(OnPlayerAdded)
+Players.PlayerRemoving:Connect(DestroyESP)
+
+-- ================================================
+--  RENDER LOOPS
+-- ================================================
+RunService.RenderStepped:Connect(function()
+    Camera = Workspace.CurrentCamera
+    pcall(UpdateFOV)
+    pcall(UpdateESP)
+    pcall(UpdateOffscreenArrows)
+    pcall(UpdateCrosshair)
+    pcall(DoAimbot)
+end)
+
+-- ================================================
 --  USER INTERFACE
 -- ================================================
 local Window = Library:CreateWindow({
@@ -1490,7 +1470,10 @@ end)
 local ESPGroup = Tabs.ESP:AddLeftGroupbox("ESP Controls")
 
 ESPGroup:AddToggle("ESPOn", { Text = "Enable", Default = Cfg.ESP.On })
-Toggles.ESPOn:OnChanged(function(v) Cfg.ESP.On = v end)
+Toggles.ESPOn:OnChanged(function(v) 
+    Cfg.ESP.On = v
+    espActive = v
+end)
 
 ESPGroup:AddSlider("ESPDist", { Text = "Max Dist", Default = Cfg.ESP.MaxDist, Min = 50, Max = 5000, Rounding = 0 })
 Options.ESPDist:OnChanged(function(v) Cfg.ESP.MaxDist = v end)
@@ -1515,8 +1498,11 @@ Options.ESPOffscreenCol:OnChanged(function(v) Cfg.ESP.OffscreenArrowColor = v en
 -- =============================================
 local AimGroup = Tabs.Aim:AddLeftGroupbox("Aimbot Controls")
 
-AimGroup:AddToggle("AimOn", { Text = "Enable", Default = Cfg.Aim.On })
-Toggles.AimOn:OnChanged(function(v) Cfg.Aim.On = v end)
+AimGroup:AddToggle("AimOn", { Text = "Enable", Default = Cfg.Aim.Enabled })
+Toggles.AimOn:OnChanged(function(v) 
+    Cfg.Aim.Enabled = v
+    aimbotActive = v
+end)
 Toggles.AimOn:AddKeyPicker("AimKeyPicker", { Default = "MouseButton2", Text = "Aimbot Key", NoUI = false })
 Options.AimKeyPicker:OnChanged(function(v)
     Cfg.Aim.AimKey = Options.AimKeyPicker.Value
@@ -1656,9 +1642,8 @@ local MoveGroup = Tabs.Move:AddLeftGroupbox("Locomotion Controls")
 
 MoveGroup:AddToggle("FlyToggle", { Text = "Flight", Default = Cfg.Movement.Fly })
 Toggles.FlyToggle:OnChanged(function(v)
-    if flyEnabled ~= v then
-        ToggleFly()
-    end
+    Cfg.Movement.Fly = v
+    if v then ToggleFly() else ToggleFly() end
 end)
 Toggles.FlyToggle:AddKeyPicker("FlyKeybindPicker", { Default = "F", Text = "Flight Hotkey", NoUI = false })
 Options.FlyKeybindPicker:OnChanged(function(v)
@@ -1677,7 +1662,7 @@ Options.SpeedVal:OnChanged(function(v) Cfg.Movement.SpeedValue = v end)
 MoveGroup:AddToggle("NoclipToggle", { Text = "Noclip", Default = Cfg.Movement.Noclip })
 Toggles.NoclipToggle:OnChanged(function(v)
     Cfg.Movement.Noclip = v
-    if v then StartNoclip() else StopNoclip() end
+    if v then ToggleNoclip() else ToggleNoclip() end
 end)
 
 -- =============================================
