@@ -1,5 +1,5 @@
 -- // Raven Cheats | Solara Compatible
--- // Fixed Team Check - Only affects Aimbot & ESP
+-- // FIXED Team Check - Only skips teammates, enemies work properly
 -- // Red/Black/Yellow Theme | Unlock All Button
 
 -- ================================================
@@ -22,7 +22,6 @@ local CoreGui          = game:GetService("CoreGui")
 local Teams            = game:GetService("Teams")
 local CollectionService = game:GetService("CollectionService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
-local ServerScriptService = game:GetService("ServerScriptService")
 
 local Camera           = Workspace.CurrentCamera
 local LP               = Players.LocalPlayer
@@ -154,18 +153,18 @@ local Cfg = {
         StickyTP = false,
         SelectedTarget = "None",
         HeightOffset = 5,
-        TeamCheck = true, -- Team check toggle (only affects aimbot & ESP)
+        TeamCheck = true,
     }
 }
 
 -- ================================================
---  FIXED TEAM CHECK (Only affects Aimbot & ESP)
+--  FIXED TEAM CHECK (ONLY SKIPS TEAMMATES)
 -- ================================================
 
 local function IsTeammate(player)
     if not player or player == LP then return false end
     
-    -- If team check is disabled, return false (not a teammate)
+    -- If team check is disabled, nobody is a teammate
     if not Cfg.TargetUtility.TeamCheck then
         return false
     end
@@ -328,7 +327,7 @@ local SKEL_R6 = {
 }
 
 -- ================================================
---  ESP SYSTEM (WITH TEAM CHECK - SKIPS TEAMMATES)
+--  ESP SYSTEM (SKIPS TEAMMATES ONLY)
 -- ================================================
 local ESPs = {}
 local OffscreenArrows = {}
@@ -451,8 +450,8 @@ local function UpdateOffscreenArrows()
     for _, player in ipairs(Players:GetPlayers()) do
         if player == LP then continue end
         
-        -- ❌ Skip teammates for offscreen arrows
-        if Cfg.TargetUtility.TeamCheck and IsTeammate(player) then
+        -- ONLY skip teammates
+        if IsTeammate(player) then
             continue
         end
         
@@ -523,8 +522,8 @@ local function UpdateESP()
     for _, player in ipairs(Players:GetPlayers()) do
         if player == LP then continue end
         
-        -- ❌ Skip teammates for ESP
-        if Cfg.TargetUtility.TeamCheck and IsTeammate(player) then
+        -- ONLY skip teammates
+        if IsTeammate(player) then
             continue
         end
         
@@ -689,7 +688,7 @@ local function UpdateESP()
 end
 
 -- ================================================
---  TARGET LOCK (WITH TEAM CHECK - SKIPS TEAMMATES)
+--  TARGET LOCK (SKIPS TEAMMATES ONLY)
 -- ================================================
 local FOVCIRC = C{ Color = WHITE, ZIndex = 10 }
 local CurrentTarget = nil
@@ -743,8 +742,8 @@ end
 local function IsValidTarget(player)
     if not player or player == LP then return false end
     
-    -- ❌ Skip teammates for aimbot
-    if Cfg.TargetUtility.TeamCheck and IsTeammate(player) then
+    -- ONLY skip teammates
+    if IsTeammate(player) then
         return false
     end
     
@@ -856,7 +855,7 @@ local function DoAim()
 end
 
 -- ================================================
---  TARGET UTILITIES (NOT AFFECTED BY TEAM CHECK)
+--  TARGET UTILITIES
 -- ================================================
 local function GetPlayerNames()
     local names = {"None"}
@@ -880,7 +879,6 @@ RunService.RenderStepped:Connect(function()
         end
     end
 
-    -- Sticky TP (works on ANY player, including teammates if you want)
     if Cfg.TargetUtility.StickyTP and Cfg.TargetUtility.SelectedTarget ~= "None" then
         local targetPlayer = Players:FindFirstChild(Cfg.TargetUtility.SelectedTarget)
         if targetPlayer and targetPlayer.Character then
@@ -1586,7 +1584,7 @@ local TeamGroup = Tabs.Util:AddRightGroupbox("Team Settings")
 TeamGroup:AddToggle("TeamCheckToggle", { 
     Text = "Enable Team Check", 
     Default = Cfg.TargetUtility.TeamCheck,
-    Tooltip = "Prevents aiming at and ESP on teammates (does NOT affect other features)"
+    Tooltip = "Prevents aiming at and ESP on teammates"
 })
 Toggles.TeamCheckToggle:OnChanged(function(v)
     Cfg.TargetUtility.TeamCheck = v
@@ -1684,4 +1682,4 @@ SaveManager:LoadAutoloadConfig()
 -- =============================================
 print("[Raven Cheats] Loaded successfully!")
 print("[Raven Cheats] Press Right Shift to toggle menu.")
-print("[Raven Cheats] Team check only affects Aimbot & ESP - other features work normally!")
+print("[Raven Cheats] Team check ONLY skips teammates - enemies work normally!")
