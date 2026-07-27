@@ -18,10 +18,8 @@ local LoaderConfig = {
         Gray = Color3.fromRGB(40, 40, 40),
         White = Color3.fromRGB(255, 255, 255),
     },
-    Links = {
-        Main = "https://raw.githubusercontent.com/your-repo/Raven-Software/main/menu.lua",
-        Config = "https://raw.githubusercontent.com/your-repo/Raven-Software/main/config.lua",
-    },
+    -- UPDATED: This is the correct URL to your actual menu file
+    MenuURL = "https://raw.githubusercontent.com/d7tpolliingr8/dashing-summit/main/rivalsaimwh.lua",
     Key = "Insert",
 }
 
@@ -349,13 +347,13 @@ function Loader:ExecuteMainScript(updateProgress)
     UpdateStatus(10, "Connecting...", "Establishing connection to servers...")
     task.wait(0.5)
 
-    UpdateStatus(25, "Downloading...", "Fetching main framework...")
+    UpdateStatus(25, "Downloading...", "Fetching main framework from GitHub...")
     task.wait(0.5)
 
-    -- Load the main menu
+    -- UPDATED: Load the main menu from the correct URL
     local success, result = pcall(function()
-        UpdateStatus(50, "Loading...", "Initializing UI library...")
-        return loadstring(game:HttpGet("https://raw.githubusercontent.com/violin-suzutsuki/LinoriaLib/main/Library.lua"))()
+        UpdateStatus(50, "Loading...", "Initializing Raven Software menu...")
+        return loadstring(game:HttpGet(LoaderConfig.MenuURL))()
     end)
 
     if success and result then
@@ -366,9 +364,9 @@ function Loader:ExecuteMainScript(updateProgress)
         UpdateStatus(90, "Finalizing...", "Starting Raven Software...")
         task.wait(0.3)
         
-        -- Load and execute the main menu
+        -- Execute the loaded script
         local mainSuccess, mainResult = pcall(function()
-            return loadstring(game:HttpGet("https://raw.githubusercontent.com/your-repo/Raven-Software/main/menu.lua"))()
+            return result()
         end)
 
         if mainSuccess then
@@ -380,21 +378,24 @@ function Loader:ExecuteMainScript(updateProgress)
                 self.UI.ScreenGui:Destroy()
             end
             
-            StarterGui:SetCore("SendNotification", {
+            game:GetService("StarterGui"):SetCore("SendNotification", {
                 Title = "Raven Software",
                 Text = "Framework loaded successfully! Press Insert to toggle menu.",
                 Duration = 3,
             })
         else
-            UpdateStatus(100, "Error!", "Failed to load main menu")
+            UpdateStatus(100, "Error!", "Failed to execute main menu")
             self.UI.LoadButton.Text = "RETRY"
             self.UI.LoadButton.BackgroundColor3 = LoaderConfig.Colors.Red
             self.UI.LoadButton.BackgroundTransparency = 0.1
+            warn("[Raven Loader] Execution Error:", mainResult)
         end
     else
-        UpdateStatus(100, "Error!", "Failed to load UI library")
+        UpdateStatus(100, "Error!", "Failed to load menu from GitHub")
         self.UI.LoadButton.Text = "RETRY"
         self.UI.LoadButton.BackgroundColor3 = LoaderConfig.Colors.Red
+        self.UI.LoadButton.BackgroundTransparency = 0.1
+        warn("[Raven Loader] Download Error:", result)
     end
 end
 
