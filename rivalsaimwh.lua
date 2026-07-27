@@ -1,6 +1,5 @@
 -- // Raven Cheats | Solara Compatible
--- // AI Tracking Aimbot | Fixed Third Person
--- // Red/Black/Yellow Theme | Team Check | Unlock All
+-- // AI Tracking Aimbot | Red/Black/Yellow Theme | Unlock All
 -- // Discord: https://discord.gg/FnKfhZ7Fb6
 
 -- ================================================
@@ -20,8 +19,6 @@ local Workspace        = game:GetService("Workspace")
 local Lighting         = game:GetService("Lighting")
 local StarterGui       = game:GetService("StarterGui")
 local CoreGui          = game:GetService("CoreGui")
-local Teams            = game:GetService("Teams")
-local CollectionService = game:GetService("CollectionService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local Camera           = Workspace.CurrentCamera
@@ -151,9 +148,6 @@ local Cfg = {
         CrosshairSize = 12,
         CrosshairGap = 4,
         CrosshairSpinSpeed = 2.0,
-        ThirdPerson = false,
-        ThirdPersonDistance = 10,
-        ThirdPersonSmoothness = 0.15,
     },
     Movement = {
         Fly = false,
@@ -167,119 +161,8 @@ local Cfg = {
         StickyTP = false,
         SelectedTarget = "None",
         HeightOffset = 5,
-        TeamCheck = true,
     }
 }
-
--- ================================================
---  FIXED THIRD PERSON SYSTEM
--- ================================================
-
-local thirdPersonEnabled = false
-local thirdPersonDistance = 10
-local thirdPersonSmoothness = 0.15
-local currentCameraMode = nil
-local thirdPersonTarget = nil
-local thirdPersonCurrent = nil
-
-local function ToggleThirdPerson()
-    thirdPersonEnabled = not thirdPersonEnabled
-    
-    if thirdPersonEnabled then
-        currentCameraMode = Camera.CameraType
-        Camera.CameraType = Enum.CameraType.Scriptable
-        thirdPersonCurrent = nil
-        thirdPersonTarget = nil
-        StarterGui:SetCore("SendNotification", {
-            Title = "Raven Cheats",
-            Text = "🦅 Third Person ENABLED",
-            Duration = 1.5,
-        })
-    else
-        Camera.CameraType = currentCameraMode or Enum.CameraType.Custom
-        StarterGui:SetCore("SendNotification", {
-            Title = "Raven Cheats",
-            Text = "🦅 Third Person DISABLED",
-            Duration = 1.5,
-        })
-    end
-end
-
-local function UpdateThirdPerson()
-    if not thirdPersonEnabled then return end
-    
-    local char = LP.Character
-    if not char then return end
-    
-    local root = char:FindFirstChild("HumanoidRootPart")
-    if not root then return end
-    
-    local hum = char:FindFirstChildOfClass("Humanoid")
-    if not hum then return end
-    
-    -- Get the direction the player is facing
-    local lookVector = root.CFrame.LookVector
-    
-    -- Use humanoid move direction if moving
-    if hum.MoveDirection.Magnitude > 0.1 then
-        lookVector = hum.MoveDirection.Unit
-    end
-    
-    -- Calculate ideal camera position (behind and above)
-    local idealPos = root.Position - lookVector * thirdPersonDistance + Vector3.new(0, 3, 0)
-    
-    -- Smooth follow
-    if thirdPersonCurrent == nil then
-        thirdPersonCurrent = idealPos
-        thirdPersonTarget = idealPos
-    end
-    
-    -- Update target
-    thirdPersonTarget = idealPos
-    
-    -- Smoothly interpolate current position toward target
-    thirdPersonCurrent = thirdPersonCurrent + (thirdPersonTarget - thirdPersonCurrent) * thirdPersonSmoothness
-    
-    -- Look at the player's head/upper body
-    local lookTarget = root.Position + Vector3.new(0, 1.5, 0)
-    
-    -- Set the camera
-    Camera.CFrame = CFrame.new(thirdPersonCurrent, lookTarget)
-end
-
--- ================================================
---  TEAM CHECK
--- ================================================
-
-local function IsTeammate(player)
-    if not player or player == LP then return false end
-    
-    if not Cfg.TargetUtility.TeamCheck then
-        return false
-    end
-    
-    if LP.Team and player.Team then
-        if LP.Team == player.Team then
-            return true
-        end
-    end
-    
-    if LP.TeamColor and player.TeamColor then
-        if LP.TeamColor == player.TeamColor then
-            return true
-        end
-    end
-    
-    if Teams then
-        for _, team in pairs(Teams:GetTeams()) do
-            if team:FindFirstChild(LP.Name) and team:FindFirstChild(player.Name) then
-                return true
-            end
-        end
-    end
-    
-    return false
-end
 
 -- ================================================
 --  DRAWING HELPERS
@@ -408,21 +291,6 @@ local function GetVelocity(player)
     return root.AssemblyLinearVelocity
 end
 
-local function GetTargetVelocity(player, targetPart)
-    if not targetPart then return Vector3.new() end
-    local vel = targetPart.AssemblyLinearVelocity
-    if vel.Magnitude < 0.1 then
-        local char = player.Character
-        if char then
-            local hum = char:FindFirstChildOfClass("Humanoid")
-            if hum then
-                vel = hum.MoveDirection * hum.WalkSpeed
-            end
-        end
-    end
-    return vel
-end
-
 local function PredictPosition(targetPos, targetVel, distance)
     local bulletSpeed = 500
     local timeToReach = distance / bulletSpeed
@@ -485,7 +353,6 @@ local function GetBestTarget()
     
     for _, player in pairs(Players:GetPlayers()) do
         if player == LP then continue end
-        if Cfg.Aim.TeamCheck and IsTeammate(player) then continue end
         if not IsAlive(player) then continue end
         
         local aimPart = GetAimPart(player.Character, Cfg.Aim.AimPart)
@@ -586,7 +453,6 @@ local function DoAimbot()
     Camera.CFrame = targetCFrame
     lastTarget = target
     
-    -- Update prediction dot
     if Cfg.AI.ShowPrediction and predictionDot and target.PredictedPos then
         local screen, onScreen = Camera:WorldToScreenPoint(target.PredictedPos)
         if onScreen then
@@ -723,7 +589,6 @@ end
 local function UpdateOffscreenArrows()
     for _, player in ipairs(Players:GetPlayers()) do
         if player == LP then continue end
-        if IsTeammate(player) then continue end
         local arrowGroup = OffscreenArrows[player]
         if not arrowGroup then continue end
         
@@ -790,7 +655,6 @@ end
 local function UpdateESP()
     for _, player in ipairs(Players:GetPlayers()) do
         if player == LP then continue end
-        if IsTeammate(player) then continue end
         
         CreateESPObjects(player)
         local o = ESPs[player]
@@ -956,7 +820,6 @@ end
 --  FOV CIRCLE
 -- ================================================
 local FOVCIRC = C{ Color = WHITE, ZIndex = 10 }
-local CurrentTarget = nil
 
 local function UpdateFOV()
     if Cfg.Aim.ShowFOV and Cfg.Aim.On then
@@ -1005,6 +868,47 @@ local function GetPlayerNames()
     end
     return names
 end
+
+RunService.RenderStepped:Connect(function()
+    if Cfg.Movement.SpeedHack then
+        local char = LP.Character
+        if char then
+            local hum = char:FindFirstChildOfClass("Humanoid")
+            local hrp = char:FindFirstChild("HumanoidRootPart")
+            if hum and hrp and hum.MoveDirection.Magnitude > 0 then
+                hrp.CFrame = hrp.CFrame + (hum.MoveDirection * (Cfg.Movement.SpeedValue / 50))
+            end
+        end
+    end
+
+    if Cfg.TargetUtility.StickyTP and Cfg.TargetUtility.SelectedTarget ~= "None" then
+        local targetPlayer = Players:FindFirstChild(Cfg.TargetUtility.SelectedTarget)
+        if targetPlayer and targetPlayer.Character then
+            local enemyRoot = targetPlayer.Character:FindFirstChild("HumanoidRootPart")
+            local myChar = LP.Character
+            local myRoot = myChar and myChar:FindFirstChild("HumanoidRootPart")
+            if enemyRoot and myRoot then
+                local offsetPos = enemyRoot.CFrame + Vector3.new(0, Cfg.TargetUtility.HeightOffset, 0)
+                myRoot.CFrame = offsetPos
+                myRoot.AssemblyLinearVelocity = Vector3.new(0, 0, 0)
+            end
+        end
+    end
+end)
+
+RunService.Heartbeat:Connect(function()
+    if Cfg.TargetUtility.StickyTP and Cfg.TargetUtility.SelectedTarget ~= "None" then
+        local targetPlayer = Players:FindFirstChild(Cfg.TargetUtility.SelectedTarget)
+        if targetPlayer and targetPlayer.Character then
+            local enemyRoot = targetPlayer.Character:FindFirstChild("HumanoidRootPart")
+            local myChar = LP.Character
+            local myRoot = myChar and myChar:FindFirstChild("HumanoidRootPart")
+            if enemyRoot and myRoot then
+                myRoot.CFrame = enemyRoot.CFrame + Vector3.new(0, Cfg.TargetUtility.HeightOffset, 0)
+            end
+        end
+    end
+end)
 
 -- ================================================
 --  CROSSHAIR SYSTEM
@@ -1302,7 +1206,6 @@ RunService.RenderStepped:Connect(function()
     pcall(UpdateOffscreenArrows)
     pcall(UpdateVisuals)
     pcall(UpdateCrosshair)
-    pcall(UpdateThirdPerson)
     pcall(DoAimbot)
 end)
 
@@ -1731,25 +1634,6 @@ UtilGroup:AddToggle("StickyTP", { Text = "Enable TP", Default = Cfg.TargetUtilit
 Toggles.StickyTP:OnChanged(function(v) Cfg.TargetUtility.StickyTP = v end)
 
 -- =============================================
--- TEAM CHECK IN UTILS TAB
--- =============================================
-local TeamGroup = Tabs.Util:AddRightGroupbox("Team Settings")
-
-TeamGroup:AddToggle("TeamCheckToggle", { 
-    Text = "Enable Team Check", 
-    Default = Cfg.TargetUtility.TeamCheck,
-    Tooltip = "ON: Skips teammates | OFF: Aims at everyone"
-})
-Toggles.TeamCheckToggle:OnChanged(function(v)
-    Cfg.TargetUtility.TeamCheck = v
-    StarterGui:SetCore("SendNotification", {
-        Title = "Raven Cheats",
-        Text = v and "🦅 Team Check ENABLED - Skipping teammates" or "🦅 Team Check DISABLED - Aiming at everyone",
-        Duration = 2,
-    })
-end)
-
--- =============================================
 -- UNLOCK ALL BUTTON
 -- =============================================
 local UnlockGroup = Tabs.Util:AddRightGroupbox("Unlock All")
@@ -1797,7 +1681,7 @@ Toggles.NoclipToggle:OnChanged(function(v)
 end)
 
 -- =============================================
--- VISUALS TAB (WITH FIXED THIRD PERSON)
+-- VISUALS TAB
 -- =============================================
 local VisGroup = Tabs.Vis:AddLeftGroupbox("Environment & Crosshair")
 
@@ -1806,48 +1690,6 @@ Toggles.FullBright:OnChanged(function(v) Cfg.Visuals.FullBright = v end)
 
 VisGroup:AddToggle("NoFog", { Text = "No Fog", Default = Cfg.Visuals.NoFog })
 Toggles.NoFog:OnChanged(function(v) Cfg.Visuals.NoFog = v end)
-
-VisGroup:AddToggle("ThirdPerson", { 
-    Text = "Third Person", 
-    Default = Cfg.Visuals.ThirdPerson,
-    Tooltip = "Toggle third person camera"
-})
-Toggles.ThirdPerson:OnChanged(function(v)
-    Cfg.Visuals.ThirdPerson = v
-    thirdPersonEnabled = v
-    thirdPersonCurrent = nil
-    if v then
-        ToggleThirdPerson()
-    else
-        ToggleThirdPerson()
-    end
-end)
-
-VisGroup:AddSlider("ThirdPersonDist", { 
-    Text = "Distance", 
-    Default = Cfg.Visuals.ThirdPersonDistance, 
-    Min = 3, 
-    Max = 30, 
-    Rounding = 1,
-    Tooltip = "How far behind the player the camera sits"
-})
-Options.ThirdPersonDist:OnChanged(function(v)
-    Cfg.Visuals.ThirdPersonDistance = v
-    thirdPersonDistance = v
-end)
-
-VisGroup:AddSlider("ThirdPersonSmooth", { 
-    Text = "Smoothness", 
-    Default = Cfg.Visuals.ThirdPersonSmoothness, 
-    Min = 0.01, 
-    Max = 0.5, 
-    Rounding = 2,
-    Tooltip = "How smoothly the camera follows (higher = faster)"
-})
-Options.ThirdPersonSmooth:OnChanged(function(v)
-    Cfg.Visuals.ThirdPersonSmoothness = v
-    thirdPersonSmoothness = v
-end)
 
 VisGroup:AddToggle("CrosshairToggle", { Text = "Crosshair", Default = Cfg.Visuals.Crosshair })
 Toggles.CrosshairToggle:OnChanged(function(v) Cfg.Visuals.Crosshair = v end)
@@ -1878,6 +1720,4 @@ SaveManager:LoadAutoloadConfig()
 -- =============================================
 print("[Raven Cheats] Loaded successfully!")
 print("[Raven Cheats] Press Right Shift to toggle menu.")
-print("[Raven Cheats] Team Check: " .. (Cfg.TargetUtility.TeamCheck and "ON (skips teammates)" or "OFF (aims at everyone)"))
-print("[Raven Cheats] Third Person: " .. (Cfg.Visuals.ThirdPerson and "ON" or "OFF"))
 print("[Raven Cheats] AI Tracking: " .. (Cfg.AI.Humanize and "Humanized" or "Standard"))
