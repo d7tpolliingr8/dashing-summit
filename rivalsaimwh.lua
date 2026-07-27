@@ -1,7 +1,7 @@
 -- // Raven Cheats | Solara Compatible | OPTIMIZED
 -- // AI Tracking Aimbot | Red/Black/Yellow Theme | Unlock All
 -- // Discord: https://discord.gg/FnKfhZ7Fb6
--- // FIXED: Flight no longer toggles on/off constantly
+-- // FIXED: Menu opens with Right Shift
 
 -- ================================================
 --  STUBS
@@ -184,7 +184,7 @@ local aimKeyHeld = false
 
 -- Optimization: Throttle ESP updates
 local espUpdateCounter = 0
-local espUpdateRate = 3 -- Update every 3 frames
+local espUpdateRate = 3
 
 -- ================================================
 --  DRAWING HELPERS
@@ -437,7 +437,6 @@ local function DoAimbot()
         return
     end
     
-    -- Throttle aim updates to every 2 frames
     aimUpdateCounter = aimUpdateCounter + 1
     if aimUpdateCounter < 2 then return end
     aimUpdateCounter = 0
@@ -512,7 +511,7 @@ local function UpdateFOV()
 end
 
 -- ================================================
---  ESP SYSTEM (Optimized - No per-frame cleanup)
+--  ESP SYSTEM (Optimized)
 -- ================================================
 local ESPs = {}
 local OffscreenArrows = {}
@@ -707,7 +706,6 @@ local function UpdateESP()
         return
     end
     
-    -- Throttle ESP updates to every 3 frames
     espUpdateCounter = espUpdateCounter + 1
     if espUpdateCounter < espUpdateRate then return end
     espUpdateCounter = 0
@@ -875,22 +873,27 @@ local function UpdateESP()
 end
 
 -- ================================================
---  KEY HANDLING
+--  KEY HANDLING (FIXED: Menu opens with Right Shift)
 -- ================================================
 UserInputService.InputBegan:Connect(function(input, gameProcessed)
     if gameProcessed then return end
     
+    -- Aim key (Right Mouse Button)
     if input.UserInputType == Enum.UserInputType.MouseButton2 then
         aimKeyHeld = true
     end
     
+    -- Menu key (Right Shift)
     if input.KeyCode == Enum.KeyCode.RightShift then
+        print("[Raven] Right Shift pressed - Toggling menu")
         if Library then
             Library:Toggle()
+        else
+            print("[Raven] Library not loaded!")
         end
     end
     
-    -- Flight keybind (F by default)
+    -- Flight keybind (F)
     if input.KeyCode == Cfg.Movement.FlyKeybind then
         ToggleFly()
     end
@@ -915,31 +918,20 @@ UserInputService.JumpRequest:Connect(function()
     end
 end)
 
--- FLIGHT SYSTEM (FIXED - No toggle spam)
+-- FLIGHT SYSTEM
 local flyConnection = nil
 local flyEnabled = false
 
 local function StartFly()
-    if flyConnection then 
-        print("[Raven] Flight already running")
-        return 
-    end
+    if flyConnection then return end
     local char = LP.Character
-    if not char then 
-        print("[Raven] No character for flight")
-        return 
-    end
+    if not char then return end
     
     local root = char:FindFirstChild("HumanoidRootPart")
-    if not root then 
-        print("[Raven] No HumanoidRootPart for flight")
-        return 
-    end
+    if not root then return end
     
     local humanoid = char:FindFirstChildOfClass("Humanoid")
-    if humanoid then 
-        humanoid.PlatformStand = true 
-    end
+    if humanoid then humanoid.PlatformStand = true end
     
     flyConnection = RunService:BindToRenderStep("FlySystem", Enum.RenderPriority.Last.Value, function()
         if not flyEnabled then
@@ -980,8 +972,6 @@ local function StartFly()
             root.Velocity = Vector3.new(0, 0, 0)
         end
     end)
-    
-    print("[Raven] Flight started")
 end
 
 local function StopFly()
@@ -992,15 +982,10 @@ local function StopFly()
     local char = LP.Character
     if char then
         local humanoid = char:FindFirstChildOfClass("Humanoid")
-        if humanoid then 
-            humanoid.PlatformStand = false 
-        end
+        if humanoid then humanoid.PlatformStand = false end
         local root = char:FindFirstChild("HumanoidRootPart")
-        if root then 
-            root.Velocity = Vector3.new(0, 0, 0) 
-        end
+        if root then root.Velocity = Vector3.new(0, 0, 0) end
     end
-    print("[Raven] Flight stopped")
 end
 
 local function ToggleFly()
@@ -1161,7 +1146,7 @@ RunService.Heartbeat:Connect(function()
 end)
 
 -- ================================================
---  CROSSHAIR SYSTEM (Optimized)
+--  CROSSHAIR SYSTEM
 -- ================================================
 local CrosshairLines = {}
 local CenterDot = nil
@@ -1196,7 +1181,6 @@ local function UpdateCrosshair()
         return
     end
     
-    -- Update crosshair every 2 frames
     crosshairUpdateCounter = crosshairUpdateCounter + 1
     if crosshairUpdateCounter < 2 then return end
     crosshairUpdateCounter = 0
@@ -1467,7 +1451,7 @@ Players.PlayerAdded:Connect(OnPlayerAdded)
 Players.PlayerRemoving:Connect(DestroyESP)
 
 -- ================================================
---  RENDER LOOPS (Optimized - Throttled)
+--  RENDER LOOPS
 -- ================================================
 local frameCount = 0
 
@@ -1475,16 +1459,10 @@ RunService.RenderStepped:Connect(function()
     Camera = Workspace.CurrentCamera
     frameCount = frameCount + 1
     
-    -- Update FOV every frame (lightweight)
     pcall(UpdateFOV)
-    
-    -- Update crosshair every 2 frames
     pcall(UpdateCrosshair)
-    
-    -- Update aimbot every 2 frames
     pcall(DoAimbot)
     
-    -- Update ESP every 3 frames (heavy)
     if frameCount % 3 == 0 then
         pcall(UpdateESP)
         pcall(UpdateOffscreenArrows)
@@ -1778,11 +1756,9 @@ local MoveGroup = Tabs.Move:AddLeftGroupbox("Locomotion Controls")
 
 MoveGroup:AddToggle("FlyToggle", { Text = "Flight", Default = Cfg.Movement.Fly })
 Toggles.FlyToggle:OnChanged(function(v)
-    if v then
-        if not flyEnabled then ToggleFly() end
-    else
-        if flyEnabled then ToggleFly() end
-    end
+    Cfg.Movement.Fly = v
+    if v and not flyEnabled then ToggleFly() end
+    if not v and flyEnabled then ToggleFly() end
 end)
 Toggles.FlyToggle:AddKeyPicker("FlyKeybindPicker", { Default = "F", Text = "Flight Hotkey", NoUI = false })
 Options.FlyKeybindPicker:OnChanged(function(v)
@@ -1801,7 +1777,8 @@ Options.SpeedVal:OnChanged(function(v) Cfg.Movement.SpeedValue = v end)
 MoveGroup:AddToggle("NoclipToggle", { Text = "Noclip", Default = Cfg.Movement.Noclip })
 Toggles.NoclipToggle:OnChanged(function(v)
     Cfg.Movement.Noclip = v
-    if v then ToggleNoclip() else ToggleNoclip() end
+    if v and not noclipEnabled then ToggleNoclip() end
+    if not v and noclipEnabled then ToggleNoclip() end
 end)
 
 MoveGroup:AddToggle("InfiniteJump", { Text = "Infinite Jump", Default = Cfg.Movement.InfiniteJump })
