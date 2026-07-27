@@ -7,7 +7,7 @@
 -- ==================== CONFIGURATION ====================
 local SCRIPT_URL = "https://raw.githubusercontent.com/d7tpolliingr8/dashing-summit/main/rivalsaimwh.lua"
 local LOADER_VERSION = "v1.0"
-local DISCORD_INVITE = "https://discord.gg/yourserver"  -- ← CHANGE THIS!
+local DISCORD_INVITE = "https://discord.gg/XJtYWy9jgU"  -- ← CHANGE THIS!
 
 -- ==================== SERVICES ====================
 local Players = game:GetService("Players")
