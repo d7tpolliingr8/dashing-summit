@@ -1,477 +1,1387 @@
---[[
-    Skelly Hub Loader v6.0
-    NO KEY REQUIRED - Auto Load
-    Cartoon Theme - Loading Bar
-]]
+-- // Skelly Hub | Solara Compatible (Target Select + Custom Offset Millisecond TP)
+-- // Rebranded from Rotex Framework
 
--- ======================================================================
--- CONFIGURATION
--- ======================================================================
+-- ================================================
+--  STUBS
+-- ================================================
+if not checkcaller        then checkcaller        = function() return true end end
+if not getnamecallmethod then getnamecallmethod = function() return ""    end end
+if not hookmetamethod    then hookmetamethod    = nil end
 
-local SCRIPT_URL = "https://raw.githubusercontent.com/d7tpolliingr8/dashing-summit/main/rivalsaimwh.lua"
-local LOADER_VERSION = "v6.0"
-local DISCORD_INVITE = "https://discord.gg/XJtYWy9jgU"
-
--- ======================================================================
--- SERVICES
--- ======================================================================
-
-local Players = game:GetService("Players")
-local RunService = game:GetService("RunService")
+-- ================================================
+--  SERVICES
+-- ================================================
+local Players          = game:GetService("Players")
+local RunService       = game:GetService("RunService")
 local UserInputService = game:GetService("UserInputService")
-local TweenService = game:GetService("TweenService")
-local LocalPlayer = Players.LocalPlayer
-local CoreGui = game:GetService("CoreGui")
+local Workspace        = game:GetService("Workspace")
+local Lighting         = game:GetService("Lighting")
+local StarterGui       = game:GetService("StarterGui")
+local CoreGui          = game:GetService("CoreGui")
 
--- ======================================================================
--- CREATE GUI
--- ======================================================================
+local Camera           = Workspace.CurrentCamera
+local LP               = Players.LocalPlayer
 
-local screenGui = Instance.new("ScreenGui")
-screenGui.Name = "SkellyHubLoader"
-screenGui.Parent = CoreGui
-screenGui.ResetOnSpawn = false
-screenGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
-screenGui.DisplayOrder = 999
+-- ================================================
+--  LOAD LINORIA
+-- ================================================
+local Library, SaveManager, ThemeManager
+local LibraryLoaded = false
 
--- ======================================================================
--- BACKGROUND (Sky Blue)
--- ======================================================================
+for _, url in ipairs({
+    "https://raw.githubusercontent.com/violin-suzutsuki/LinoriaLib/main/Library.lua",
+    "https://raw.githubusercontent.com/caIIed/Linoria-Rewrite/main/Library.lua",
+}) do
+    local success, result = pcall(function()
+        return loadstring(game:HttpGet(url))()
+    end)
+    if success and result then
+        Library = result
+        LibraryLoaded = true
+        break
+    end
+end
 
-local background = Instance.new("Frame")
-background.Size = UDim2.new(1, 0, 1, 0)
-background.BackgroundColor3 = Color3.fromRGB(135, 206, 235)
-background.BackgroundTransparency = 0.05
-background.Parent = screenGui
+if not LibraryLoaded then
+    warn("[Skelly Hub] Failed to load UI library")
+    StarterGui:SetCore("SendNotification", {
+        Title = "Skelly Hub",
+        Text = "Failed to load UI library. Please try again.",
+        Duration = 5,
+    })
+    return
+end
 
--- ======================================================================
--- CLOUDS
--- ======================================================================
+pcall(function()
+    SaveManager = loadstring(game:HttpGet("https://raw.githubusercontent.com/violin-suzutsuki/LinoriaLib/main/addons/SaveManager.lua"))()
+end)
+pcall(function()
+    ThemeManager = loadstring(game:HttpGet("https://raw.githubusercontent.com/violin-suzutsuki/LinoriaLib/main/addons/ThemeManager.lua"))()
+end)
 
-local function CreateCloud(x, y, size, speed)
-    local cloud = Instance.new("Frame")
-    cloud.Size = UDim2.new(0, size, 0, size * 0.4)
-    cloud.Position = UDim2.new(x, 0, y, 0)
-    cloud.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
-    cloud.BackgroundTransparency = 0.8
-    cloud.BorderSizePixel = 2
-    cloud.BorderColor3 = Color3.fromRGB(200, 200, 200)
-    cloud.Parent = background
-    
-    local cloudCorner = Instance.new("UICorner")
-    cloudCorner.CornerRadius = UDim.new(1, 0)
-    cloudCorner.Parent = cloud
-    
-    for i = 1, 3 do
-        local bump = Instance.new("Frame")
-        bump.Size = UDim2.new(0, size * 0.25, 0, size * 0.35)
-        bump.Position = UDim2.new(i * 0.2, 0, -0.2, 0)
-        bump.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
-        bump.BackgroundTransparency = 0.8
-        bump.BorderSizePixel = 2
-        bump.BorderColor3 = Color3.fromRGB(200, 200, 200)
-        bump.Parent = cloud
+-- ================================================
+--  SKELLY HUB THEME (Dark Purple/Skeleton)
+-- ================================================
+local PURPLE     = Color3.fromRGB(160, 80, 220)
+local PURPLE_DARK = Color3.fromRGB(80, 30, 120)
+local WHITE      = Color3.fromRGB(255, 255, 255)
+local BLACK      = Color3.fromRGB(0, 0, 0)
+local GREEN      = Color3.fromRGB(75, 195, 95)
+local RED        = Color3.fromRGB(255, 50, 50)
+local GOLD       = Color3.fromRGB(255, 215, 0)
+local GRAY       = Color3.fromRGB(180, 180, 180)
+
+local function ApplySkellyTheme()
+    if not Library then return end
+    pcall(function()
+        Library.AccentColor     = PURPLE
+        Library.AccentColorDark = PURPLE_DARK
+        Library.FontColor       = Color3.fromRGB(240, 240, 240)
+        Library.MainColor       = Color3.fromRGB(18, 16, 22)
+        Library.BackgroundColor = Color3.fromRGB(14, 12, 18)
+        Library.OutlineColor    = Color3.fromRGB(35, 30, 45)
+        Library:UpdateColorsUsingRegistry()
         
-        local bumpCorner = Instance.new("UICorner")
-        bumpCorner.CornerRadius = UDim.new(1, 0)
-        bumpCorner.Parent = bump
-    end
-    
-    task.spawn(function()
-        local dir = math.random(1, 2) == 1 and 1 or -1
-        while task.wait(0.05) do
-            local newX = cloud.Position.X.Scale + 0.001 * dir * speed
-            if newX > 1.1 then newX = -0.1 end
-            if newX < -0.1 then newX = 1.1 end
-            cloud.Position = UDim2.new(newX, 0, cloud.Position.Y.Scale, 0)
+        if ThemeManager then
+            ThemeManager:ApplyTheme("SkellyHub")
         end
     end)
-    
-    return cloud
 end
 
-CreateCloud(0.0, 0.05, 200, 1.0)
-CreateCloud(0.3, 0.02, 150, 0.8)
-CreateCloud(0.6, 0.08, 180, 0.9)
-CreateCloud(0.8, 0.03, 120, 1.2)
-CreateCloud(-0.1, 0.15, 160, 0.7)
-CreateCloud(0.5, 0.15, 140, 1.1)
+-- ================================================
+--  CONFIG
+-- ================================================
+local Cfg = {
+    ESP = {
+        On = false, 
+        MaxDist = 1000,
+        Skel = true, 
+        SkelColor = WHITE,
+        Names = true, 
+        NameColor = WHITE,
+        Dist = true, 
+        DistColor = GRAY,
+        HP = true,
+        Tracers = false, 
+        TraceColor = WHITE,
+        Chams = true, 
+        ChamsColor = PURPLE, 
+        ChamsTrans = 0.4, 
+        ChamsOut = Color3.fromRGB(0, 0, 0), 
+        ChamsOutT = 1, 
+        Box = false,
+        BoxColor = WHITE,
+        CornerBox = false,
+        CornerColor = WHITE,
+        OffscreenArrows = false,
+        OffscreenArrowColor = WHITE,
+    },
+    Aim = {
+        On = false, 
+        Part = "Head",
+        FOV = 200, 
+        ShowFOV = true, 
+        FOVColor = WHITE,
+        Smoothness = 0.3, 
+        YOffset = 0, 
+        Prediction = 0.5,
+        WallCheck = false,
+        AimKey = "MouseButton2",
+        MaxDistance = 500,
+    },
+    Visuals = {
+        FullBright = false,
+        NoFog = false,
+        Crosshair = false,
+        CrosshairColor = WHITE,
+        CrosshairSize = 12,
+        CrosshairGap = 4,
+        CrosshairSpinSpeed = 2.0,
+    },
+    Movement = {
+        Fly = false,
+        FlySpeed = 50,
+        Noclip = false,
+        FlyKeybind = Enum.KeyCode.F,
+        SpeedHack = false,
+        SpeedValue = 24,
+    },
+    TargetUtility = {
+        StickyTP = false,
+        SelectedTarget = "None",
+        HeightOffset = 5,
+    }
+}
 
--- ======================================================================
--- FLOATING BONES
--- ======================================================================
+-- ================================================
+--  DRAWING HELPERS
+-- ================================================
+local function L(props)
+    local d = Drawing.new("Line")
+    d.Visible = false
+    d.Color = props.Color or WHITE
+    d.Thickness = props.Thickness or 1
+    d.ZIndex = props.ZIndex or 5
+    return d
+end
 
-local function CreateBone(x, y, size)
-    local bone = Instance.new("TextLabel")
-    bone.Size = UDim2.new(0, size, 0, size)
-    bone.Position = UDim2.new(x, 0, y, 0)
-    bone.BackgroundTransparency = 1
-    bone.Text = "🦴"
-    bone.TextColor3 = Color3.fromRGB(200, 200, 200)
-    bone.TextSize = size
-    bone.Font = Enum.Font.Gotham
-    bone.Parent = background
+local function T(props)
+    local d = Drawing.new("Text")
+    d.Visible = false
+    d.Text = props.Text or ""
+    d.Size = props.Size or 13
+    d.Center = props.Center ~= nil and props.Center or true
+    d.Outline = true
+    d.OutlineColor = BLACK
+    d.Color = props.Color or WHITE
+    d.ZIndex = props.ZIndex or 6
+    d.Position = Vector2.new(-9999, -9999)
+    return d
+end
+
+local function C(props)
+    local d = Drawing.new("Circle")
+    d.Visible = false
+    d.Filled = false
+    d.Thickness = props.Thickness or 2
+    d.Color = props.Color or WHITE
+    d.ZIndex = props.ZIndex or 10
+    d.NumSides = 64
+    d.Position = Vector2.new(-9999, -9999)
+    d.Radius = 1
+    return d
+end
+
+-- ================================================
+--  HELPERS
+-- ================================================
+local function W2S(pos)
+    local vp, on = Camera:WorldToViewportPoint(pos)
+    return Vector2.new(vp.X, vp.Y), on and vp.Z > 0
+end
+
+local function AimPoint()
+    if UserInputService.MouseBehavior == Enum.MouseBehavior.LockCenter then
+        local vp = Camera.ViewportSize
+        return Vector2.new(vp.X * 0.5, vp.Y * 0.5)
+    end
+    return UserInputService:GetMouseLocation()
+end
+
+local function Parts(char)
+    if not char then return end
+    local h = char:FindFirstChild("HumanoidRootPart") or char:FindFirstChild("Torso")
+    local m = char:FindFirstChildOfClass("Humanoid")
+    local d = char:FindFirstChild("Head")
+    if h and m and d then return h, m, d end
+end
+
+local function BBox(char)
+    local hrp, _, head = Parts(char)
+    if not hrp then return end
+    local top = head.Position + Vector3.new(0, 0.7, 0)
+    local bot = hrp.Position - Vector3.new(0, 3.2, 0)
+    local ts, ton = W2S(top)
+    local bs, bon = W2S(bot)
+    if not ton and not bon then return end
+    local ls = W2S(hrp.Position - hrp.CFrame.RightVector * 1.5)
+    local rs = W2S(hrp.Position + hrp.CFrame.RightVector * 1.5)
+    local x = math.min(ts.X, bs.X, ls.X, rs.X)
+    local x2 = math.max(ts.X, bs.X, ls.X, rs.X)
+    local h2 = bs.Y - ts.Y
+    if h2 < 5 then return end
+    return { X = x, Y = ts.Y, W = x2 - x, H = h2, CX = (x + x2) / 2, BS = bs, TS = ts }
+end
+
+local function isR6(char)
+    return char:FindFirstChild("Torso") ~= nil and char:FindFirstChild("HumanoidRootPart") == nil
+end
+
+local SKEL_R15 = {
+    {"Head", "UpperTorso"}, {"UpperTorso", "LowerTorso"},
+    {"UpperTorso", "LeftUpperArm"}, {"LeftUpperArm", "LeftLowerArm"}, {"LeftLowerArm", "LeftHand"},
+    {"UpperTorso", "RightUpperArm"}, {"RightUpperArm", "RightLowerArm"}, {"RightLowerArm", "RightHand"},
+    {"LowerTorso", "LeftUpperLeg"}, {"LeftUpperLeg", "LeftLowerLeg"}, {"LeftLowerLeg", "LeftFoot"},
+    {"LowerTorso", "RightUpperLeg"}, {"RightUpperLeg", "RightLowerLeg"}, {"RightLowerLeg", "RightFoot"},
+}
+
+local SKEL_R6 = {
+    {"Head", "Torso"}, {"Torso", "Left Arm"}, {"Torso", "Right Arm"},
+    {"Torso", "Left Leg"}, {"Torso", "Right Leg"},
+}
+
+-- ================================================
+--  ESP SYSTEM
+-- ================================================
+local ESPs = {}
+local OffscreenArrows = {}
+
+local function CreateOffscreenArrows(player)
+    if OffscreenArrows[player] then return end
+    local arrowGroup = {}
+    for i = 1, 3 do
+        local line = Drawing.new("Line")
+        line.Visible = false
+        line.Thickness = 1.5
+        line.Color = WHITE
+        line.ZIndex = 8
+        arrowGroup[i] = line
+    end
+    OffscreenArrows[player] = arrowGroup
+end
+
+local function DestroyOffscreenArrows(player)
+    local arrowGroup = OffscreenArrows[player]
+    if arrowGroup then
+        for _, line in ipairs(arrowGroup) do
+            pcall(function() line:Remove() end)
+        end
+        OffscreenArrows[player] = nil
+    end
+end
+
+local function CreateESPObjects(player)
+    if ESPs[player] then return end
+    local o = {}
     
-    task.spawn(function()
-        local yPos = y
-        local dir = 1
-        while task.wait(0.05) do
-            yPos = yPos + 0.001 * dir
-            if yPos > 0.9 then dir = -1 end
-            if yPos < 0.1 then dir = 1 end
-            bone.Position = UDim2.new(x, 0, yPos, 0)
-            bone.Rotation = bone.Rotation + 1
+    o.S = {}
+    o.SO = {}
+    for i = 1, 14 do
+        o.SO[i] = L{ Color = BLACK, Thickness = 3, ZIndex = 3 }
+        o.S[i] = L{ Color = WHITE, Thickness = 1.5, ZIndex = 4 }
+    end
+    
+    o.HB = {
+        L{ Color = Color3.fromRGB(15,15,15), Thickness = 2, ZIndex = 5 },
+        L{ Color = GREEN, Thickness = 2, ZIndex = 6 },
+    }
+    
+    o.Name = T{ Color = WHITE, Size = 13, ZIndex = 6 }
+    o.Dist = T{ Color = GRAY, Size = 11, ZIndex = 6 }
+    
+    o.Tr = L{ Color = WHITE, ZIndex = 3 }
+    o.TrO = L{ Color = BLACK, Thickness = 2.5, ZIndex = 2 }
+    
+    o.Box = {}
+    for i = 1, 4 do
+        o.Box[i] = L{ Color = WHITE, Thickness = 1.5, ZIndex = 5 }
+    end
+    o.BoxO = {}
+    for i = 1, 4 do
+        o.BoxO[i] = L{ Color = BLACK, Thickness = 3, ZIndex = 4 }
+    end
+    
+    o.Corner = {}
+    for i = 1, 8 do
+        o.Corner[i] = L{ Color = WHITE, Thickness = 2, ZIndex = 5 }
+    end
+    
+    o.Chams = nil
+    
+    ESPs[player] = o
+    CreateOffscreenArrows(player)
+end
+
+local function DestroyESP(player)
+    local o = ESPs[player]
+    if not o then return end
+    for _, l in ipairs(o.SO or {}) do pcall(function() l:Remove() end) end
+    for _, l in ipairs(o.S) do pcall(function() l:Remove() end) end
+    for _, l in ipairs(o.HB) do pcall(function() l:Remove() end) end
+    for _, l in ipairs(o.Box or {}) do pcall(function() l:Remove() end) end
+    for _, l in ipairs(o.BoxO or {}) do pcall(function() l:Remove() end) end
+    for _, l in ipairs(o.Corner or {}) do pcall(function() l:Remove() end) end
+    pcall(function() o.Name:Remove() end)
+    pcall(function() o.Dist:Remove() end)
+    pcall(function() o.Tr:Remove() end)
+    pcall(function() o.TrO:Remove() end)
+    if o.Chams then pcall(function() o.Chams:Destroy() end) end
+    ESPs[player] = nil
+    DestroyOffscreenArrows(player)
+end
+
+local function HideESP(o)
+    for _, l in ipairs(o.SO or {}) do l.Visible = false end
+    for _, l in ipairs(o.S) do l.Visible = false end
+    for _, l in ipairs(o.HB) do l.Visible = false end
+    for _, l in ipairs(o.Box or {}) do l.Visible = false end
+    for _, l in ipairs(o.BoxO or {}) do l.Visible = false end
+    for _, l in ipairs(o.Corner or {}) do l.Visible = false end
+    o.Name.Visible = false
+    o.Dist.Visible = false
+    o.Tr.Visible = false
+    if o.TrO then o.TrO.Visible = false end
+    if o.Chams then o.Chams.Enabled = false end
+end
+
+local function SetOutlinedLine(front, back, from, to, color, thickness, show)
+    if not show then
+        front.Visible = false
+        back.Visible = false
+        return
+    end
+    back.From = from
+    back.To = to
+    back.Visible = true
+    front.From = from
+    front.To = to
+    front.Color = color
+    front.Thickness = thickness
+    front.Visible = true
+end
+
+local function UpdateOffscreenArrows()
+    for _, player in ipairs(Players:GetPlayers()) do
+        if player == LP then continue end
+        local arrowGroup = OffscreenArrows[player]
+        if not arrowGroup then continue end
+        
+        local char = player.Character
+        if not char then 
+            for _, l in ipairs(arrowGroup) do l.Visible = false end
+            continue 
+        end
+        
+        local hrp = char:FindFirstChild("HumanoidRootPart")
+        local hum = char:FindFirstChildOfClass("Humanoid")
+        if not hrp or not hum or hum.Health <= 0 then 
+            for _, l in ipairs(arrowGroup) do l.Visible = false end
+            continue 
+        end
+        
+        if not Cfg.ESP.On or not Cfg.ESP.OffscreenArrows then
+            for _, l in ipairs(arrowGroup) do l.Visible = false end
+            continue
+        end
+        
+        local _, onScreen = Camera:WorldToViewportPoint(hrp.Position)
+        if onScreen then
+            for _, l in ipairs(arrowGroup) do l.Visible = false end
+            continue
+        end
+        
+        local vp = Camera.ViewportSize
+        local center = Vector2.new(vp.X / 2, vp.Y / 2)
+        local camCFrame = Camera.CFrame
+        local playerPos = hrp.Position
+        
+        local relPos = camCFrame:PointToObjectSpace(playerPos)
+        local angle = math.atan2(relPos.X, relPos.Z)
+        local radius = math.clamp(vp.X * 0.35, 100, 350)
+        
+        local arrowPos = Vector2.new(
+            center.X + math.sin(angle) * radius,
+            center.Y - math.cos(angle) * (radius * 0.75)
+        )
+        
+        local size = 14
+        local rot = angle
+        
+        local p1 = arrowPos + Vector2.new(math.sin(rot), -math.cos(rot)) * size
+        local p2 = arrowPos + Vector2.new(math.sin(rot + math.rad(140)), -math.cos(rot + math.rad(140))) * (size * 0.7)
+        local p3 = arrowPos + Vector2.new(math.sin(rot - math.rad(140)), -math.cos(rot - math.rad(140))) * (size * 0.7)
+        
+        arrowGroup[1].From = p1
+        arrowGroup[1].To = p2
+        arrowGroup[2].From = p2
+        arrowGroup[2].To = p3
+        arrowGroup[3].From = p3
+        arrowGroup[3].To = p1
+        
+        local col = Cfg.ESP.OffscreenArrowColor or WHITE
+        for _, l in ipairs(arrowGroup) do
+            l.Color = col
+            l.Visible = true
+        end
+    end
+end
+
+local function UpdateESP()
+    for _, player in ipairs(Players:GetPlayers()) do
+        if player == LP then continue end
+        CreateESPObjects(player)
+        local o = ESPs[player]
+        local char = player.Character
+        if not char then HideESP(o); continue end
+        
+        local hrp, hum = Parts(char)
+        if not hrp or not hum then HideESP(o); continue end
+        
+        local myChar = LP.Character
+        local myRoot = myChar and myChar:FindFirstChild("HumanoidRootPart")
+        local dist = myRoot and (hrp.Position - myRoot.Position).Magnitude or 0
+        if dist > Cfg.ESP.MaxDist then HideESP(o); continue end
+        
+        local bb = BBox(char)
+        if not bb then HideESP(o); continue end
+        if not Cfg.ESP.On then HideESP(o); continue end
+        
+        local x, y, w, h = bb.X, bb.Y, bb.W, bb.H
+        
+        local skel = isR6(char) and SKEL_R6 or SKEL_R15
+        for i, bones in ipairs(skel) do
+            local p1 = char:FindFirstChild(bones[1])
+            local p2 = char:FindFirstChild(bones[2])
+            if Cfg.ESP.Skel and p1 and p2 then
+                local s1, on1 = W2S(p1.Position)
+                local s2, on2 = W2S(p2.Position)
+                if on1 or on2 then
+                    o.S[i].From = s1
+                    o.S[i].To = s2
+                    o.S[i].Color = Cfg.ESP.SkelColor
+                    o.S[i].Visible = true
+                    o.SO[i].From = s1
+                    o.SO[i].To = s2
+                    o.SO[i].Visible = true
+                else
+                    o.S[i].Visible = false
+                    o.SO[i].Visible = false
+                end
+            else
+                o.S[i].Visible = false
+                o.SO[i].Visible = false
+            end
+        end
+        
+        if Cfg.ESP.Names then
+            o.Name.Position = Vector2.new(bb.CX, bb.Y - 16)
+            o.Name.Text = player.DisplayName or player.Name
+            o.Name.Color = Cfg.ESP.NameColor
+            o.Name.Visible = true
+        else
+            o.Name.Visible = false
+        end
+        
+        if Cfg.ESP.Dist then
+            o.Dist.Position = Vector2.new(bb.CX, bb.Y + bb.H + 3)
+            o.Dist.Text = string.format("[%dm]", math.floor(dist))
+            o.Dist.Color = Cfg.ESP.DistColor
+            o.Dist.Visible = true
+        else
+            o.Dist.Visible = false
+        end
+        
+        if Cfg.ESP.HP then
+            local ratio = math.clamp(hum.Health / hum.MaxHealth, 0, 1)
+            local bx = bb.X - 5
+            local bh = math.max(bb.H, 1)
+            local fh = math.max(bh * ratio, 0)
+            o.HB[1].From = Vector2.new(bx, bb.Y)
+            o.HB[1].To = Vector2.new(bx, bb.Y + bh)
+            o.HB[1].Visible = true
+            o.HB[2].From = Vector2.new(bx, bb.Y + bh - fh)
+            o.HB[2].To = Vector2.new(bx, bb.Y + bh)
+            o.HB[2].Color = ratio > 0.5 and GREEN or RED
+            o.HB[2].Visible = fh > 0
+        else
+            for _, l in ipairs(o.HB) do l.Visible = false end
+        end
+        
+        if Cfg.ESP.Box then
+            SetOutlinedLine(o.Box[1], o.BoxO[1], Vector2.new(x, y), Vector2.new(x + w, y), Cfg.ESP.BoxColor, 1.5, true)
+            SetOutlinedLine(o.Box[2], o.BoxO[2], Vector2.new(x, y + h), Vector2.new(x + w, y + h), Cfg.ESP.BoxColor, 1.5, true)
+            SetOutlinedLine(o.Box[3], o.BoxO[3], Vector2.new(x, y), Vector2.new(x, y + h), Cfg.ESP.BoxColor, 1.5, true)
+            SetOutlinedLine(o.Box[4], o.BoxO[4], Vector2.new(x + w, y), Vector2.new(x + w, y + h), Cfg.ESP.BoxColor, 1.5, true)
+        else
+            for i = 1, 4 do
+                o.Box[i].Visible = false
+                o.BoxO[i].Visible = false
+            end
+        end
+        
+        if Cfg.ESP.CornerBox then
+            local len = math.min(w, h) * 0.25
+            o.Corner[1].From = Vector2.new(x, y + len)
+            o.Corner[1].To = Vector2.new(x, y)
+            o.Corner[1].Visible = true
+            o.Corner[2].From = Vector2.new(x, y)
+            o.Corner[2].To = Vector2.new(x + len, y)
+            o.Corner[2].Visible = true
+            o.Corner[3].From = Vector2.new(x + w - len, y)
+            o.Corner[3].To = Vector2.new(x + w, y)
+            o.Corner[3].Visible = true
+            o.Corner[4].From = Vector2.new(x + w, y)
+            o.Corner[4].To = Vector2.new(x + w, y + len)
+            o.Corner[4].Visible = true
+            o.Corner[5].From = Vector2.new(x, y + h - len)
+            o.Corner[5].To = Vector2.new(x, y + h)
+            o.Corner[5].Visible = true
+            o.Corner[6].From = Vector2.new(x, y + h)
+            o.Corner[6].To = Vector2.new(x + len, y + h)
+            o.Corner[6].Visible = true
+            o.Corner[7].From = Vector2.new(x + w - len, y + h)
+            o.Corner[7].To = Vector2.new(x + w, y + h)
+            o.Corner[7].Visible = true
+            o.Corner[8].From = Vector2.new(x + w, y + h - len)
+            o.Corner[8].To = Vector2.new(x + w, y + h)
+            o.Corner[8].Visible = true
+            for i = 1, 8 do
+                o.Corner[i].Color = Cfg.ESP.CornerColor
+            end
+        else
+            for i = 1, 8 do
+                o.Corner[i].Visible = false
+            end
+        end
+        
+        if Cfg.ESP.Tracers then
+            local vp = Camera.ViewportSize
+            local from = Vector2.new(vp.X / 2, vp.Y)
+            o.Tr.From = from
+            o.Tr.To = bb.BS
+            o.Tr.Color = Cfg.ESP.TraceColor
+            o.Tr.Visible = true
+            o.TrO.From = from
+            o.TrO.To = bb.BS
+            o.TrO.Visible = true
+        else
+            o.Tr.Visible = false
+            o.TrO.Visible = false
+        end
+        
+        if Cfg.ESP.Chams then
+            if not o.Chams or o.Chams.Parent ~= char then
+                if o.Chams then o.Chams:Destroy() end
+                local h = Instance.new("Highlight")
+                h.Adornee = char
+                h.DepthMode = Enum.HighlightDepthMode.AlwaysOnTop
+                h.Parent = char
+                o.Chams = h
+            end
+            o.Chams.Enabled = true
+            o.Chams.FillColor = Cfg.ESP.ChamsColor
+            o.Chams.FillTransparency = Cfg.ESP.ChamsTrans
+            o.Chams.OutlineColor = Cfg.ESP.ChamsOut
+            o.Chams.OutlineTransparency = 1
+        elseif o.Chams then
+            o.Chams.Enabled = false
+        end
+    end
+end
+
+-- ================================================
+--  TARGET LOCK
+-- ================================================
+local FOVCIRC = C{ Color = WHITE, ZIndex = 10 }
+local CurrentTarget = nil
+
+local function GetAimPart(char)
+    if Cfg.Aim.Part == "Head" then
+        return char:FindFirstChild("Head")
+    elseif Cfg.Aim.Part == "HumanoidRootPart" then
+        return char:FindFirstChild("HumanoidRootPart")
+    elseif Cfg.Aim.Part == "UpperTorso" then
+        return char:FindFirstChild("UpperTorso")
+    end
+    return char:FindFirstChild("Torso") or char:FindFirstChild("Head")
+end
+
+local function GetTargetPosition(char, part, predict)
+    local pos = part.Position + Vector3.new(0, Cfg.Aim.YOffset, 0)
+    if predict and Cfg.Aim.Prediction > 0 then
+        local hrp = char:FindFirstChild("HumanoidRootPart")
+        if hrp then
+            local vel = hrp.AssemblyLinearVelocity
+            local dist = (Camera.CFrame.Position - hrp.Position).Magnitude
+            local time = math.min(dist / 500, 1) * Cfg.Aim.Prediction
+            pos = pos + vel * time
+        end
+    end
+    return pos
+end
+
+local function IsVisible(targetPos)
+    if not Cfg.Aim.WallCheck then return true end
+
+    local origin = Camera.CFrame.Position
+    local direction = (targetPos - origin).Unit
+    local distance = (targetPos - origin).Magnitude
+
+    local ignoreList = {LP.Character}
+
+    local raycastParams = RaycastParams.new()
+    raycastParams.FilterDescendantsInstances = ignoreList
+    raycastParams.FilterType = Enum.RaycastFilterType.Blacklist
+
+    local rayResult = workspace:Raycast(origin, direction * distance, raycastParams)
+
+    if rayResult then
+        return false
+    end
+    return true
+end
+
+local function IsValidTarget(player)
+    if not player or player == LP then return false end
+    local char = player.Character
+    if not char then return false end
+    local hum = char:FindFirstChildOfClass("Humanoid")
+    if not hum or hum.Health <= 0 then return false end
+    local part = GetAimPart(char)
+    if not part then return false end
+
+    local myRoot = LP.Character and LP.Character:FindFirstChild("HumanoidRootPart")
+    if myRoot then
+        local dist = (part.Position - myRoot.Position).Magnitude
+        if dist > Cfg.Aim.MaxDistance then return false end
+    end
+
+    return true, char, part
+end
+
+local function GetClosestTarget()
+    local center = AimPoint()
+    local best, bestDist = nil, Cfg.Aim.FOV
+
+    for _, player in ipairs(Players:GetPlayers()) do
+        if player == LP then continue end
+        local valid, char, part = IsValidTarget(player)
+        if not valid then continue end
+
+        local pos = GetTargetPosition(char, part, false)
+
+        if not IsVisible(pos) then continue end
+
+        local screen, onScreen = W2S(pos)
+        if not onScreen then continue end
+
+        local dist = (screen - center).Magnitude
+        if dist < bestDist then
+            bestDist = dist
+            best = { Player = player, Char = char, Part = part, Screen = screen, Pos = pos }
+        end
+    end
+    return best
+end
+
+local function UpdateFOV()
+    if Cfg.Aim.ShowFOV and Cfg.Aim.On then
+        FOVCIRC.Visible = true
+        FOVCIRC.Position = AimPoint()
+        FOVCIRC.Radius = Cfg.Aim.FOV
+        FOVCIRC.Color = Cfg.Aim.FOVColor
+    else
+        FOVCIRC.Visible = false
+    end
+end
+
+local function IsAimKeyPressed()
+    local key = Cfg.Aim.AimKey
+    if typeof(key) == "EnumItem" then
+        if key.EnumType == Enum.UserInputType then
+            return UserInputService:IsMouseButtonPressed(key)
+        elseif key.EnumType == Enum.KeyCode then
+            return UserInputService:IsKeyDown(key)
+        end
+    elseif typeof(key) == "string" then
+        if key == "MouseButton2" then
+            return UserInputService:IsMouseButtonPressed(Enum.UserInputType.MouseButton2)
+        elseif key == "MouseButton1" then
+            return UserInputService:IsMouseButtonPressed(Enum.UserInputType.MouseButton1)
+        else
+            local success, keyCode = pcall(function() return Enum.KeyCode[key] end)
+            if success and keyCode then
+                return UserInputService:IsKeyDown(keyCode)
+            end
+        end
+    end
+    return false
+end
+
+local function DoAim()
+    if not Cfg.Aim.On then
+        CurrentTarget = nil
+        return
+    end
+
+    local holding = IsAimKeyPressed()
+    if not holding then
+        CurrentTarget = nil
+        return
+    end
+
+    local target = GetClosestTarget()
+    if not target then
+        CurrentTarget = nil
+        return
+    end
+
+    CurrentTarget = target
+
+    local aimPos = GetTargetPosition(target.Char, target.Part, true)
+    local currentCF = Camera.CFrame
+    local targetCF = CFrame.lookAt(currentCF.Position, aimPos)
+
+    if Cfg.Aim.Smoothness <= 0 then
+        Camera.CFrame = targetCF
+    else
+        local smooth = math.clamp(1 - Cfg.Aim.Smoothness, 0.01, 1)
+        Camera.CFrame = currentCF:Lerp(targetCF, smooth)
+    end
+end
+
+-- ================================================
+--  TARGET UTILITIES (SPEED & TELEPORT MODS)
+-- ================================================
+local function GetPlayerNames()
+    local names = {"None"}
+    for _, player in ipairs(Players:GetPlayers()) do
+        if player ~= LP then
+            table.insert(names, player.Name)
+        end
+    end
+    return names
+end
+
+RunService.RenderStepped:Connect(function()
+    if Cfg.Movement.SpeedHack then
+        local char = LP.Character
+        if char then
+            local hum = char:FindFirstChildOfClass("Humanoid")
+            local hrp = char:FindFirstChild("HumanoidRootPart")
+            if hum and hrp and hum.MoveDirection.Magnitude > 0 then
+                hrp.CFrame = hrp.CFrame + (hum.MoveDirection * (Cfg.Movement.SpeedValue / 50))
+            end
+        end
+    end
+
+    if Cfg.TargetUtility.StickyTP and Cfg.TargetUtility.SelectedTarget ~= "None" then
+        local targetPlayer = Players:FindFirstChild(Cfg.TargetUtility.SelectedTarget)
+        if targetPlayer and targetPlayer.Character then
+            local enemyRoot = targetPlayer.Character:FindFirstChild("HumanoidRootPart")
+            local myChar = LP.Character
+            local myRoot = myChar and myChar:FindFirstChild("HumanoidRootPart")
+            if enemyRoot and myRoot then
+                local offsetPos = enemyRoot.CFrame + Vector3.new(0, Cfg.TargetUtility.HeightOffset, 0)
+                myRoot.CFrame = offsetPos
+                myRoot.AssemblyLinearVelocity = Vector3.new(0, 0, 0)
+            end
+        end
+    end
+end)
+
+RunService.Heartbeat:Connect(function()
+    if Cfg.TargetUtility.StickyTP and Cfg.TargetUtility.SelectedTarget ~= "None" then
+        local targetPlayer = Players:FindFirstChild(Cfg.TargetUtility.SelectedTarget)
+        if targetPlayer and targetPlayer.Character then
+            local enemyRoot = targetPlayer.Character:FindFirstChild("HumanoidRootPart")
+            local myChar = LP.Character
+            local myRoot = myChar and myChar:FindFirstChild("HumanoidRootPart")
+            if enemyRoot and myRoot then
+                myRoot.CFrame = enemyRoot.CFrame + Vector3.new(0, Cfg.TargetUtility.HeightOffset, 0)
+            end
+        end
+    end
+end)
+
+-- ================================================
+--  CROSSHAIR SYSTEM
+-- ================================================
+local CrosshairLines = {}
+local CenterDot = nil
+local CrosshairAngle = 0
+
+local function CreateCrosshair()
+    for i = 1, 4 do
+        local line = Drawing.new("Line")
+        line.Visible = false
+        line.Color = Cfg.Visuals.CrosshairColor
+        line.Thickness = 1.5
+        line.ZIndex = 15
+        CrosshairLines[i] = line
+    end
+    
+    CenterDot = Drawing.new("Circle")
+    CenterDot.Visible = false
+    CenterDot.Filled = true
+    CenterDot.Radius = 1.5
+    CenterDot.Color = Cfg.Visuals.CrosshairColor
+    CenterDot.ZIndex = 16
+    CenterDot.NumSides = 12
+end
+
+local function UpdateCrosshair()
+    if not Cfg.Visuals.Crosshair then
+        for _, line in ipairs(CrosshairLines) do
+            line.Visible = false
+        end
+        if CenterDot then CenterDot.Visible = false end
+        return
+    end
+    
+    local center = AimPoint()
+    local size = Cfg.Visuals.CrosshairSize
+    local gap = Cfg.Visuals.CrosshairGap
+    local col = Cfg.Visuals.CrosshairColor
+    
+    CrosshairAngle = CrosshairAngle + (0.03 * Cfg.Visuals.CrosshairSpinSpeed)
+    if CrosshairAngle > math.pi * 2 then
+        CrosshairAngle = CrosshairAngle - math.pi * 2
+    end
+    
+    for i = 1, 4 do
+        local line = CrosshairLines[i]
+        local angleOffset = (i - 1) * (math.pi / 2) + CrosshairAngle
+        
+        local cosVal = math.cos(angleOffset)
+        local sinVal = math.sin(angleOffset)
+        
+        local fromPos = Vector2.new(
+            center.X + cosVal * gap,
+            center.Y + sinVal * gap
+        )
+        local toPos = Vector2.new(
+            center.X + cosVal * (gap + size),
+            center.Y + sinVal * (gap + size)
+        )
+        
+        line.From = fromPos
+        line.To = toPos
+        line.Color = col
+        line.Thickness = 1.5
+        line.Visible = true
+    end
+    
+    if CenterDot then
+        CenterDot.Position = center
+        CenterDot.Color = col
+        CenterDot.Visible = true
+    end
+end
+
+-- ================================================
+--  FLIGHT SYSTEM (FIXED KEYBIND ENGINE)
+-- ================================================
+local flyConnection = nil
+local flyEnabled = false
+
+local function StartFly()
+    if flyConnection then return end
+    local char = LP.Character
+    if not char then return end
+    
+    local root = char:FindFirstChild("HumanoidRootPart")
+    if not root then return end
+    
+    local humanoid = char:FindFirstChildOfClass("Humanoid")
+    if humanoid then
+        humanoid.PlatformStand = true
+    end
+    
+    flyConnection = RunService:BindToRenderStep("FlySystem", Enum.RenderPriority.Last.Value, function()
+        if not flyEnabled then
+            StopFly()
+            return
+        end
+        
+        local speed = Cfg.Movement.FlySpeed
+        local camLook = Camera.CFrame.LookVector
+        local camRight = Camera.CFrame.RightVector
+        local camUp = Camera.CFrame.UpVector
+        
+        local moveDirection = Vector3.new()
+        
+        if UserInputService:IsKeyDown(Enum.KeyCode.W) then
+            moveDirection = moveDirection + camLook
+        end
+        if UserInputService:IsKeyDown(Enum.KeyCode.S) then
+            moveDirection = moveDirection - camLook
+        end
+        if UserInputService:IsKeyDown(Enum.KeyCode.A) then
+            moveDirection = moveDirection - camRight
+        end
+        if UserInputService:IsKeyDown(Enum.KeyCode.D) then
+            moveDirection = moveDirection + camRight
+        end
+        if UserInputService:IsKeyDown(Enum.KeyCode.Space) then
+            moveDirection = moveDirection + camUp
+        end
+        if UserInputService:IsKeyDown(Enum.KeyCode.LeftShift) then
+            moveDirection = moveDirection - camUp
+        end
+        
+        if moveDirection.Magnitude > 0 then
+            moveDirection = moveDirection.Unit * speed
+            root.Velocity = moveDirection
+        else
+            root.Velocity = Vector3.new(0, 0, 0)
         end
     end)
-    
-    return bone
 end
 
-CreateBone(0.02, 0.2, 30)
-CreateBone(0.95, 0.5, 25)
-CreateBone(0.03, 0.7, 35)
-CreateBone(0.92, 0.3, 28)
+local function StopFly()
+    if flyConnection then
+        RunService:UnbindFromRenderStep("FlySystem")
+        flyConnection = nil
+    end
+    local char = LP.Character
+    if char then
+        local humanoid = char:FindFirstChildOfClass("Humanoid")
+        if humanoid then
+            humanoid.PlatformStand = false
+        end
+        local root = char:FindFirstChild("HumanoidRootPart")
+        if root then
+            root.Velocity = Vector3.new(0, 0, 0)
+        end
+    end
+end
 
--- ======================================================================
--- MAIN CONTAINER
--- ======================================================================
+local function ToggleFly()
+    flyEnabled = not flyEnabled
+    if flyEnabled then
+        StartFly()
+        StarterGui:SetCore("SendNotification", {
+            Title = "Skelly Hub",
+            Text = "💀 Flight enabled",
+            Duration = 1,
+        })
+    else
+        StopFly()
+        StarterGui:SetCore("SendNotification", {
+            Title = "Skelly Hub",
+            Text = "💀 Flight disabled",
+            Duration = 1,
+        })
+    end
+    Cfg.Movement.Fly = flyEnabled
+    if Toggles and Toggles.FlyToggle then
+        pcall(function() Toggles.FlyToggle:SetValue(flyEnabled) end)
+    end
+end
 
-local container = Instance.new("Frame")
-container.Size = UDim2.new(0, 500, 0, 550)
-container.Position = UDim2.new(0.5, -250, 0.5, -275)
-container.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
-container.BackgroundTransparency = 0.15
-container.BorderSizePixel = 4
-container.BorderColor3 = Color3.fromRGB(200, 200, 200)
-container.Parent = background
-
-local containerCorner = Instance.new("UICorner")
-containerCorner.CornerRadius = UDim.new(0, 20)
-containerCorner.Parent = container
-
--- ======================================================================
--- CARTOON TITLE
--- ======================================================================
-
-local titleContainer = Instance.new("Frame")
-titleContainer.Size = UDim2.new(1, 0, 0, 120)
-titleContainer.Position = UDim2.new(0, 0, 0, 20)
-titleContainer.BackgroundTransparency = 1
-titleContainer.Parent = container
-
-local skellyBig = Instance.new("TextLabel")
-skellyBig.Size = UDim2.new(0, 80, 0, 80)
-skellyBig.Position = UDim2.new(0.03, 0, 0.1, 0)
-skellyBig.BackgroundTransparency = 1
-skellyBig.Text = "💀"
-skellyBig.TextColor3 = Color3.fromRGB(100, 100, 120)
-skellyBig.TextSize = 70
-skellyBig.Font = Enum.Font.Gotham
-skellyBig.Parent = titleContainer
-
-local titleText = Instance.new("TextLabel")
-titleText.Size = UDim2.new(0.7, 0, 0, 60)
-titleText.Position = UDim2.new(0.2, 0, 0, 0)
-titleText.BackgroundTransparency = 1
-titleText.Text = "Skelly Hub"
-titleText.TextColor3 = Color3.fromRGB(50, 50, 70)
-titleText.TextSize = 52
-titleText.Font = Enum.Font.GothamBlack
-titleText.TextXAlignment = Enum.TextXAlignment.Left
-titleText.TextStrokeColor3 = Color3.fromRGB(255, 255, 255)
-titleText.TextStrokeTransparency = 0.3
-titleText.Parent = titleContainer
-
-local v2Badge = Instance.new("Frame")
-v2Badge.Size = UDim2.new(0, 50, 0, 30)
-v2Badge.Position = UDim2.new(0.75, 0, 0.15, 0)
-v2Badge.BackgroundColor3 = Color3.fromRGB(200, 100, 100)
-v2Badge.BackgroundTransparency = 0.2
-v2Badge.BorderSizePixel = 2
-v2Badge.BorderColor3 = Color3.fromRGB(255, 200, 200)
-v2Badge.Parent = titleContainer
-
-local v2Corner = Instance.new("UICorner")
-v2Corner.CornerRadius = UDim.new(0, 10)
-v2Corner.Parent = v2Badge
-
-local v2Text = Instance.new("TextLabel")
-v2Text.Size = UDim2.new(1, 0, 1, 0)
-v2Text.BackgroundTransparency = 1
-v2Text.Text = "V2"
-v2Text.TextColor3 = Color3.fromRGB(255, 255, 255)
-v2Text.TextSize = 18
-v2Text.Font = Enum.Font.GothamBold
-v2Text.Parent = v2Badge
-
-local subtitleText = Instance.new("TextLabel")
-subtitleText.Size = UDim2.new(0.7, 0, 0, 25)
-subtitleText.Position = UDim2.new(0.2, 0, 0.6, 0)
-subtitleText.BackgroundTransparency = 1
-subtitleText.Text = "RIVALS SCRIPT"
-subtitleText.TextColor3 = Color3.fromRGB(150, 150, 170)
-subtitleText.TextSize = 16
-subtitleText.Font = Enum.Font.Gotham
-subtitleText.TextXAlignment = Enum.TextXAlignment.Left
-subtitleText.Parent = titleContainer
-
--- ======================================================================
--- LOADING BAR SECTION
--- ======================================================================
-
-local loadingSection = Instance.new("Frame")
-loadingSection.Size = UDim2.new(0.85, 0, 0, 100)
-loadingSection.Position = UDim2.new(0.075, 0, 0.25, 0)
-loadingSection.BackgroundTransparency = 1
-loadingSection.Parent = container
-
-local loadingLabel = Instance.new("TextLabel")
-loadingLabel.Size = UDim2.new(1, 0, 0, 30)
-loadingLabel.Position = UDim2.new(0, 0, 0, 0)
-loadingLabel.BackgroundTransparency = 1
-loadingLabel.Text = "Loading Skelly Hub..."
-loadingLabel.TextColor3 = Color3.fromRGB(80, 80, 100)
-loadingLabel.TextSize = 18
-loadingLabel.Font = Enum.Font.GothamBold
-loadingLabel.TextXAlignment = Enum.TextXAlignment.Center
-loadingLabel.Parent = loadingSection
-
-local barBg = Instance.new("Frame")
-barBg.Size = UDim2.new(1, 0, 0, 16)
-barBg.Position = UDim2.new(0, 0, 0, 35)
-barBg.BackgroundColor3 = Color3.fromRGB(220, 220, 230)
-barBg.BackgroundTransparency = 0.3
-barBg.BorderSizePixel = 2
-barBg.BorderColor3 = Color3.fromRGB(180, 180, 190)
-barBg.Parent = loadingSection
-
-local barCorner = Instance.new("UICorner")
-barCorner.CornerRadius = UDim.new(1, 0)
-barCorner.Parent = barBg
-
-local barFill = Instance.new("Frame")
-barFill.Size = UDim2.new(0, 0, 1, 0)
-barFill.BackgroundColor3 = Color3.fromRGB(100, 180, 255)
-barFill.BackgroundTransparency = 0.1
-barFill.BorderSizePixel = 0
-barFill.Parent = barBg
-
-local barFillCorner = Instance.new("UICorner")
-barFillCorner.CornerRadius = UDim.new(1, 0)
-barFillCorner.Parent = barFill
-
-local percentText = Instance.new("TextLabel")
-percentText.Size = UDim2.new(1, 0, 0, 25)
-percentText.Position = UDim2.new(0, 0, 0, 55)
-percentText.BackgroundTransparency = 1
-percentText.Text = "0%"
-percentText.TextColor3 = Color3.fromRGB(100, 100, 120)
-percentText.TextSize = 14
-percentText.Font = Enum.Font.Gotham
-percentText.TextXAlignment = Enum.TextXAlignment.Center
-percentText.Parent = loadingSection
-
--- ======================================================================
--- DISCORD BUTTON
--- ======================================================================
-
-local discordBtn = Instance.new("TextButton")
-discordBtn.Size = UDim2.new(0.35, 0, 0, 35)
-discordBtn.Position = UDim2.new(0.325, 0, 0.45, 0)
-discordBtn.BackgroundColor3 = Color3.fromRGB(88, 101, 242)
-discordBtn.BackgroundTransparency = 0.1
-discordBtn.TextColor3 = Color3.new(1, 1, 1)
-discordBtn.TextSize = 13
-discordBtn.Font = Enum.Font.GothamBold
-discordBtn.Text = "💬 DISCORD"
-discordBtn.Parent = container
-
-local discCorner = Instance.new("UICorner")
-discCorner.CornerRadius = UDim.new(0, 10)
-discCorner.Parent = discordBtn
-
-discordBtn.MouseEnter:Connect(function()
-    discordBtn.BackgroundTransparency = 0.3
-end)
-discordBtn.MouseLeave:Connect(function()
-    discordBtn.BackgroundTransparency = 0.1
+UserInputService.InputBegan:Connect(function(input, gameProcessed)
+    if gameProcessed then return end
+    local keybind = Cfg.Movement.FlyKeybind
+    if not keybind then return end
+    
+    if typeof(keybind) == "EnumItem" then
+        if input.KeyCode == keybind or input.UserInputType == keybind then
+            ToggleFly()
+        end
+    elseif typeof(keybind) == "string" then
+        if keybind == "MouseButton2" and input.UserInputType == Enum.UserInputType.MouseButton2 then
+            ToggleFly()
+        elseif keybind == "MouseButton1" and input.UserInputType == Enum.UserInputType.MouseButton1 then
+            ToggleFly()
+        else
+            pcall(function()
+                local kc = Enum.KeyCode[keybind]
+                if kc and input.KeyCode == kc then
+                    ToggleFly()
+                end
+            end)
+        end
+    end
 end)
 
-discordBtn.MouseButton1Click:Connect(function()
-    setclipboard(DISCORD_INVITE)
-    statusText.Text = "✅ Discord link copied!"
-    statusText.TextColor3 = Color3.fromRGB(0, 255, 100)
-    task.wait(1.5)
-    statusText.Text = "Loading Skelly Hub..."
-    statusText.TextColor3 = Color3.fromRGB(80, 80, 100)
+-- ================================================
+--  NOCLIP SYSTEM
+-- ================================================
+local noclipConnection = nil
+
+local function StartNoclip()
+    if noclipConnection then return end
+    
+    noclipConnection = RunService:BindToRenderStep("NoclipSystem", Enum.RenderPriority.Last.Value, function()
+        if not Cfg.Movement.Noclip then
+            StopNoclip()
+            return
+        end
+        
+        local char = LP.Character
+        if not char then return end
+        
+        for _, part in ipairs(char:GetDescendants()) do
+            if part:IsA("BasePart") then
+                part.CanCollide = false
+            end
+        end
+    end)
+end
+
+local function StopNoclip()
+    if noclipConnection then
+        RunService:UnbindFromRenderStep("NoclipSystem")
+        noclipConnection = nil
+    end
+    
+    local char = LP.Character
+    if char then
+        for _, part in ipairs(char:GetDescendants()) do
+            if part:IsA("BasePart") then
+                part.CanCollide = true
+            end
+        end
+    end
+end
+
+-- ================================================
+--  VISUALS
+-- ================================================
+local function UpdateVisuals()
+    if Cfg.Visuals.FullBright then
+        Lighting.Ambient = Color3.fromRGB(255, 255, 255)
+        Lighting.Brightness = 2
+        Lighting.GlobalShadows = false
+    else
+        Lighting.Ambient = Color3.fromRGB(128, 128, 128)
+        Lighting.Brightness = 1
+        Lighting.GlobalShadows = true
+    end
+    
+    if Cfg.Visuals.NoFog then
+        Lighting.FogEnd = 100000
+        Lighting.FogStart = 0
+    else
+        Lighting.FogEnd = 1000
+        Lighting.FogStart = 0
+    end
+end
+
+-- ================================================
+--  PLAYER MANAGEMENT
+-- ================================================
+local function OnPlayerAdded(player)
+    CreateESPObjects(player)
+    player.CharacterAdded:Connect(function()
+        task.wait(0.5)
+        local o = ESPs[player]
+        if o and o.Chams then
+            o.Chams:Destroy()
+            o.Chams = nil
+        end
+    end)
+end
+
+for _, player in ipairs(Players:GetPlayers()) do
+    if player ~= LP then OnPlayerAdded(player) end
+end
+Players.PlayerAdded:Connect(OnPlayerAdded)
+Players.PlayerRemoving:Connect(DestroyESP)
+
+-- ================================================
+--  RENDER LOOPS
+-- ================================================
+RunService.RenderStepped:Connect(function()
+    Camera = Workspace.CurrentCamera
+    pcall(UpdateFOV)
+    pcall(UpdateESP)
+    pcall(UpdateOffscreenArrows)
+    pcall(UpdateVisuals)
+    pcall(UpdateCrosshair)
 end)
 
--- ======================================================================
--- STATUS
--- ======================================================================
+RunService:BindToRenderStep("SkellyAim", Enum.RenderPriority.Last.Value, function()
+    Camera = Workspace.CurrentCamera
+    pcall(DoAim)
+end)
 
-local statusText = Instance.new("TextLabel")
-statusText.Size = UDim2.new(0.8, 0, 0, 25)
-statusText.Position = UDim2.new(0.1, 0, 0.53, 0)
-statusText.BackgroundTransparency = 1
-statusText.Text = "Loading..."
-statusText.TextColor3 = Color3.fromRGB(80, 80, 100)
-statusText.TextSize = 13
-statusText.Font = Enum.Font.Gotham
-statusText.TextXAlignment = Enum.TextXAlignment.Center
-statusText.Parent = container
+-- ================================================
+--  USER INTERFACE
+-- ================================================
+local Window = Library:CreateWindow({
+    Title = "💀 Skelly Hub",
+    Center = true,
+    AutoShow = true,
+    TabPadding = 8,
+    MenuFadeTime = 0.2,
+})
 
--- ======================================================================
--- FOOTER
--- ======================================================================
+-- ================================================
+--  BRANDING LOGO
+-- ================================================
+pcall(function()
+    if Window and Window.Holder then
+        local logoContainer = Instance.new("Frame")
+        logoContainer.Name = "SkellyLogoContainer"
+        logoContainer.BackgroundTransparency = 1
+        logoContainer.AnchorPoint = Vector2.new(0, 1)
+        logoContainer.Position = UDim2.new(0, 12, 1, -12)
+        logoContainer.Size = UDim2.new(0, 155, 0, 46)
+        logoContainer.ZIndex = 5
+        
+        local glassBg = Instance.new("Frame")
+        glassBg.Name = "GlassBackground"
+        glassBg.BackgroundColor3 = Color3.fromRGB(18, 16, 22)
+        glassBg.BackgroundTransparency = 0.35
+        glassBg.BorderSizePixel = 0
+        glassBg.Size = UDim2.new(1, 0, 1, 0)
+        glassBg.ZIndex = 5
+        glassBg.Parent = logoContainer
+        
+        local cornerGlass = Instance.new("UICorner")
+        cornerGlass.CornerRadius = UDim.new(0, 8)
+        cornerGlass.Parent = glassBg
+        
+        local strokeGlass = Instance.new("UIStroke")
+        strokeGlass.Color = PURPLE
+        strokeGlass.Transparency = 0.4
+        strokeGlass.Thickness = 1.2
+        strokeGlass.Parent = glassBg
+        
+        local iconFrame = Instance.new("Frame")
+        iconFrame.Name = "IconFrame"
+        iconFrame.BackgroundTransparency = 1
+        iconFrame.Position = UDim2.new(0, 5, 0.5, -18)
+        iconFrame.Size = UDim2.new(0, 36, 0, 36)
+        iconFrame.ZIndex = 6
+        iconFrame.Parent = logoContainer
+        
+        local logoLabel = Instance.new("TextLabel")
+        logoLabel.Name = "SkellyLogoText"
+        logoLabel.BackgroundTransparency = 1
+        logoLabel.Size = UDim2.new(1, 0, 1, 0)
+        logoLabel.Text = "💀"
+        logoLabel.TextColor3 = WHITE
+        logoLabel.TextSize = 32
+        logoLabel.Font = Enum.Font.Gotham
+        logoLabel.ZIndex = 6
+        logoLabel.Parent = iconFrame
+        
+        local textHolder = Instance.new("Frame")
+        textHolder.Name = "TextHolder"
+        textHolder.BackgroundTransparency = 1
+        textHolder.Position = UDim2.new(0, 46, 0, 4)
+        textHolder.Size = UDim2.new(1, -50, 1, -8)
+        textHolder.ZIndex = 6
+        textHolder.Parent = logoContainer
+        
+        local titleLabel = Instance.new("TextLabel")
+        titleLabel.Name = "BrandTitle"
+        titleLabel.BackgroundTransparency = 1
+        titleLabel.Size = UDim2.new(1, 0, 0, 18)
+        titleLabel.Font = Enum.Font.GothamBold
+        titleLabel.Text = "SKELLY HUB"
+        titleLabel.TextColor3 = WHITE
+        titleLabel.TextSize = 12
+        titleLabel.TextXAlignment = Enum.TextXAlignment.Left
+        titleLabel.ZIndex = 6
+        titleLabel.Parent = textHolder
+        
+        local subLabel = Instance.new("TextLabel")
+        subLabel.Name = "BrandSubtitle"
+        subLabel.BackgroundTransparency = 1
+        subLabel.Position = UDim2.new(0, 0, 0, 17)
+        subLabel.Size = UDim2.new(1, 0, 0, 16)
+        subLabel.Font = Enum.Font.GothamMedium
+        subLabel.Text = "RIVALS SUITE"
+        subLabel.TextColor3 = PURPLE
+        subLabel.TextSize = 9
+        subLabel.TextXAlignment = Enum.TextXAlignment.Left
+        subLabel.ZIndex = 6
+        subLabel.Parent = textHolder
+        
+        logoContainer.Parent = Window.Holder
+    end
+end)
 
-local versionText = Instance.new("TextLabel")
-versionText.Size = UDim2.new(0.4, 0, 0, 20)
-versionText.Position = UDim2.new(0.05, 0, 0.93, 0)
-versionText.BackgroundTransparency = 1
-versionText.Text = "v" .. LOADER_VERSION
-versionText.TextColor3 = Color3.fromRGB(150, 150, 170)
-versionText.TextSize = 11
-versionText.Font = Enum.Font.Gotham
-versionText.TextXAlignment = Enum.TextXAlignment.Left
-versionText.Parent = container
+local Tabs = {
+    ESP = Window:AddTab("💀 ESP"),
+    Aim = Window:AddTab("🎯 Aim"),
+    Util = Window:AddTab("🔄 Utils"),
+    Move = Window:AddTab("🚀 Move"),
+    Vis = Window:AddTab("👁️ Visuals"),
+    Settings = Window:AddTab("⚙️ Settings"),
+}
 
-local watermark = Instance.new("TextLabel")
-watermark.Size = UDim2.new(0.4, 0, 0, 20)
-watermark.Position = UDim2.new(0.55, 0, 0.93, 0)
-watermark.BackgroundTransparency = 1
-watermark.Text = "💀 skelly-hub.lol"
-watermark.TextColor3 = Color3.fromRGB(150, 150, 170)
-watermark.TextSize = 11
-watermark.Font = Enum.Font.Gotham
-watermark.TextXAlignment = Enum.TextXAlignment.Right
-watermark.Parent = container
+ApplySkellyTheme()
+CreateCrosshair()
 
--- ======================================================================
--- ANIMATION FUNCTIONS
--- ======================================================================
+task.spawn(function()
+    task.wait(0.2)
+    ApplySkellyTheme()
+end)
 
-local function AnimateBar(progress)
-    local targetSize = UDim2.new(progress, 0, 1, 0)
-    local tween = TweenService:Create(barFill, TweenInfo.new(0.6, Enum.EasingStyle.Sine, Enum.EasingDirection.Out), {
-        Size = targetSize
+-- =============================================
+-- ESP TAB
+-- =============================================
+local ESPGroup = Tabs.ESP:AddLeftGroupbox("ESP Controls")
+
+ESPGroup:AddToggle("ESPOn", { Text = "Enable", Default = Cfg.ESP.On })
+Toggles.ESPOn:OnChanged(function(v) Cfg.ESP.On = v end)
+
+ESPGroup:AddSlider("ESPDist", { Text = "Max Dist", Default = Cfg.ESP.MaxDist, Min = 50, Max = 5000, Rounding = 0 })
+Options.ESPDist:OnChanged(function(v) Cfg.ESP.MaxDist = v end)
+
+ESPGroup:AddToggle("ESPSkel", { Text = "Skeleton", Default = Cfg.ESP.Skel })
+Toggles.ESPSkel:OnChanged(function(v) Cfg.ESP.Skel = v end)
+Toggles.ESPSkel:AddColorPicker("ESPSkelCol", { Default = Cfg.ESP.SkelColor, Title = "Color" })
+Options.ESPSkelCol:OnChanged(function(v) Cfg.ESP.SkelColor = v end)
+
+ESPGroup:AddToggle("ESPChams", { Text = "Chams", Default = Cfg.ESP.Chams })
+Toggles.ESPChams:OnChanged(function(v) Cfg.ESP.Chams = v end)
+Toggles.ESPChams:AddColorPicker("ESPChamsCol", { Default = Cfg.ESP.ChamsColor, Title = "Color" })
+Options.ESPChamsCol:OnChanged(function(v) Cfg.ESP.ChamsColor = v end)
+
+ESPGroup:AddToggle("ESPOffscreen", { Text = "Arrows", Default = Cfg.ESP.OffscreenArrows })
+Toggles.ESPOffscreen:OnChanged(function(v) Cfg.ESP.OffscreenArrows = v end)
+Toggles.ESPOffscreen:AddColorPicker("ESPOffscreenCol", { Default = Cfg.ESP.OffscreenArrowColor, Title = "Color" })
+Options.ESPOffscreenCol:OnChanged(function(v) Cfg.ESP.OffscreenArrowColor = v end)
+
+-- =============================================
+-- AIM TAB
+-- =============================================
+local AimGroup = Tabs.Aim:AddLeftGroupbox("Aimbot Controls")
+
+AimGroup:AddToggle("AimOn", { Text = "Enable", Default = Cfg.Aim.On })
+Toggles.AimOn:OnChanged(function(v) Cfg.Aim.On = v end)
+Toggles.AimOn:AddKeyPicker("AimKeyPicker", { Default = "MouseButton2", Text = "Aimbot Key", NoUI = false })
+Options.AimKeyPicker:OnChanged(function(v)
+    Cfg.Aim.AimKey = Options.AimKeyPicker.Value
+end)
+
+AimGroup:AddToggle("AimWall", { Text = "Wall Check", Default = Cfg.Aim.WallCheck })
+Toggles.AimWall:OnChanged(function(v) Cfg.Aim.WallCheck = v end)
+
+AimGroup:AddDropdown("AimPart", { Values = {"Head", "HumanoidRootPart", "UpperTorso"}, Default = 1, Text = "Hitbox" })
+Options.AimPart:OnChanged(function(v) Cfg.Aim.Part = v end)
+
+AimGroup:AddToggle("ShowFOV", { Text = "Show FOV", Default = Cfg.Aim.ShowFOV })
+Toggles.ShowFOV:OnChanged(function(v) Cfg.Aim.ShowFOV = v end)
+Toggles.ShowFOV:AddColorPicker("FOVCol", { Default = Cfg.Aim.FOVColor, Title = "Color" })
+Options.FOVCol:OnChanged(function(v) Cfg.Aim.FOVColor = v end)
+
+AimGroup:AddSlider("AimFOV", { Text = "FOV Radius", Default = Cfg.Aim.FOV, Min = 10, Max = 800, Rounding = 0 })
+Options.AimFOV:OnChanged(function(v) Cfg.Aim.FOV = v end)
+
+AimGroup:AddSlider("AimSmooth", { Text = "Smooth", Default = Cfg.Aim.Smoothness, Min = 0, Max = 1, Rounding = 2 })
+Options.AimSmooth:OnChanged(function(v) Cfg.Aim.Smoothness = v end)
+
+AimGroup:AddSlider("AimPred", { Text = "Prediction", Default = Cfg.Aim.Prediction, Min = 0, Max = 2, Rounding = 2 })
+Options.AimPred:OnChanged(function(v) Cfg.Aim.Prediction = v end)
+
+-- =============================================
+-- UTILS TAB
+-- =============================================
+local UtilGroup = Tabs.Util:AddLeftGroupbox("Target Teleportation")
+
+UtilGroup:AddDropdown("TargetDropdown", { Values = GetPlayerNames(), Default = 1, Text = "Target", Multi = false })
+Options.TargetDropdown:OnChanged(function(v) Cfg.TargetUtility.SelectedTarget = v end)
+
+UtilGroup:AddButton("Refresh List", function()
+    Options.TargetDropdown:SetValues(GetPlayerNames())
+    StarterGui:SetCore("SendNotification", {
+        Title = "Skelly Hub",
+        Text = "💀 Player list updated.",
+        Duration = 2,
     })
-    tween:Play()
-    percentText.Text = math.floor(progress * 100) .. "%"
-    return tween
-end
+end)
 
-local function UpdateStatus(text)
-    statusText.Text = text
-    print("[SkellyHub] " .. text)
-end
+UtilGroup:AddSlider("HeightOffsetSlider", { Text = "Height Offset", Default = Cfg.TargetUtility.HeightOffset, Min = 0, Max = 20, Rounding = 1 })
+Options.HeightOffsetSlider:OnChanged(function(v) Cfg.TargetUtility.HeightOffset = v end)
 
--- ======================================================================
--- LOADING SEQUENCE
--- ======================================================================
+UtilGroup:AddToggle("StickyTP", { Text = "Enable TP", Default = Cfg.TargetUtility.StickyTP })
+Toggles.StickyTP:OnChanged(function(v) Cfg.TargetUtility.StickyTP = v end)
 
-local function StartLoading()
-    print("[SkellyHub] Starting loading sequence...")
-    
-    UpdateStatus("Initializing Skelly Hub...")
-    AnimateBar(0.1)
-    task.wait(0.3)
-    
-    UpdateStatus("Loading assets...")
-    AnimateBar(0.25)
-    task.wait(0.3)
-    
-    UpdateStatus("Connecting to servers...")
-    AnimateBar(0.4)
-    task.wait(0.3)
-    
-    UpdateStatus("Loading scripts...")
-    AnimateBar(0.6)
-    task.wait(0.3)
-    
-    UpdateStatus("Preparing Skelly Hub...")
-    AnimateBar(0.8)
-    task.wait(0.3)
-    
-    UpdateStatus("Ready! Loading script...")
-    AnimateBar(1)
-    task.wait(0.5)
-    
-    LoadScript()
-end
+-- =============================================
+-- MOVE TAB
+-- =============================================
+local MoveGroup = Tabs.Move:AddLeftGroupbox("Locomotion Controls")
 
--- ======================================================================
--- MAIN LOADER
--- ======================================================================
-
-local function LoadScript()
-    UpdateStatus("Downloading Skelly Hub...")
-    AnimateBar(0.1)
-    task.wait(0.3)
-    
-    local success, scriptContent = pcall(function()
-        return game:HttpGet(SCRIPT_URL)
-    end)
-    
-    if not success then
-        UpdateStatus("❌ Download failed - Check connection")
-        AnimateBar(0)
-        return
+MoveGroup:AddToggle("FlyToggle", { Text = "Flight", Default = Cfg.Movement.Fly })
+Toggles.FlyToggle:OnChanged(function(v)
+    if flyEnabled ~= v then
+        ToggleFly()
     end
-    
-    if not scriptContent or #scriptContent < 10 then
-        UpdateStatus("❌ Script corrupted - Contact support")
-        AnimateBar(0)
-        return
-    end
-    
-    UpdateStatus("Loading Skelly Hub...")
-    AnimateBar(0.5)
-    task.wait(0.3)
-    
-    local compileSuccess, compiled = pcall(function()
-        return loadstring(scriptContent)
-    end)
-    
-    if not compileSuccess or type(compiled) ~= "function" then
-        UpdateStatus("❌ Validation failed - Contact support")
-        AnimateBar(0)
-        return
-    end
-    
-    UpdateStatus("Executing Skelly Hub...")
-    AnimateBar(0.75)
-    task.wait(0.3)
-    
-    local execSuccess, execResult = pcall(function()
-        return compiled()
-    end)
-    
-    if not execSuccess then
-        UpdateStatus("❌ Execution failed - Try again")
-        AnimateBar(0)
-        return
-    end
-    
-    UpdateStatus("✅ Skelly Hub Loaded! Press Right Shift for menu")
-    AnimateBar(1)
-    
-    task.wait(1.5)
-    local fadeTween = TweenService:Create(container, TweenInfo.new(0.5, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
-        BackgroundTransparency = 1
-    })
-    fadeTween:Play()
-    fadeTween.Completed:Connect(function()
-        screenGui:Destroy()
-    end)
-end
+end)
+Toggles.FlyToggle:AddKeyPicker("FlyKeybindPicker", { Default = "F", Text = "Flight Hotkey", NoUI = false })
+Options.FlyKeybindPicker:OnChanged(function(v)
+    Cfg.Movement.FlyKeybind = Options.FlyKeybindPicker.Value
+end)
 
--- ======================================================================
--- START
--- ======================================================================
+MoveGroup:AddSlider("FlySpeed", { Text = "Flight Speed", Default = Cfg.Movement.FlySpeed, Min = 10, Max = 300, Rounding = 0 })
+Options.FlySpeed:OnChanged(function(v) Cfg.Movement.FlySpeed = v end)
 
-print("[SkellyHub] Loader v6.0 - No Key Required")
-print("[SkellyHub] Discord: https://discord.gg/XJtYWy9jgU")
+MoveGroup:AddToggle("SpeedToggle", { Text = "Speed Hack", Default = Cfg.Movement.SpeedHack })
+Toggles.SpeedToggle:OnChanged(function(v) Cfg.Movement.SpeedHack = v end)
 
-task.wait(0.5)
-StartLoading()
+MoveGroup:AddSlider("SpeedVal", { Text = "Speed Factor", Default = Cfg.Movement.SpeedValue, Min = 16, Max = 100, Rounding = 0 })
+Options.SpeedVal:OnChanged(function(v) Cfg.Movement.SpeedValue = v end)
+
+MoveGroup:AddToggle("NoclipToggle", { Text = "Noclip", Default = Cfg.Movement.Noclip })
+Toggles.NoclipToggle:OnChanged(function(v)
+    Cfg.Movement.Noclip = v
+    if v then StartNoclip() else StopNoclip() end
+end)
+
+-- =============================================
+-- VISUALS TAB
+-- =============================================
+local VisGroup = Tabs.Vis:AddLeftGroupbox("Environment & Crosshair")
+
+VisGroup:AddToggle("FullBright", { Text = "Fullbright", Default = Cfg.Visuals.FullBright })
+Toggles.FullBright:OnChanged(function(v) Cfg.Visuals.FullBright = v end)
+
+VisGroup:AddToggle("NoFog", { Text = "No Fog", Default = Cfg.Visuals.NoFog })
+Toggles.NoFog:OnChanged(function(v) Cfg.Visuals.NoFog = v end)
+
+VisGroup:AddToggle("CrosshairToggle", { Text = "Crosshair", Default = Cfg.Visuals.Crosshair })
+Toggles.CrosshairToggle:OnChanged(function(v) Cfg.Visuals.Crosshair = v end)
+Toggles.CrosshairToggle:AddColorPicker("CrosshairCol", { Default = Cfg.Visuals.CrosshairColor, Title = "Color" })
+Options.CrosshairCol:OnChanged(function(v) Cfg.Visuals.CrosshairColor = v end)
+
+VisGroup:AddSlider("CrosshairSize", { Text = "Length", Default = Cfg.Visuals.CrosshairSize, Min = 4, Max = 30, Rounding = 0 })
+Options.CrosshairSize:OnChanged(function(v) Cfg.Visuals.CrosshairSize = v end)
+
+VisGroup:AddSlider("CrosshairGap", { Text = "Spacing", Default = Cfg.Visuals.CrosshairGap, Min = 1, Max = 15, Rounding = 0 })
+Options.CrosshairGap:OnChanged(function(v) Cfg.Visuals.CrosshairGap = v end)
+
+VisGroup:AddSlider("CrosshairSpin", { Text = "Spin Speed", Default = Cfg.Visuals.CrosshairSpinSpeed, Min = 0.1, Max = 5, Rounding = 1 })
+Options.CrosshairSpin:OnChanged(function(v) Cfg.Visuals.CrosshairSpinSpeed = v end)
+
+-- =============================================
+-- SETTINGS TAB
+-- =============================================
+Library:SetWatermark("💀 Skelly Hub")
+ThemeManager:SetLibrary(Library)
+SaveManager:SetLibrary(Library)
+ThemeManager:ApplyToTab(Tabs.Settings)
+SaveManager:BuildConfigSection(Tabs.Settings)
+SaveManager:LoadAutoloadConfig()
+
+-- =============================================
+-- WATERMARK / KEYBIND DISPLAY
+-- =============================================
+print("[Skelly Hub] Loaded successfully!")
+print("[Skelly Hub] Press Right Shift to toggle menu.")
