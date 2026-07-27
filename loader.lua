@@ -11,6 +11,7 @@ local DISCORD_INVITE = "https://discord.gg/yourserver"  -- ← CHANGE THIS!
 
 -- ==================== VALID KEYS ====================
 local VALID_KEYS = {
+    ["SKELLY-OF9FDA-TYGV97"] = true,
     ["SKELLY-F7D9S2-G3S9G5"] = true,
     ["SKELLY-F3G9H4-D3H6F7"] = true,
     ["SKELLY-D3G5F8-F4H7E8"] = true,
