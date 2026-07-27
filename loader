@@ -1,12 +1,12 @@
 --[[
-    DarkSide Loader v1.0
+    DarkSide Loader v1.1
     Red & Black Theme
     Premium Script Loader for Rivals
 ]]
 
 -- ==================== CONFIGURATION ====================
 local SCRIPT_URL = "https://raw.githubusercontent.com/jabu62012-commits/rivals-free-script/main/rivalsaimwh.lua"
-local LOADER_VERSION = "v1.0"
+local LOADER_VERSION = "v1.1"
 local LOADER_NAME = "DarkSide"
 
 -- ==================== SERVICES ====================
@@ -17,6 +17,7 @@ local TweenService = game:GetService("TweenService")
 local LocalPlayer = Players.LocalPlayer
 local CoreGui = game:GetService("CoreGui")
 local HttpService = game:GetService("HttpService")
+local HttpEnabled = syn and syn.request or http and http.request or request
 
 -- ==================== CREATE LOADING SCREEN ====================
 local screenGui = Instance.new("ScreenGui")
@@ -27,7 +28,7 @@ screenGui.ResetOnSpawn = false
 -- Main Frame
 local mainFrame = Instance.new("Frame")
 mainFrame.Size = UDim2.new(1, 0, 1, 0)
-mainFrame.BackgroundColor3 = Color3.fromRGB(10, 0, 0) -- Dark red/black
+mainFrame.BackgroundColor3 = Color3.fromRGB(10, 0, 0)
 mainFrame.BackgroundTransparency = 0.05
 mainFrame.Parent = screenGui
 
@@ -41,7 +42,6 @@ container.BorderColor3 = Color3.fromRGB(200, 0, 0)
 container.BackgroundTransparency = 0.1
 container.Parent = mainFrame
 
--- Corner rounding
 local corner = Instance.new("UICorner")
 corner.CornerRadius = UDim.new(0, 12)
 corner.Parent = container
@@ -118,6 +118,19 @@ statusText.Font = Enum.Font.Gotham
 statusText.TextTransparency = 0.5
 statusText.Parent = container
 
+-- Error Display (hidden initially)
+local errorText = Instance.new("TextLabel")
+errorText.Size = UDim2.new(0.9, 0, 0, 60)
+errorText.Position = UDim2.new(0.05, 0, 0, 220)
+errorText.BackgroundTransparency = 1
+errorText.Text = ""
+errorText.TextColor3 = Color3.fromRGB(255, 50, 50)
+errorText.TextSize = 14
+errorText.Font = Enum.Font.Gotham
+errorText.TextWrapped = true
+errorText.Visible = false
+errorText.Parent = container
+
 -- Version
 local versionText = Instance.new("TextLabel")
 versionText.Size = UDim2.new(1, 0, 0, 25)
@@ -142,7 +155,7 @@ watermark.Font = Enum.Font.GothamBold
 watermark.TextTransparency = 0.6
 watermark.Parent = container
 
--- Glow Line (decorative)
+-- Glow Line
 local glowLine = Instance.new("Frame")
 glowLine.Size = UDim2.new(0.9, 0, 0, 2)
 glowLine.Position = UDim2.new(0.05, 0, 0.95, 0)
@@ -169,7 +182,14 @@ local function UpdateText(text, status)
     print("[DarkSide] " .. text)
 end
 
--- ==================== ANIMATION: PULSE GLOW ====================
+local function ShowError(msg)
+    errorText.Text = "❌ " .. msg
+    errorText.Visible = true
+    statusText.TextColor3 = Color3.fromRGB(200, 0, 0)
+    loadingText.TextColor3 = Color3.fromRGB(200, 0, 0)
+end
+
+-- ==================== PULSE GLOW ====================
 local function PulseGlow()
     local tween = TweenService:Create(glowLine, TweenInfo.new(1.5, Enum.EasingStyle.Sine, Enum.EasingDirection.InOut, 0, true), {
         BackgroundTransparency = 0.3
@@ -178,7 +198,7 @@ local function PulseGlow()
 end
 PulseGlow()
 
--- ==================== ANIMATION: LOADING DOTS ====================
+-- ==================== LOADING DOTS ====================
 local dotCount = 0
 local function AnimateDots()
     dotCount = (dotCount % 3) + 1
@@ -192,73 +212,69 @@ local function LoadScript()
     AnimateBar(0.1)
     task.wait(0.3)
     
-    -- Step 1: Check internet connection
     UpdateText("Connecting to DarkSide servers", "Handshake in progress...")
     AnimateBar(0.2)
     task.wait(0.3)
     
-    -- Step 2: Download script
     UpdateText("Downloading script", "Retrieving from repository...")
     AnimateBar(0.4)
     task.wait(0.3)
     
+    -- Download the script
     local success, scriptContent = pcall(function()
         return game:HttpGet(SCRIPT_URL)
     end)
     
     if not success then
-        UpdateText("Download Failed!", "Check your internet connection and try again.")
+        ShowError("Download Failed!\nCheck your internet connection.")
         AnimateBar(0)
-        statusText.TextColor3 = Color3.fromRGB(200, 0, 0)
-        loadingText.TextColor3 = Color3.fromRGB(200, 0, 0)
-        
-        -- Retry button
-        local retryBtn = Instance.new("TextButton")
-        retryBtn.Size = UDim2.new(0.3, 0, 0, 40)
-        retryBtn.Position = UDim2.new(0.35, 0, 0, 230)
-        retryBtn.BackgroundColor3 = Color3.fromRGB(200, 0, 0)
-        retryBtn.TextColor3 = Color3.new(1, 1, 1)
-        retryBtn.TextSize = 16
-        retryBtn.Font = Enum.Font.GothamBold
-        retryBtn.Text = "RETRY"
-        retryBtn.Parent = container
-        
-        local retryCorner = Instance.new("UICorner")
-        retryCorner.CornerRadius = UDim.new(0, 6)
-        retryCorner.Parent = retryBtn
-        
-        retryBtn.MouseButton1Click:Connect(function()
-            retryBtn:Destroy()
-            statusText.TextColor3 = Color3.fromRGB(200, 200, 200)
-            loadingText.TextColor3 = Color3.fromRGB(200, 200, 200)
-            LoadScript()
-        end)
         return
     end
     
-    -- Step 3: Verify script
+    -- Check if script is empty
+    if not scriptContent or #scriptContent < 10 then
+        ShowError("Script is empty or invalid!\nContact support.")
+        AnimateBar(0)
+        return
+    end
+    
     UpdateText("Verifying script", "Checking integrity...")
     AnimateBar(0.6)
     task.wait(0.3)
     
-    -- Step 4: Execute script
+    -- Try to compile the script
+    local compileSuccess, compiled = pcall(function()
+        return loadstring(scriptContent)
+    end)
+    
+    if not compileSuccess then
+        ShowError("Script compilation failed!\nError: " .. tostring(compiled))
+        AnimateBar(0)
+        return
+    end
+    
+    if type(compiled) ~= "function" then
+        ShowError("Script is not a valid Lua script!")
+        AnimateBar(0)
+        return
+    end
+    
     UpdateText("Executing DarkSide Script", "Injecting into game...")
     AnimateBar(0.8)
     task.wait(0.3)
     
+    -- Execute the script
     local execSuccess, execResult = pcall(function()
-        return loadstring(scriptContent)()
+        return compiled()
     end)
     
     if not execSuccess then
-        UpdateText("Execution Failed!", "Script may be outdated or corrupted.")
+        ShowError("Execution failed!\nError: " .. tostring(execResult))
         AnimateBar(0)
-        statusText.TextColor3 = Color3.fromRGB(200, 0, 0)
-        loadingText.TextColor3 = Color3.fromRGB(200, 0, 0)
         return
     end
     
-    -- Step 5: Success!
+    -- Success!
     UpdateText("DarkSide Script Loaded!", "Press INSERT to open menu")
     AnimateBar(1)
     statusText.TextColor3 = Color3.fromRGB(0, 200, 0)
@@ -280,7 +296,6 @@ local function LoadScript()
         successGlow:Destroy()
     end)
     
-    -- Fade out loader after 2 seconds
     task.wait(2)
     local fadeTween = TweenService:Create(mainFrame, TweenInfo.new(0.5, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
         BackgroundTransparency = 1
@@ -292,28 +307,23 @@ local function LoadScript()
 end
 
 -- ==================== START LOADER ====================
--- Loading dots animation
 local dotTimer = 0
 RunService.RenderStepped:Connect(function()
     dotTimer = dotTimer + 1
-    if dotTimer % 30 == 0 then -- Update every ~0.5 seconds
+    if dotTimer % 30 == 0 then
         AnimateDots()
     end
 end)
 
--- Start the loading process
 task.wait(0.5)
 LoadScript()
 
--- ==================== ERROR HANDLING ====================
 print("[DarkSide] Loader initialized.")
 print("[DarkSide] Version: " .. LOADER_VERSION)
 
--- ==================== KEYBIND CHECK (for testing) ====================
 UserInputService.InputBegan:Connect(function(input, gameProcessed)
     if gameProcessed then return end
     if input.KeyCode == Enum.KeyCode.F9 then
-        -- Toggle loader visibility (debug)
         screenGui.Enabled = not screenGui.Enabled
     end
 end)
