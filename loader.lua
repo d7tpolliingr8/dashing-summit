@@ -52,9 +52,7 @@ function KeySystem:LoadKeys()
         print("[KeySystem] Failed to load keys, using local fallback")
         -- Fallback keys (for testing)
         self.ValidKeys = {
-            "RAVEN-FREE-2026",
-            "TEST-KEY-1234",
-            "PREMIUM-USER-001",
+            "RAVEN-LF0S-Y6Y4-HMJX-CD",
         }
         return true
     end
