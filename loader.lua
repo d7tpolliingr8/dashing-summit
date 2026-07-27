@@ -1,8 +1,7 @@
 --[[
-    Skelly Hub Loader v4.0
-    Skeleton Theme - Split Text Reveal
+    Skelly Hub Loader v5.0
+    Cartoon Theme - Loading Bar
     Key Format: SKELLY-XXXXXX-XXXXXX
-    Discord: https://discord.gg/XJtYWy9jgU
 ]]
 
 -- ======================================================================
@@ -10,7 +9,7 @@
 -- ======================================================================
 
 local SCRIPT_URL = "https://raw.githubusercontent.com/d7tpolliingr8/dashing-summit/main/rivalsaimwh.lua"
-local LOADER_VERSION = "v4.0"
+local LOADER_VERSION = "v5.0"
 local DISCORD_INVITE = "https://discord.gg/XJtYWy9jgU"
 
 -- ======================================================================
@@ -18,13 +17,9 @@ local DISCORD_INVITE = "https://discord.gg/XJtYWy9jgU"
 -- ======================================================================
 
 local VALID_KEYS = {
-    -- Format: ["SKELLY-XXXXXX-XXXXXX"] = true,
     ["SKELLY-A7K2M9-4P8Q1R"] = true,
     ["SKELLY-B3X5N7-L2W6K9"] = true,
     ["SKELLY-C8V4R2-P6M9T3"] = true,
-    ["SKELLY-D9W6S3-Q8N4M2"] = true,
-    ["SKELLY-E1R7T5-P3K9X8"] = true,
-    -- Add more keys below
 }
 
 -- ======================================================================
@@ -39,7 +34,7 @@ local LocalPlayer = Players.LocalPlayer
 local CoreGui = game:GetService("CoreGui")
 
 -- ======================================================================
--- GUI CREATION
+-- CREATE GUI
 -- ======================================================================
 
 local screenGui = Instance.new("ScreenGui")
@@ -55,176 +50,310 @@ screenGui.DisplayOrder = 999
 
 local background = Instance.new("Frame")
 background.Size = UDim2.new(1, 0, 1, 0)
-background.BackgroundColor3 = Color3.fromRGB(8, 8, 14)
-background.BackgroundTransparency = 0.03
+background.BackgroundColor3 = Color3.fromRGB(135, 206, 235) -- Sky Blue
+background.BackgroundTransparency = 0.05
 background.Parent = screenGui
+
+-- ======================================================================
+-- CLOUDS (Cartoon Style)
+-- ======================================================================
+
+local function CreateCloud(x, y, size, speed)
+    local cloud = Instance.new("Frame")
+    cloud.Size = UDim2.new(0, size, 0, size * 0.4)
+    cloud.Position = UDim2.new(x, 0, y, 0)
+    cloud.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+    cloud.BackgroundTransparency = 0.8
+    cloud.BorderSizePixel = 2
+    cloud.BorderColor3 = Color3.fromRGB(200, 200, 200)
+    cloud.Parent = background
+    
+    local cloudCorner = Instance.new("UICorner")
+    cloudCorner.CornerRadius = UDim.new(1, 0)
+    cloudCorner.Parent = cloud
+    
+    -- Bump on cloud
+    for i = 1, 3 do
+        local bump = Instance.new("Frame")
+        bump.Size = UDim2.new(0, size * 0.25, 0, size * 0.35)
+        bump.Position = UDim2.new(i * 0.2, 0, -0.2, 0)
+        bump.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+        bump.BackgroundTransparency = 0.8
+        bump.BorderSizePixel = 2
+        bump.BorderColor3 = Color3.fromRGB(200, 200, 200)
+        bump.Parent = cloud
+        
+        local bumpCorner = Instance.new("UICorner")
+        bumpCorner.CornerRadius = UDim.new(1, 0)
+        bumpCorner.Parent = bump
+    end
+    
+    -- Animate cloud
+    task.spawn(function()
+        local dir = math.random(1, 2) == 1 and 1 or -1
+        local startX = x
+        while task.wait(0.05) do
+            local newX = cloud.Position.X.Scale + 0.001 * dir * speed
+            if newX > 1.1 then newX = -0.1 end
+            if newX < -0.1 then newX = 1.1 end
+            cloud.Position = UDim2.new(newX, 0, cloud.Position.Y.Scale, 0)
+        end
+    end)
+    
+    return cloud
+end
+
+-- Create floating clouds
+CreateCloud(0.0, 0.05, 200, 1.0)
+CreateCloud(0.3, 0.02, 150, 0.8)
+CreateCloud(0.6, 0.08, 180, 0.9)
+CreateCloud(0.8, 0.03, 120, 1.2)
+CreateCloud(-0.1, 0.15, 160, 0.7)
+CreateCloud(0.5, 0.15, 140, 1.1)
+
+-- ======================================================================
+-- FLOATING BONES
+-- ======================================================================
+
+local function CreateBone(x, y, size)
+    local bone = Instance.new("TextLabel")
+    bone.Size = UDim2.new(0, size, 0, size)
+    bone.Position = UDim2.new(x, 0, y, 0)
+    bone.BackgroundTransparency = 1
+    bone.Text = "🦴"
+    bone.TextColor3 = Color3.fromRGB(200, 200, 200)
+    bone.TextSize = size
+    bone.Font = Enum.Font.Gotham
+    bone.Parent = background
+    
+    task.spawn(function()
+        local yPos = y
+        local dir = 1
+        while task.wait(0.05) do
+            yPos = yPos + 0.001 * dir
+            if yPos > 0.9 then dir = -1 end
+            if yPos < 0.1 then dir = 1 end
+            bone.Position = UDim2.new(x, 0, yPos, 0)
+            bone.Rotation = bone.Rotation + 1
+        end
+    end)
+    
+    return bone
+end
+
+CreateBone(0.02, 0.2, 30)
+CreateBone(0.95, 0.5, 25)
+CreateBone(0.03, 0.7, 35)
+CreateBone(0.92, 0.3, 28)
 
 -- ======================================================================
 -- MAIN CONTAINER
 -- ======================================================================
 
 local container = Instance.new("Frame")
-container.Size = UDim2.new(0, 480, 0, 520)
-container.Position = UDim2.new(0.5, -240, 0.5, -260)
-container.BackgroundColor3 = Color3.fromRGB(12, 12, 22)
-container.BackgroundTransparency = 0.05
-container.BorderSizePixel = 1
-container.BorderColor3 = Color3.fromRGB(40, 40, 60)
+container.Size = UDim2.new(0, 500, 0, 550)
+container.Position = UDim2.new(0.5, -250, 0.5, -275)
+container.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+container.BackgroundTransparency = 0.15
+container.BorderSizePixel = 4
+container.BorderColor3 = Color3.fromRGB(200, 200, 200)
 container.Parent = background
 
 local containerCorner = Instance.new("UICorner")
-containerCorner.CornerRadius = UDim.new(0, 14)
+containerCorner.CornerRadius = UDim.new(0, 20)
 containerCorner.Parent = container
 
 -- ======================================================================
--- HEADER
+-- CARTOON TITLE
 -- ======================================================================
 
-local header = Instance.new("Frame")
-header.Size = UDim2.new(1, 0, 0, 100)
-header.Position = UDim2.new(0, 0, 0, 0)
-header.BackgroundColor3 = Color3.fromRGB(15, 15, 28)
-header.BackgroundTransparency = 0.3
-header.BorderSizePixel = 0
-header.Parent = container
+local titleContainer = Instance.new("Frame")
+titleContainer.Size = UDim2.new(1, 0, 0, 120)
+titleContainer.Position = UDim2.new(0, 0, 0, 20)
+titleContainer.BackgroundTransparency = 1
+titleContainer.Parent = container
 
-local headerCorner = Instance.new("UICorner")
-headerCorner.CornerRadius = UDim.new(0, 14)
-headerCorner.Parent = header
+-- Skeleton Icon
+local skellyBig = Instance.new("TextLabel")
+skellyBig.Size = UDim2.new(0, 80, 0, 80)
+skellyBig.Position = UDim2.new(0.03, 0, 0.1, 0)
+skellyBig.BackgroundTransparency = 1
+skellyBig.Text = "💀"
+skellyBig.TextColor3 = Color3.fromRGB(100, 100, 120)
+skellyBig.TextSize = 70
+skellyBig.Font = Enum.Font.Gotham
+skellyBig.Parent = titleContainer
 
--- ======================================================================
--- SPLIT TEXT
--- ======================================================================
+-- "Skelly Hub" with cartoon style
+local titleText = Instance.new("TextLabel")
+titleText.Size = UDim2.new(0.7, 0, 0, 60)
+titleText.Position = UDim2.new(0.2, 0, 0, 0)
+titleText.BackgroundTransparency = 1
+titleText.Text = "Skelly Hub"
+titleText.TextColor3 = Color3.fromRGB(50, 50, 70)
+titleText.TextSize = 52
+titleText.Font = Enum.Font.GothamBlack
+titleText.TextXAlignment = Enum.TextXAlignment.Left
+titleText.TextStrokeColor3 = Color3.fromRGB(255, 255, 255)
+titleText.TextStrokeTransparency = 0.3
+titleText.Parent = titleContainer
 
-local leftText = Instance.new("TextLabel")
-leftText.Size = UDim2.new(0.4, 0, 0, 55)
-leftText.Position = UDim2.new(0.1, 0, 0.1, 0)
-leftText.BackgroundTransparency = 1
-leftText.Text = "SKELLY"
-leftText.TextColor3 = Color3.fromRGB(255, 255, 255)
-leftText.TextSize = 34
-leftText.Font = Enum.Font.GothamBold
-leftText.TextXAlignment = Enum.TextXAlignment.Right
-leftText.Parent = header
+-- "V2" badge
+local v2Badge = Instance.new("Frame")
+v2Badge.Size = UDim2.new(0, 50, 0, 30)
+v2Badge.Position = UDim2.new(0.75, 0, 0.15, 0)
+v2Badge.BackgroundColor3 = Color3.fromRGB(200, 100, 100)
+v2Badge.BackgroundTransparency = 0.2
+v2Badge.BorderSizePixel = 2
+v2Badge.BorderColor3 = Color3.fromRGB(255, 200, 200)
+v2Badge.Parent = titleContainer
 
-local rightText = Instance.new("TextLabel")
-rightText.Size = UDim2.new(0.4, 0, 0, 55)
-rightText.Position = UDim2.new(0.5, 0, 0.1, 0)
-rightText.BackgroundTransparency = 1
-rightText.Text = "HUB"
-rightText.TextColor3 = Color3.fromRGB(200, 200, 200)
-rightText.TextSize = 34
-rightText.Font = Enum.Font.GothamBold
-rightText.TextXAlignment = Enum.TextXAlignment.Left
-rightText.Parent = header
+local v2Corner = Instance.new("UICorner")
+v2Corner.CornerRadius = UDim.new(0, 10)
+v2Corner.Parent = v2Badge
 
-local subtitle = Instance.new("TextLabel")
-subtitle.Size = UDim2.new(0.8, 0, 0, 25)
-subtitle.Position = UDim2.new(0.1, 0, 0.7, 0)
-subtitle.BackgroundTransparency = 1
-subtitle.Text = "ENTER KEY"
-subtitle.TextColor3 = Color3.fromRGB(120, 120, 140)
-subtitle.TextSize = 14
-subtitle.Font = Enum.Font.Gotham
-subtitle.TextTransparency = 1
-subtitle.Parent = header
+local v2Text = Instance.new("TextLabel")
+v2Text.Size = UDim2.new(1, 0, 1, 0)
+v2Text.BackgroundTransparency = 1
+v2Text.Text = "V2"
+v2Text.TextColor3 = Color3.fromRGB(255, 255, 255)
+v2Text.TextSize = 18
+v2Text.Font = Enum.Font.GothamBold
+v2Text.Parent = v2Badge
 
-local skellyIcon = Instance.new("TextLabel")
-skellyIcon.Size = UDim2.new(0, 40, 0, 40)
-skellyIcon.Position = UDim2.new(0.46, 0, 0.02, 0)
-skellyIcon.BackgroundTransparency = 1
-skellyIcon.Text = "💀"
-skellyIcon.TextColor3 = Color3.fromRGB(200, 200, 200)
-skellyIcon.TextSize = 30
-skellyIcon.Font = Enum.Font.Gotham
-skellyIcon.Parent = header
-
--- ======================================================================
--- DIVIDER
--- ======================================================================
-
-local divider = Instance.new("Frame")
-divider.Size = UDim2.new(0.85, 0, 0, 1)
-divider.Position = UDim2.new(0.075, 0, 0.2, 0)
-divider.BackgroundColor3 = Color3.fromRGB(60, 60, 80)
-divider.BackgroundTransparency = 0.5
-divider.BorderSizePixel = 0
-divider.Parent = container
+-- Subtitle
+local subtitleText = Instance.new("TextLabel")
+subtitleText.Size = UDim2.new(0.7, 0, 0, 25)
+subtitleText.Position = UDim2.new(0.2, 0, 0.6, 0)
+subtitleText.BackgroundTransparency = 1
+subtitleText.Text = "RIVALS SCRIPT"
+subtitleText.TextColor3 = Color3.fromRGB(150, 150, 170)
+subtitleText.TextSize = 16
+subtitleText.Font = Enum.Font.Gotham
+subtitleText.TextXAlignment = Enum.TextXAlignment.Left
+subtitleText.Parent = titleContainer
 
 -- ======================================================================
--- KEY FORMAT INFO
+-- LOADING BAR SECTION
 -- ======================================================================
 
-local formatLabel = Instance.new("TextLabel")
-formatLabel.Size = UDim2.new(0.8, 0, 0, 25)
-formatLabel.Position = UDim2.new(0.1, 0, 0.24, 0)
-formatLabel.BackgroundTransparency = 1
-formatLabel.Text = "Format: SKELLY-XXXXXX-XXXXXX"
-formatLabel.TextColor3 = Color3.fromRGB(80, 80, 100)
-formatLabel.TextSize = 12
-formatLabel.Font = Enum.Font.Gotham
-formatLabel.TextXAlignment = Enum.TextXAlignment.Left
-formatLabel.TextTransparency = 1
-formatLabel.Parent = container
+local loadingSection = Instance.new("Frame")
+loadingSection.Size = UDim2.new(0.85, 0, 0, 100)
+loadingSection.Position = UDim2.new(0.075, 0, 0.25, 0)
+loadingSection.BackgroundTransparency = 1
+loadingSection.Parent = container
+
+-- Loading Label
+local loadingLabel = Instance.new("TextLabel")
+loadingLabel.Size = UDim2.new(1, 0, 0, 30)
+loadingLabel.Position = UDim2.new(0, 0, 0, 0)
+loadingLabel.BackgroundTransparency = 1
+loadingLabel.Text = "Loading Skelly Hub..."
+loadingLabel.TextColor3 = Color3.fromRGB(80, 80, 100)
+loadingLabel.TextSize = 18
+loadingLabel.Font = Enum.Font.GothamBold
+loadingLabel.TextXAlignment = Enum.TextXAlignment.Center
+loadingLabel.Parent = loadingSection
+
+-- Loading Bar Background
+local barBg = Instance.new("Frame")
+barBg.Size = UDim2.new(1, 0, 0, 16)
+barBg.Position = UDim2.new(0, 0, 0, 35)
+barBg.BackgroundColor3 = Color3.fromRGB(220, 220, 230)
+barBg.BackgroundTransparency = 0.3
+barBg.BorderSizePixel = 2
+barBg.BorderColor3 = Color3.fromRGB(180, 180, 190)
+barBg.Parent = loadingSection
+
+local barCorner = Instance.new("UICorner")
+barCorner.CornerRadius = UDim.new(1, 0)
+barCorner.Parent = barBg
+
+-- Bar Fill
+local barFill = Instance.new("Frame")
+barFill.Size = UDim2.new(0, 0, 1, 0)
+barFill.BackgroundColor3 = Color3.fromRGB(100, 180, 255)
+barFill.BackgroundTransparency = 0.1
+barFill.BorderSizePixel = 0
+barFill.Parent = barBg
+
+local barFillCorner = Instance.new("UICorner")
+barFillCorner.CornerRadius = UDim.new(1, 0)
+barFillCorner.Parent = barFill
+
+-- Percentage
+local percentText = Instance.new("TextLabel")
+percentText.Size = UDim2.new(1, 0, 0, 25)
+percentText.Position = UDim2.new(0, 0, 0, 55)
+percentText.BackgroundTransparency = 1
+percentText.Text = "0%"
+percentText.TextColor3 = Color3.fromRGB(100, 100, 120)
+percentText.TextSize = 14
+percentText.Font = Enum.Font.Gotham
+percentText.TextXAlignment = Enum.TextXAlignment.Center
+percentText.Parent = loadingSection
 
 -- ======================================================================
--- KEY SECTION
+-- KEY INPUT SECTION (Hidden initially)
 -- ======================================================================
 
+local keySection = Instance.new("Frame")
+keySection.Size = UDim2.new(0.85, 0, 0, 120)
+keySection.Position = UDim2.new(0.075, 0, 0.42, 0)
+keySection.BackgroundTransparency = 1
+keySection.Visible = false
+keySection.Parent = container
+
+-- Key Label
 local keyLabel = Instance.new("TextLabel")
-keyLabel.Size = UDim2.new(0.8, 0, 0, 30)
-keyLabel.Position = UDim2.new(0.1, 0, 0.28, 0)
+keyLabel.Size = UDim2.new(1, 0, 0, 30)
+keyLabel.Position = UDim2.new(0, 0, 0, 0)
 keyLabel.BackgroundTransparency = 1
 keyLabel.Text = "🔑 ENTER YOUR KEY"
-keyLabel.TextColor3 = Color3.fromRGB(180, 180, 200)
-keyLabel.TextSize = 14
+keyLabel.TextColor3 = Color3.fromRGB(80, 80, 100)
+keyLabel.TextSize = 16
 keyLabel.Font = Enum.Font.GothamBold
-keyLabel.TextXAlignment = Enum.TextXAlignment.Left
-keyLabel.TextTransparency = 1
-keyLabel.Parent = container
+keyLabel.TextXAlignment = Enum.TextXAlignment.Center
+keyLabel.Parent = keySection
 
+-- Key Box
 local keyBox = Instance.new("TextBox")
-keyBox.Size = UDim2.new(0.8, 0, 0, 45)
-keyBox.Position = UDim2.new(0.1, 0, 0.34, 0)
-keyBox.BackgroundColor3 = Color3.fromRGB(20, 20, 35)
-keyBox.TextColor3 = Color3.new(1, 1, 1)
+keyBox.Size = UDim2.new(0.8, 0, 0, 40)
+keyBox.Position = UDim2.new(0.1, 0, 0.28, 0)
+keyBox.BackgroundColor3 = Color3.fromRGB(240, 240, 250)
+keyBox.TextColor3 = Color3.fromRGB(50, 50, 70)
 keyBox.TextSize = 16
 keyBox.Font = Enum.Font.Gotham
 keyBox.PlaceholderText = "SKELLY-XXXXXX-XXXXXX"
 keyBox.ClearTextOnFocus = false
 keyBox.Text = ""
-keyBox.TextTransparency = 1
-keyBox.Parent = container
+keyBox.Parent = keySection
 
 local keyBoxCorner = Instance.new("UICorner")
-keyBoxCorner.CornerRadius = UDim.new(0, 8)
+keyBoxCorner.CornerRadius = UDim.new(0, 10)
 keyBoxCorner.Parent = keyBox
 
--- ======================================================================
--- ACTIVATE BUTTON
--- ======================================================================
-
+-- Activate Button
 local activateBtn = Instance.new("TextButton")
-activateBtn.Size = UDim2.new(0.8, 0, 0, 45)
-activateBtn.Position = UDim2.new(0.1, 0, 0.47, 0)
-activateBtn.BackgroundColor3 = Color3.fromRGB(40, 40, 60)
+activateBtn.Size = UDim2.new(0.4, 0, 0, 40)
+activateBtn.Position = UDim2.new(0.3, 0, 0.58, 0)
+activateBtn.BackgroundColor3 = Color3.fromRGB(100, 180, 255)
 activateBtn.BackgroundTransparency = 0.1
-activateBtn.TextColor3 = Color3.new(1, 1, 1)
+activateBtn.TextColor3 = Color3.fromRGB(50, 50, 70)
 activateBtn.TextSize = 16
 activateBtn.Font = Enum.Font.GothamBold
 activateBtn.Text = "▶ ACTIVATE"
-activateBtn.TextTransparency = 1
-activateBtn.Parent = container
+activateBtn.Parent = keySection
 
 local actCorner = Instance.new("UICorner")
-actCorner.CornerRadius = UDim.new(0, 8)
+actCorner.CornerRadius = UDim.new(0, 10)
 actCorner.Parent = activateBtn
 
 activateBtn.MouseEnter:Connect(function()
-    activateBtn.BackgroundColor3 = Color3.fromRGB(60, 60, 80)
+    activateBtn.BackgroundTransparency = 0.3
 end)
 activateBtn.MouseLeave:Connect(function()
-    activateBtn.BackgroundColor3 = Color3.fromRGB(40, 40, 60)
+    activateBtn.BackgroundTransparency = 0.1
 end)
 
 -- ======================================================================
@@ -233,18 +362,18 @@ end)
 
 local discordBtn = Instance.new("TextButton")
 discordBtn.Size = UDim2.new(0.35, 0, 0, 35)
-discordBtn.Position = UDim2.new(0.325, 0, 0.58, 0)
+discordBtn.Position = UDim2.new(0.325, 0, 0.68, 0)
 discordBtn.BackgroundColor3 = Color3.fromRGB(88, 101, 242)
 discordBtn.BackgroundTransparency = 0.1
 discordBtn.TextColor3 = Color3.new(1, 1, 1)
 discordBtn.TextSize = 13
 discordBtn.Font = Enum.Font.GothamBold
 discordBtn.Text = "💬 DISCORD"
-discordBtn.TextTransparency = 1
+discordBtn.Visible = false
 discordBtn.Parent = container
 
 local discCorner = Instance.new("UICorner")
-discCorner.CornerRadius = UDim.new(0, 8)
+discCorner.CornerRadius = UDim.new(0, 10)
 discCorner.Parent = discordBtn
 
 discordBtn.MouseEnter:Connect(function()
@@ -256,9 +385,11 @@ end)
 
 discordBtn.MouseButton1Click:Connect(function()
     setclipboard(DISCORD_INVITE)
-    UpdateStatus("✅ Discord link copied!")
+    statusText.Text = "✅ Discord link copied!"
+    statusText.TextColor3 = Color3.fromRGB(0, 255, 100)
     task.wait(1.5)
-    UpdateStatus("Enter your key to activate")
+    statusText.Text = "Enter your key to activate"
+    statusText.TextColor3 = Color3.fromRGB(80, 80, 100)
 end)
 
 -- ======================================================================
@@ -266,77 +397,37 @@ end)
 -- ======================================================================
 
 local statusText = Instance.new("TextLabel")
-statusText.Size = UDim2.new(0.8, 0, 0, 28)
-statusText.Position = UDim2.new(0.1, 0, 0.65, 0)
+statusText.Size = UDim2.new(0.8, 0, 0, 25)
+statusText.Position = UDim2.new(0.1, 0, 0.75, 0)
 statusText.BackgroundTransparency = 1
-statusText.Text = "Purchase a key on Discord"
-statusText.TextColor3 = Color3.fromRGB(150, 150, 170)
+statusText.Text = "Loading..."
+statusText.TextColor3 = Color3.fromRGB(80, 80, 100)
 statusText.TextSize = 13
 statusText.Font = Enum.Font.Gotham
 statusText.TextXAlignment = Enum.TextXAlignment.Center
-statusText.TextTransparency = 1
 statusText.Parent = container
-
--- ======================================================================
--- LOADING BAR
--- ======================================================================
-
-local barBg = Instance.new("Frame")
-barBg.Size = UDim2.new(0.8, 0, 0, 4)
-barBg.Position = UDim2.new(0.1, 0, 0.72, 0)
-barBg.BackgroundColor3 = Color3.fromRGB(30, 30, 50)
-barBg.BackgroundTransparency = 0.3
-barBg.BorderSizePixel = 0
-barBg.Parent = container
-
-local barCorner2 = Instance.new("UICorner")
-barCorner2.CornerRadius = UDim.new(0, 2)
-barCorner2.Parent = barBg
-
-local barFill = Instance.new("Frame")
-barFill.Size = UDim2.new(0, 0, 1, 0)
-barFill.BackgroundColor3 = Color3.fromRGB(100, 100, 140)
-barFill.BackgroundTransparency = 0.1
-barFill.BorderSizePixel = 0
-barFill.Parent = barBg
-
-local barFillCorner = Instance.new("UICorner")
-barFillCorner.CornerRadius = UDim.new(0, 2)
-barFillCorner.Parent = barFill
-
-local percentText = Instance.new("TextLabel")
-percentText.Size = UDim2.new(0.8, 0, 0, 22)
-percentText.Position = UDim2.new(0.1, 0, 0.76, 0)
-percentText.BackgroundTransparency = 1
-percentText.Text = "0%"
-percentText.TextColor3 = Color3.fromRGB(100, 100, 120)
-percentText.TextSize = 12
-percentText.Font = Enum.Font.Gotham
-percentText.TextXAlignment = Enum.TextXAlignment.Center
-percentText.TextTransparency = 1
-percentText.Parent = container
 
 -- ======================================================================
 -- FOOTER
 -- ======================================================================
 
 local versionText = Instance.new("TextLabel")
-versionText.Size = UDim2.new(0.4, 0, 0, 22)
+versionText.Size = UDim2.new(0.4, 0, 0, 20)
 versionText.Position = UDim2.new(0.05, 0, 0.93, 0)
 versionText.BackgroundTransparency = 1
 versionText.Text = "v" .. LOADER_VERSION
-versionText.TextColor3 = Color3.fromRGB(60, 60, 80)
+versionText.TextColor3 = Color3.fromRGB(150, 150, 170)
 versionText.TextSize = 11
 versionText.Font = Enum.Font.Gotham
 versionText.TextXAlignment = Enum.TextXAlignment.Left
 versionText.Parent = container
 
 local watermark = Instance.new("TextLabel")
-watermark.Size = UDim2.new(0.4, 0, 0, 22)
+watermark.Size = UDim2.new(0.4, 0, 0, 20)
 watermark.Position = UDim2.new(0.55, 0, 0.93, 0)
 watermark.BackgroundTransparency = 1
 watermark.Text = "💀 skelly-hub.lol"
-watermark.TextColor3 = Color3.fromRGB(40, 40, 60)
+watermark.TextColor3 = Color3.fromRGB(150, 150, 170)
 watermark.TextSize = 11
 watermark.Font = Enum.Font.Gotham
 watermark.TextXAlignment = Enum.TextXAlignment.Right
@@ -348,7 +439,7 @@ watermark.Parent = container
 
 local function AnimateBar(progress)
     local targetSize = UDim2.new(progress, 0, 1, 0)
-    local tween = TweenService:Create(barFill, TweenInfo.new(0.4, Enum.EasingStyle.Sine, Enum.EasingDirection.Out), {
+    local tween = TweenService:Create(barFill, TweenInfo.new(0.6, Enum.EasingStyle.Sine, Enum.EasingDirection.Out), {
         Size = targetSize
     })
     tween:Play()
@@ -362,63 +453,46 @@ local function UpdateStatus(text)
 end
 
 -- ======================================================================
--- SPLIT TEXT ANIMATION
+-- LOADING SEQUENCE
 -- ======================================================================
 
-local function SplitTextReveal()
-    print("[SkellyHub] Splitting text...")
+local function ShowKeyInput()
+    keySection.Visible = true
+    discordBtn.Visible = true
+    loadingLabel.Text = "Enter your key to activate"
+    keyBox:CaptureFocus()
+end
+
+local function StartLoading()
+    print("[SkellyHub] Starting loading sequence...")
     
-    local leftTween = TweenService:Create(leftText, TweenInfo.new(0.8, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {
-        Position = UDim2.new(0.02, 0, 0.1, 0)
-    })
-    leftTween:Play()
+    UpdateStatus("Initializing Skelly Hub...")
+    AnimateBar(0.1)
+    task.wait(0.3)
     
-    local rightTween = TweenService:Create(rightText, TweenInfo.new(0.8, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {
-        Position = UDim2.new(0.55, 0, 0.1, 0)
-    })
-    rightTween:Play()
+    UpdateStatus("Loading assets...")
+    AnimateBar(0.25)
+    task.wait(0.3)
     
-    task.wait(0.4)
-    local subTween = TweenService:Create(subtitle, TweenInfo.new(0.5, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
-        TextTransparency = 0
-    })
-    subTween:Play()
+    UpdateStatus("Connecting to servers...")
+    AnimateBar(0.4)
+    task.wait(0.3)
     
-    task.wait(0.2)
-    local formatTween = TweenService:Create(formatLabel, TweenInfo.new(0.4, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
-        TextTransparency = 0
-    })
-    formatTween:Play()
+    UpdateStatus("Loading scripts...")
+    AnimateBar(0.6)
+    task.wait(0.3)
     
-    local keyLabelTween = TweenService:Create(keyLabel, TweenInfo.new(0.4, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
-        TextTransparency = 0
-    })
-    keyLabelTween:Play()
+    UpdateStatus("Preparing Skelly Hub...")
+    AnimateBar(0.8)
+    task.wait(0.3)
     
-    local keyBoxTween = TweenService:Create(keyBox, TweenInfo.new(0.4, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
-        TextTransparency = 0
-    })
-    keyBoxTween:Play()
+    UpdateStatus("Ready!")
+    AnimateBar(1)
+    task.wait(0.5)
     
-    local activateTween = TweenService:Create(activateBtn, TweenInfo.new(0.4, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
-        TextTransparency = 0
-    })
-    activateTween:Play()
-    
-    local discordTween = TweenService:Create(discordBtn, TweenInfo.new(0.4, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
-        TextTransparency = 0
-    })
-    discordTween:Play()
-    
-    local statusTween = TweenService:Create(statusText, TweenInfo.new(0.4, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
-        TextTransparency = 0
-    })
-    statusTween:Play()
-    
-    local percentTween = TweenService:Create(percentText, TweenInfo.new(0.4, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
-        TextTransparency = 0
-    })
-    percentTween:Play()
+    -- Show key input
+    ShowKeyInput()
+    UpdateStatus("Enter your key to activate")
 end
 
 -- ======================================================================
@@ -428,10 +502,6 @@ end
 local function LoadScript()
     UpdateStatus("Downloading Skelly Hub...")
     AnimateBar(0.1)
-    task.wait(0.3)
-    
-    UpdateStatus("Connecting to servers...")
-    AnimateBar(0.2)
     task.wait(0.3)
     
     local success, scriptContent = pcall(function()
@@ -498,7 +568,6 @@ end
 local function ValidateKey()
     local inputKey = keyBox.Text
     
-    -- Check if key matches format: SKELLY-XXXXXX-XXXXXX
     local function isValidFormat(key)
         local pattern = "^SKELLY%-%w+%-%w+$"
         return string.match(key, pattern) ~= nil
@@ -514,7 +583,7 @@ local function ValidateKey()
     if VALID_KEYS[inputKey] then
         UpdateStatus("✅ Key accepted! Loading Skelly Hub...")
         activateBtn.Text = "✓"
-        activateBtn.BackgroundColor3 = Color3.fromRGB(0, 150, 0)
+        activateBtn.BackgroundColor3 = Color3.fromRGB(0, 200, 100)
         keyBox.Text = ""
         keyBox.PlaceholderText = "Key accepted!"
         task.wait(0.3)
@@ -542,12 +611,9 @@ end)
 -- START
 -- ======================================================================
 
-print("[SkellyHub] Loader v4.0")
+print("[SkellyHub] Loader v5.0")
 print("[SkellyHub] Discord: https://discord.gg/XJtYWy9jgU")
 print("[SkellyHub] Key format: SKELLY-XXXXXX-XXXXXX")
-print("[SkellyHub] Ready")
 
 task.wait(0.5)
-SplitTextReveal()
-task.wait(0.3)
-keyBox:CaptureFocus()
+StartLoading()
