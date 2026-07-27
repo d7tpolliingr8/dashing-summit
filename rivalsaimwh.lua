@@ -1,13 +1,7 @@
 --[[
-    DarkSide Rivals Script v3.0
-    All Features + Premium UI
-    Press Right Shift to toggle menu
+    DarkSide Rivals Script v9.0
+    Premium Menu with Full Features
 ]]
-
--- ==================== KEY SYSTEM ====================
-local VALID_KEYS = {
-    ["DARKSIDE-D54H3L9D-D6G2W8"] = true,  -- 🔑 Your DarkSide Key
-}
 
 -- ==================== SERVICES ====================
 local Players = game:GetService("Players")
@@ -20,176 +14,12 @@ local CoreGui = game:GetService("CoreGui")
 local Lighting = game:GetService("Lighting")
 local VirtualUser = game:GetService("VirtualUser")
 
--- ==================== KEY VALIDATION ====================
-local function ShowKeyPrompt()
-    local keyGui = Instance.new("ScreenGui")
-    keyGui.Name = "DarkSideKeySystem"
-    keyGui.Parent = CoreGui
-    keyGui.ResetOnSpawn = false
-    
-    local frame = Instance.new("Frame")
-    frame.Size = UDim2.new(0, 420, 0, 280)
-    frame.Position = UDim2.new(0.5, -210, 0.5, -140)
-    frame.BackgroundColor3 = Color3.fromRGB(10, 10, 20)
-    frame.BorderSizePixel = 2
-    frame.BorderColor3 = Color3.fromRGB(200, 0, 0)
-    frame.Parent = keyGui
-    
-    local corner = Instance.new("UICorner")
-    corner.CornerRadius = UDim.new(0, 12)
-    corner.Parent = frame
-    
-    -- Glow line
-    local glow = Instance.new("Frame")
-    glow.Size = UDim2.new(0.8, 0, 0, 2)
-    glow.Position = UDim2.new(0.1, 0, 0.97, 0)
-    glow.BackgroundColor3 = Color3.fromRGB(200, 0, 0)
-    glow.BackgroundTransparency = 0.5
-    glow.BorderSizePixel = 0
-    glow.Parent = frame
-    
-    local title = Instance.new("TextLabel")
-    title.Size = UDim2.new(1, 0, 0, 55)
-    title.Position = UDim2.new(0, 0, 0, 0)
-    title.BackgroundColor3 = Color3.fromRGB(200, 0, 0)
-    title.Text = "DARK SIDE"
-    title.TextColor3 = Color3.new(1, 1, 1)
-    title.TextSize = 32
-    title.Font = Enum.Font.GothamBold
-    title.Parent = frame
-    
-    local subTitle = Instance.new("TextLabel")
-    subTitle.Size = UDim2.new(1, 0, 0, 25)
-    subTitle.Position = UDim2.new(0, 0, 0, 55)
-    subTitle.BackgroundTransparency = 1
-    subTitle.Text = "Premium Rivals Script"
-    subTitle.TextColor3 = Color3.fromRGB(150, 150, 150)
-    subTitle.TextSize = 14
-    subTitle.Font = Enum.Font.Gotham
-    subTitle.Parent = frame
-    
-    local label = Instance.new("TextLabel")
-    label.Size = UDim2.new(1, -40, 0, 30)
-    label.Position = UDim2.new(0, 20, 0, 90)
-    label.BackgroundTransparency = 1
-    label.Text = "Enter Your Activation Key:"
-    label.TextColor3 = Color3.fromRGB(200, 200, 200)
-    label.TextSize = 16
-    label.Font = Enum.Font.Gotham
-    label.TextXAlignment = Enum.TextXAlignment.Left
-    label.Parent = frame
-    
-    local keyBox = Instance.new("TextBox")
-    keyBox.Size = UDim2.new(0.8, 0, 0, 40)
-    keyBox.Position = UDim2.new(0.1, 0, 0, 130)
-    keyBox.BackgroundColor3 = Color3.fromRGB(30, 30, 50)
-    keyBox.TextColor3 = Color3.new(1, 1, 1)
-    keyBox.TextSize = 16
-    keyBox.Font = Enum.Font.Gotham
-    keyBox.PlaceholderText = "Paste your key here..."
-    keyBox.ClearTextOnFocus = false
-    keyBox.Parent = frame
-    
-    local keyCorner = Instance.new("UICorner")
-    keyCorner.CornerRadius = UDim.new(0, 6)
-    keyCorner.Parent = keyBox
-    
-    local statusLabel = Instance.new("TextLabel")
-    statusLabel.Size = UDim2.new(1, -40, 0, 25)
-    statusLabel.Position = UDim2.new(0, 20, 0, 180)
-    statusLabel.BackgroundTransparency = 1
-    statusLabel.Text = ""
-    statusLabel.TextColor3 = Color3.fromRGB(255, 100, 100)
-    statusLabel.TextSize = 14
-    statusLabel.Font = Enum.Font.Gotham
-    statusLabel.Parent = frame
-    
-    local submitBtn = Instance.new("TextButton")
-    submitBtn.Size = UDim2.new(0.4, 0, 0, 40)
-    submitBtn.Position = UDim2.new(0.3, 0, 0, 215)
-    submitBtn.BackgroundColor3 = Color3.fromRGB(200, 0, 0)
-    submitBtn.TextColor3 = Color3.new(1, 1, 1)
-    submitBtn.TextSize = 18
-    submitBtn.Font = Enum.Font.GothamBold
-    submitBtn.Text = "ACTIVATE"
-    submitBtn.Parent = frame
-    
-    local btnCorner = Instance.new("UICorner")
-    btnCorner.CornerRadius = UDim.new(0, 6)
-    btnCorner.Parent = submitBtn
-    
-    -- Hover effect
-    submitBtn.MouseEnter:Connect(function()
-        submitBtn.BackgroundColor3 = Color3.fromRGB(230, 0, 0)
-    end)
-    submitBtn.MouseLeave:Connect(function()
-        submitBtn.BackgroundColor3 = Color3.fromRGB(200, 0, 0)
-    end)
-    
-    local function ValidateKey()
-        local inputKey = keyBox.Text
-        if VALID_KEYS[inputKey] then
-            statusLabel.Text = "✅ Key Valid! Loading DarkSide..."
-            statusLabel.TextColor3 = Color3.fromRGB(0, 255, 0)
-            submitBtn.Text = "✅ LOADING..."
-            submitBtn.BackgroundColor3 = Color3.fromRGB(0, 100, 0)
-            task.wait(0.8)
-            keyGui:Destroy()
-            LoadDarkSide()
-        else
-            statusLabel.Text = "❌ Invalid Key! Please try again."
-            statusLabel.TextColor3 = Color3.fromRGB(255, 50, 50)
-            keyBox.Text = ""
-            keyBox.PlaceholderText = "Invalid key, try again..."
-            task.wait(1)
-            keyBox.PlaceholderText = "Paste your key here..."
-        end
-    end
-    
-    submitBtn.MouseButton1Click:Connect(ValidateKey)
-    keyBox.FocusLost:Connect(function(enterPressed)
-        if enterPressed then ValidateKey() end
-    end)
-end
-
 -- ==================== CONFIG ====================
 local Config = {
-    Aimbot = {
-        Enabled = false,
-        Silent = false,
-        FOV = 120,
-        Smoothness = 0.3,
-        AimPart = "Head",
-        MaxDistance = 500,
-        TeamCheck = true,
-        VisibleCheck = false,
-    },
-    ESP = {
-        Enabled = false,
-        ShowBoxes = true,
-        ShowNames = true,
-        ShowHealth = true,
-        ShowDistance = true,
-        ShowTracers = false,
-        TeamCheck = true,
-        MaxDistance = 1000,
-    },
-    Player = {
-        InfiniteJump = false,
-        Fly = false,
-        FlySpeed = 50,
-        WalkSpeed = 16,
-        JumpPower = 50,
-        GodMode = false,
-        NoFallDamage = false,
-        FullBright = false,
-        AntiAFK = false,
-        AutoFarm = false,
-    },
-    Menu = {
-        Key = Enum.KeyCode.RightShift,
-        Tab = "Main",
-    }
+    Aimbot = {Enabled = false, FOV = 120, Smoothness = 0.3, AimPart = "Head", MaxDistance = 500, TeamCheck = true},
+    ESP = {Enabled = false, ShowBoxes = true, ShowNames = true, ShowHealth = true, ShowDistance = true, ShowTracers = false, TeamCheck = true, MaxDistance = 1000},
+    Player = {InfiniteJump = false, Fly = false, FlySpeed = 50, WalkSpeed = 16, JumpPower = 50, GodMode = false, NoFallDamage = false, FullBright = false, AntiAFK = false, AutoFarm = false},
+    Menu = {Key = Enum.KeyCode.RightShift}
 }
 
 -- ==================== UTILITY ====================
@@ -206,11 +36,8 @@ end
 
 local function GetAimPart(character, partName)
     if not character then return nil end
-    if partName == "Head" then
-        return character:FindFirstChild("Head")
-    elseif partName == "Body" then
-        return character:FindFirstChild("UpperTorso") or character:FindFirstChild("Torso")
-    end
+    if partName == "Head" then return character:FindFirstChild("Head")
+    elseif partName == "Body" then return character:FindFirstChild("UpperTorso") or character:FindFirstChild("Torso") end
     return character:FindFirstChild(partName) or GetRootPart(character)
 end
 
@@ -238,12 +65,6 @@ local function GetBestTarget()
             
             local aimPart = GetAimPart(player.Character, Config.Aimbot.AimPart)
             if not aimPart then continue end
-            
-            if Config.Aimbot.VisibleCheck then
-                local ray = Ray.new(camPos, (aimPart.Position - camPos).Unit * maxDist)
-                local hit = workspace:FindPartOnRay(ray, LocalPlayer.Character)
-                if hit and hit.Parent ~= player.Character then continue end
-            end
             
             local sp, onScreen = Camera:WorldToScreenPoint(aimPart.Position)
             if not onScreen then continue end
@@ -286,11 +107,8 @@ local function DoSilentAim()
     if not silentAimActive or not Config.Aimbot.Silent then return end
     local target = GetBestTarget()
     if not target then return end
-    
     local mouse = LocalPlayer:GetMouse()
-    if mouse then
-        mouse.Hit = CFrame.new(target.AimPart.Position)
-    end
+    if mouse then mouse.Hit = CFrame.new(target.AimPart.Position) end
 end
 
 -- ==================== ESP ====================
@@ -299,9 +117,7 @@ local espDrawings = {}
 local espObjects = {}
 local drawingAvailable = pcall(function() return Drawing.new("Square") end)
 
-if not drawingAvailable then
-    warn("[DarkSide] Drawing library not available. ESP disabled.")
-end
+if not drawingAvailable then warn("[DarkSide] Drawing library not available. ESP disabled.") end
 
 local function CreateDrawing(drawType, props)
     if not drawingAvailable then return nil end
@@ -310,19 +126,13 @@ local function CreateDrawing(drawType, props)
         for k, v in pairs(props or {}) do drawing[k] = v end
         return drawing
     end)
-    if success and d then
-        table.insert(espDrawings, d)
-        return d
-    end
+    if success and d then table.insert(espDrawings, d); return d end
     return nil
 end
 
 local function ClearESP()
-    for _, d in pairs(espDrawings) do
-        pcall(function() d:Remove() end)
-    end
-    espDrawings = {}
-    espObjects = {}
+    for _, d in pairs(espDrawings) do pcall(function() d:Remove() end) end
+    espDrawings = {}; espObjects = {}
 end
 
 local function DrawESP(player)
@@ -332,17 +142,14 @@ local function DrawESP(player)
     
     local character = player.Character
     if not character then return end
-    
     local humanoid = character:FindFirstChild("Humanoid")
     if not humanoid or humanoid.Health <= 0 then return end
-    
     local rootPart = GetRootPart(character)
     if not rootPart then return end
     
     local rootPos = rootPart.Position
     local sp, onScreen = Camera:WorldToScreenPoint(rootPos)
     if not onScreen then return end
-    
     local distance = (Camera.CFrame.Position - rootPos).Magnitude
     if distance > Config.ESP.MaxDistance then return end
     
@@ -420,10 +227,7 @@ local function DrawESP(player)
 end
 
 local function UpdateESP()
-    if not espActive or not Config.ESP.Enabled or not drawingAvailable then 
-        ClearESP() 
-        return 
-    end
+    if not espActive or not Config.ESP.Enabled or not drawingAvailable then ClearESP(); return end
     ClearESP()
     espObjects = {}
     for _, player in pairs(Players:GetPlayers()) do DrawESP(player) end
@@ -475,38 +279,23 @@ end)
 RunService.Heartbeat:Connect(function()
     local character = LocalPlayer.Character
     if not character then return end
-    
     if Config.Player.GodMode then
         local h = character:FindFirstChild("Humanoid")
-        if h then 
-            h.Health = h.MaxHealth 
-            h.BreakJointsOnDeath = false
-        end
+        if h then h.Health = h.MaxHealth; h.BreakJointsOnDeath = false end
     end
-    
     if Config.Player.NoFallDamage then
         local h = character:FindFirstChild("Humanoid")
-        if h then
-            h:SetStateEnabled(Enum.HumanoidStateType.FallingDown, false)
-        end
+        if h then h:SetStateEnabled(Enum.HumanoidStateType.FallingDown, false) end
     end
-end)
-
-RunService.Heartbeat:Connect(function()
-    local character = LocalPlayer.Character
-    if not character then return end
-    local h = character:FindFirstChild("Humanoid")
-    if h then
-        if Config.Player.WalkSpeed ~= 16 then h.WalkSpeed = Config.Player.WalkSpeed end
-        if Config.Player.JumpPower ~= 50 then h.JumpPower = Config.Player.JumpPower end
-    end
-end)
-
-RunService.Heartbeat:Connect(function()
     if Config.Player.FullBright then
         Lighting.Brightness = 2
         Lighting.Ambient = Color3.new(1,1,1)
         Lighting.OutdoorAmbient = Color3.new(1,1,1)
+    end
+    local h = character:FindFirstChild("Humanoid")
+    if h then
+        if Config.Player.WalkSpeed ~= 16 then h.WalkSpeed = Config.Player.WalkSpeed end
+        if Config.Player.JumpPower ~= 50 then h.JumpPower = Config.Player.JumpPower end
     end
 end)
 
@@ -517,96 +306,79 @@ local function AntiAFK()
         vu:ClickButton2(Vector2.new())
     end
 end
-
 RunService.Heartbeat:Connect(AntiAFK)
-
-local function AutoFarm()
-    if not Config.Player.AutoFarm then return end
-    for _, item in pairs(workspace:GetDescendants()) do
-        if item:IsA("Part") and (item.Name:lower():find("collect") or item.Name:lower():find("coin") or item.Name:lower():find("resource")) then
-            local char = LocalPlayer.Character
-            if char and char:FindFirstChild("HumanoidRootPart") then
-                local root = char.HumanoidRootPart
-                local distance = (root.Position - item.Position).Magnitude
-                if distance < 20 then
-                    root.CFrame = CFrame.new(item.Position + Vector3.new(0, 3, 0))
-                end
-            end
-        end
-    end
-end
 
 -- ==================== MENU ====================
 local menuVisible = false
 local screenGui = nil
-local menuFrame = nil
 local menuCreated = false
 local currentTab = "Main"
 
 local function CreateMenu()
-    if screenGui then 
-        pcall(function() screenGui:Destroy() end)
-        screenGui = nil
-    end
+    if screenGui then pcall(function() screenGui:Destroy() end); screenGui = nil end
     
     screenGui = Instance.new("ScreenGui")
     screenGui.Name = "DarkSideMenu"
     screenGui.Parent = CoreGui
     screenGui.ResetOnSpawn = false
+    screenGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
+    screenGui.DisplayOrder = 999
     
-    menuFrame = Instance.new("Frame")
-    menuFrame.Size = UDim2.new(0, 500, 0, 520)
-    menuFrame.Position = UDim2.new(0.5, -250, 0.5, -260)
-    menuFrame.BackgroundColor3 = Color3.fromRGB(10, 10, 20)
-    menuFrame.BackgroundTransparency = 0.05
-    menuFrame.BorderSizePixel = 2
-    menuFrame.BorderColor3 = Color3.fromRGB(200, 0, 0)
-    menuFrame.Parent = screenGui
+    local mainFrame = Instance.new("Frame")
+    mainFrame.Size = UDim2.new(0, 520, 0, 480)
+    mainFrame.Position = UDim2.new(0.5, -260, 0.5, -240)
+    mainFrame.BackgroundColor3 = Color3.fromRGB(10, 10, 22)
+    mainFrame.BackgroundTransparency = 0.05
+    mainFrame.BorderSizePixel = 2
+    mainFrame.BorderColor3 = Color3.fromRGB(180, 0, 0)
+    mainFrame.Parent = screenGui
     
-    local corner = Instance.new("UICorner")
-    corner.CornerRadius = UDim.new(0, 10)
-    corner.Parent = menuFrame
+    local mainCorner = Instance.new("UICorner")
+    mainCorner.CornerRadius = UDim.new(0, 20)
+    mainCorner.Parent = mainFrame
     
+    -- Title Bar
     local titleBar = Instance.new("Frame")
-    titleBar.Size = UDim2.new(1, 0, 0, 45)
-    titleBar.BackgroundColor3 = Color3.fromRGB(200, 0, 0)
+    titleBar.Size = UDim2.new(1, 0, 0, 50)
+    titleBar.BackgroundColor3 = Color3.fromRGB(20, 0, 0)
+    titleBar.BackgroundTransparency = 0.3
     titleBar.BorderSizePixel = 0
-    titleBar.Parent = menuFrame
+    titleBar.Parent = mainFrame
     
-    local titleCorner = Instance.new("UICorner")
-    titleCorner.CornerRadius = UDim.new(0, 10)
-    titleCorner.Parent = titleBar
+    local titleBarCorner = Instance.new("UICorner")
+    titleBarCorner.CornerRadius = UDim.new(0, 20)
+    titleBarCorner.Parent = titleBar
     
-    local title = Instance.new("TextLabel")
-    title.Size = UDim2.new(0.6, 0, 1, 0)
-    title.BackgroundTransparency = 1
-    title.Text = "DARK SIDE"
-    title.TextColor3 = Color3.new(1, 1, 1)
-    title.TextSize = 24
-    title.Font = Enum.Font.GothamBold
-    title.TextXAlignment = Enum.TextXAlignment.Left
-    title.Position = UDim2.new(0.02, 0, 0, 0)
-    title.Parent = titleBar
+    local titleText = Instance.new("TextLabel")
+    titleText.Size = UDim2.new(1, 0, 1, 0)
+    titleText.BackgroundTransparency = 1
+    titleText.Text = "DARK SIDE"
+    titleText.TextColor3 = Color3.new(1, 1, 1)
+    titleText.TextSize = 28
+    titleText.Font = Enum.Font.GothamBold
+    titleText.Parent = titleBar
     
-    local scriptName = Instance.new("TextLabel")
-    scriptName.Size = UDim2.new(0.4, 0, 1, 0)
-    scriptName.Position = UDim2.new(0.6, 0, 0, 0)
-    scriptName.BackgroundTransparency = 1
-    scriptName.Text = "Rivals Script v3.0"
-    scriptName.TextColor3 = Color3.fromRGB(200, 200, 200)
-    scriptName.TextSize = 14
-    scriptName.Font = Enum.Font.Gotham
-    scriptName.TextXAlignment = Enum.TextXAlignment.Right
-    scriptName.Parent = titleBar
+    local subText = Instance.new("TextLabel")
+    subText.Size = UDim2.new(1, 0, 1, 0)
+    subText.Position = UDim2.new(0, 0, 0, 0)
+    subText.BackgroundTransparency = 1
+    subText.Text = "RIVALS SCRIPT"
+    subText.TextColor3 = Color3.fromRGB(150, 150, 150)
+    subText.TextSize = 12
+    subText.Font = Enum.Font.Gotham
+    subText.TextXAlignment = Enum.TextXAlignment.Right
+    subText.Parent = titleBar
     
+    -- Tab Bar
     local tabBar = Instance.new("Frame")
-    tabBar.Size = UDim2.new(1, 0, 0, 35)
-    tabBar.Position = UDim2.new(0, 0, 0, 45)
-    tabBar.BackgroundColor3 = Color3.fromRGB(20, 20, 35)
+    tabBar.Size = UDim2.new(1, 0, 0, 40)
+    tabBar.Position = UDim2.new(0, 0, 0, 50)
+    tabBar.BackgroundColor3 = Color3.fromRGB(15, 15, 30)
+    tabBar.BackgroundTransparency = 0.3
     tabBar.BorderSizePixel = 0
-    tabBar.Parent = menuFrame
+    tabBar.Parent = mainFrame
     
-    local function CreateTabButton(text, tabName, xPos)
+    local function CreateTab(text, tabName, xPos)
         local btn = Instance.new("TextButton")
         btn.Size = UDim2.new(0.25, 0, 1, 0)
         btn.Position = UDim2.new(xPos, 0, 0, 0)
@@ -619,28 +391,30 @@ local function CreateMenu()
         
         btn.MouseButton1Click:Connect(function()
             currentTab = tabName
-            Config.Menu.Tab = tabName
             for _, child in pairs(contentContainer:GetChildren()) do
-                child:Destroy()
+                if child:IsA("TextButton") or child:IsA("TextLabel") or child:IsA("Frame") then
+                    child:Destroy()
+                end
             end
-            LoadTabContent(tabName)
+            LoadTab(tabName)
         end)
         return btn
     end
     
-    CreateTabButton("Main", "Main", 0)
-    CreateTabButton("Misc", "Misc", 0.25)
-    CreateTabButton("Spoofer", "Spoofer", 0.5)
-    CreateTabButton("Credits", "Credits", 0.75)
+    CreateTab("Main", "Main", 0)
+    CreateTab("Misc", "Misc", 0.25)
+    CreateTab("Spoofer", "Spoofer", 0.5)
+    CreateTab("Credits", "Credits", 0.75)
     
+    -- Content Container
     local contentContainer = Instance.new("ScrollingFrame")
-    contentContainer.Size = UDim2.new(1, -20, 1, -105)
-    contentContainer.Position = UDim2.new(0, 10, 0, 85)
+    contentContainer.Size = UDim2.new(1, -20, 1, -110)
+    contentContainer.Position = UDim2.new(0, 10, 0, 95)
     contentContainer.BackgroundTransparency = 1
     contentContainer.CanvasSize = UDim2.new(0, 0, 0, 0)
     contentContainer.ScrollBarThickness = 6
     contentContainer.ScrollBarImageColor3 = Color3.fromRGB(200, 0, 0)
-    contentContainer.Parent = menuFrame
+    contentContainer.Parent = mainFrame
     
     local layout = Instance.new("UIListLayout")
     layout.Parent = contentContainer
@@ -648,14 +422,10 @@ local function CreateMenu()
     layout.Padding = UDim.new(0, 5)
     layout.SortOrder = Enum.SortOrder.LayoutOrder
     
-    function LoadTabContent(tab)
-        for _, child in pairs(contentContainer:GetChildren()) do
-            if child:IsA("TextButton") or child:IsA("TextLabel") or child:IsA("Frame") then
-                child:Destroy()
-            end
-        end
-        
+    -- Content Loading
+    function LoadTab(tab)
         if tab == "Main" then
+            -- Head/Body selector
             local selectorLabel = Instance.new("TextLabel")
             selectorLabel.Size = UDim2.new(1, -10, 0, 25)
             selectorLabel.BackgroundTransparency = 1
@@ -665,15 +435,20 @@ local function CreateMenu()
             selectorLabel.Font = Enum.Font.GothamBold
             selectorLabel.Parent = contentContainer
             
+            local btnContainer = Instance.new("Frame")
+            btnContainer.Size = UDim2.new(1, 0, 0, 35)
+            btnContainer.BackgroundTransparency = 1
+            btnContainer.Parent = contentContainer
+            
             local headBtn = Instance.new("TextButton")
-            headBtn.Size = UDim2.new(0.45, 0, 0, 30)
-            headBtn.Position = UDim2.new(0.02, 0, 0, 30)
+            headBtn.Size = UDim2.new(0.45, 0, 1, 0)
+            headBtn.Position = UDim2.new(0.02, 0, 0, 0)
             headBtn.BackgroundColor3 = Config.Aimbot.AimPart == "Head" and Color3.fromRGB(0, 100, 0) or Color3.fromRGB(40, 40, 70)
             headBtn.TextColor3 = Color3.new(1, 1, 1)
             headBtn.TextSize = 14
             headBtn.Font = Enum.Font.Gotham
             headBtn.Text = "Head"
-            headBtn.Parent = contentContainer
+            headBtn.Parent = btnContainer
             
             headBtn.MouseButton1Click:Connect(function()
                 Config.Aimbot.AimPart = "Head"
@@ -683,14 +458,14 @@ local function CreateMenu()
             end)
             
             local bodyBtn = Instance.new("TextButton")
-            bodyBtn.Size = UDim2.new(0.45, 0, 0, 30)
-            bodyBtn.Position = UDim2.new(0.53, 0, 0, 30)
+            bodyBtn.Size = UDim2.new(0.45, 0, 1, 0)
+            bodyBtn.Position = UDim2.new(0.53, 0, 0, 0)
             bodyBtn.BackgroundColor3 = Config.Aimbot.AimPart == "Body" and Color3.fromRGB(0, 100, 0) or Color3.fromRGB(40, 40, 70)
             bodyBtn.TextColor3 = Color3.new(1, 1, 1)
             bodyBtn.TextSize = 14
             bodyBtn.Font = Enum.Font.Gotham
             bodyBtn.Text = "Body"
-            bodyBtn.Parent = contentContainer
+            bodyBtn.Parent = btnContainer
             
             bodyBtn.MouseButton1Click:Connect(function()
                 Config.Aimbot.AimPart = "Body"
@@ -699,9 +474,10 @@ local function CreateMenu()
                 headBtn.BackgroundColor3 = Color3.fromRGB(40, 40, 70)
             end)
             
+            -- FOV
             local fovLabel = Instance.new("TextLabel")
             fovLabel.Size = UDim2.new(1, -10, 0, 25)
-            fovLabel.Position = UDim2.new(0, 0, 0, 65)
+            fovLabel.Position = UDim2.new(0, 0, 0, 40)
             fovLabel.BackgroundTransparency = 1
             fovLabel.Text = "Aim FOV: " .. Config.Aimbot.FOV
             fovLabel.TextColor3 = Color3.fromRGB(200, 200, 200)
@@ -709,15 +485,21 @@ local function CreateMenu()
             fovLabel.Font = Enum.Font.GothamBold
             fovLabel.Parent = contentContainer
             
+            local fovContainer = Instance.new("Frame")
+            fovContainer.Size = UDim2.new(1, 0, 0, 30)
+            fovContainer.Position = UDim2.new(0, 0, 0, 65)
+            fovContainer.BackgroundTransparency = 1
+            fovContainer.Parent = contentContainer
+            
             local fovDown = Instance.new("TextButton")
-            fovDown.Size = UDim2.new(0.1, 0, 0, 25)
-            fovDown.Position = UDim2.new(0, 0, 0, 90)
+            fovDown.Size = UDim2.new(0.1, 0, 1, 0)
+            fovDown.Position = UDim2.new(0.01, 0, 0, 0)
             fovDown.BackgroundColor3 = Color3.fromRGB(40, 40, 70)
             fovDown.TextColor3 = Color3.new(1, 1, 1)
             fovDown.TextSize = 18
             fovDown.Font = Enum.Font.GothamBold
             fovDown.Text = "-"
-            fovDown.Parent = contentContainer
+            fovDown.Parent = fovContainer
             
             fovDown.MouseButton1Click:Connect(function()
                 Config.Aimbot.FOV = math.max(10, Config.Aimbot.FOV - 5)
@@ -725,27 +507,28 @@ local function CreateMenu()
             end)
             
             local fovUp = Instance.new("TextButton")
-            fovUp.Size = UDim2.new(0.1, 0, 0, 25)
-            fovUp.Position = UDim2.new(0.12, 0, 0, 90)
+            fovUp.Size = UDim2.new(0.1, 0, 1, 0)
+            fovUp.Position = UDim2.new(0.13, 0, 0, 0)
             fovUp.BackgroundColor3 = Color3.fromRGB(40, 40, 70)
             fovUp.TextColor3 = Color3.new(1, 1, 1)
             fovUp.TextSize = 18
             fovUp.Font = Enum.Font.GothamBold
             fovUp.Text = "+"
-            fovUp.Parent = contentContainer
+            fovUp.Parent = fovContainer
             
             fovUp.MouseButton1Click:Connect(function()
                 Config.Aimbot.FOV = math.min(360, Config.Aimbot.FOV + 5)
                 fovLabel.Text = "Aim FOV: " .. Config.Aimbot.FOV
             end)
             
+            -- Toggles
             local function AddToggle(text, yPos, callback)
                 local btn = Instance.new("TextButton")
                 btn.Size = UDim2.new(0.9, 0, 0, 35)
                 btn.Position = UDim2.new(0.05, 0, 0, yPos)
                 btn.BackgroundColor3 = Color3.fromRGB(40, 40, 70)
                 btn.TextColor3 = Color3.new(1, 1, 1)
-                btn.TextSize = 16
+                btn.TextSize = 15
                 btn.Font = Enum.Font.Gotham
                 btn.Text = text .. " [OFF]"
                 btn.Parent = contentContainer
@@ -760,20 +543,9 @@ local function CreateMenu()
                 return btn
             end
             
-            AddToggle("Silent Aim V3", 125, function(s)
-                Config.Aimbot.Silent = s
-                silentAimActive = s
-            end)
-            
-            AddToggle("Aimbot", 165, function(s)
-                Config.Aimbot.Enabled = s
-                aimbotActive = s
-            end)
-            
-            AddToggle("ESP", 205, function(s)
-                Config.ESP.Enabled = s
-                espActive = s
-            end)
+            AddToggle("Silent Aim V3", 100, function(s) Config.Aimbot.Silent = s; silentAimActive = s end)
+            AddToggle("Aimbot", 140, function(s) Config.Aimbot.Enabled = s; aimbotActive = s end)
+            AddToggle("ESP", 180, function(s) Config.ESP.Enabled = s; espActive = s end)
             
         elseif tab == "Misc" then
             local function AddToggle(text, yPos, callback)
@@ -782,7 +554,7 @@ local function CreateMenu()
                 btn.Position = UDim2.new(0.05, 0, 0, yPos)
                 btn.BackgroundColor3 = Color3.fromRGB(40, 40, 70)
                 btn.TextColor3 = Color3.new(1, 1, 1)
-                btn.TextSize = 16
+                btn.TextSize = 15
                 btn.Font = Enum.Font.Gotham
                 btn.Text = text .. " [OFF]"
                 btn.Parent = contentContainer
@@ -810,14 +582,14 @@ local function CreateMenu()
             label.Size = UDim2.new(1, -10, 0, 30)
             label.Position = UDim2.new(0, 0, 0, 10)
             label.BackgroundTransparency = 1
-            label.Text = "🛡️ Spoofer Options"
+            label.Text = "🛡️ Spoofer"
             label.TextColor3 = Color3.fromRGB(200, 0, 0)
-            label.TextSize = 18
+            label.TextSize = 20
             label.Font = Enum.Font.GothamBold
             label.Parent = contentContainer
             
             local info = Instance.new("TextLabel")
-            info.Size = UDim2.new(1, -10, 0, 60)
+            info.Size = UDim2.new(1, -10, 0, 50)
             info.Position = UDim2.new(0, 0, 0, 45)
             info.BackgroundTransparency = 1
             info.Text = "Spoofer helps bypass hardware bans.\nUse with caution."
@@ -828,8 +600,8 @@ local function CreateMenu()
             info.Parent = contentContainer
             
             local spoofBtn = Instance.new("TextButton")
-            spoofBtn.Size = UDim2.new(0.6, 0, 0, 40)
-            spoofBtn.Position = UDim2.new(0.2, 0, 0, 115)
+            spoofBtn.Size = UDim2.new(0.5, 0, 0, 40)
+            spoofBtn.Position = UDim2.new(0.25, 0, 0, 105)
             spoofBtn.BackgroundColor3 = Color3.fromRGB(200, 0, 0)
             spoofBtn.TextColor3 = Color3.new(1, 1, 1)
             spoofBtn.TextSize = 16
@@ -852,7 +624,7 @@ local function CreateMenu()
             label.BackgroundTransparency = 1
             label.Text = "DARK SIDE"
             label.TextColor3 = Color3.fromRGB(200, 0, 0)
-            label.TextSize = 28
+            label.TextSize = 32
             label.Font = Enum.Font.GothamBold
             label.Parent = contentContainer
             
@@ -860,7 +632,7 @@ local function CreateMenu()
             credit1.Size = UDim2.new(1, -10, 0, 25)
             credit1.Position = UDim2.new(0, 0, 0, 55)
             credit1.BackgroundTransparency = 1
-            credit1.Text = "Rivals Script v3.0"
+            credit1.Text = "Rivals Script v9.0"
             credit1.TextColor3 = Color3.fromRGB(200, 200, 200)
             credit1.TextSize = 16
             credit1.Font = Enum.Font.Gotham
@@ -880,13 +652,14 @@ local function CreateMenu()
             credit3.Size = UDim2.new(1, -10, 0, 25)
             credit3.Position = UDim2.new(0, 0, 0, 105)
             credit3.BackgroundTransparency = 1
-            credit3.Text = "Website: dark-side.lol"
+            credit3.Text = "dark-side.lol"
             credit3.TextColor3 = Color3.fromRGB(100, 100, 100)
             credit3.TextSize = 12
             credit3.Font = Enum.Font.Gotham
             credit3.Parent = contentContainer
         end
         
+        -- Update canvas
         task.wait(0.1)
         local totalH = 0
         for _, child in pairs(contentContainer:GetChildren()) do
@@ -897,17 +670,18 @@ local function CreateMenu()
         contentContainer.CanvasSize = UDim2.new(0, 0, 0, totalH + 20)
     end
     
-    LoadTabContent(currentTab)
+    LoadTab("Main")
     
+    -- Close Button
     local closeBtn = Instance.new("TextButton")
     closeBtn.Size = UDim2.new(0.2, 0, 0, 35)
-    closeBtn.Position = UDim2.new(0.4, 0, 1, -45)
+    closeBtn.Position = UDim2.new(0.4, 0, 1, -42)
     closeBtn.BackgroundColor3 = Color3.fromRGB(80, 20, 20)
     closeBtn.TextColor3 = Color3.new(1, 1, 1)
     closeBtn.TextSize = 14
     closeBtn.Font = Enum.Font.GothamBold
     closeBtn.Text = "CLOSE"
-    closeBtn.Parent = menuFrame
+    closeBtn.Parent = mainFrame
     
     local closeCorner = Instance.new("UICorner")
     closeCorner.CornerRadius = UDim.new(0, 6)
@@ -923,44 +697,24 @@ end
 
 local function ToggleMenu()
     menuVisible = not menuVisible
-    
     if menuVisible then
-        if not menuCreated then
-            CreateMenu()
-        end
-        if screenGui then 
-            screenGui.Enabled = true
-        end
+        if not menuCreated then CreateMenu() end
+        if screenGui then screenGui.Enabled = true end
     else
-        if screenGui then 
-            screenGui.Enabled = false
-        end
+        if screenGui then screenGui.Enabled = false end
     end
 end
 
--- ==================== LOAD DARKSIDE ====================
-function LoadDarkSide()
-    print("[DarkSide] Rivals Script v3.0 Loading...")
-    print("[DarkSide] Drawing library available: " .. tostring(drawingAvailable))
-    
-    UserInputService.InputBegan:Connect(function(input, gameProcessed)
-        if gameProcessed then return end
-        if input.KeyCode == Enum.KeyCode.RightShift then
-            ToggleMenu()
-        end
-    end)
-    
-    RunService.RenderStepped:Connect(DoAimbot)
-    RunService.RenderStepped:Connect(DoSilentAim)
-    RunService.RenderStepped:Connect(UpdateESP)
-    RunService.Heartbeat:Connect(AutoFarm)
-    
-    task.wait(0.5)
-    ToggleMenu()
-    
-    print("[DarkSide] Rivals Script Loaded! Press Right Shift to toggle menu.")
-end
-
 -- ==================== START ====================
-print("[DarkSide] v3.0 - Key System Active")
-ShowKeyPrompt()
+print("[DarkSide] Rivals Script v9.0 Loading...")
+
+UserInputService.InputBegan:Connect(function(input, gameProcessed)
+    if gameProcessed then return end
+    if input.KeyCode == Config.Menu.Key then ToggleMenu() end
+end)
+
+RunService.RenderStepped:Connect(DoAimbot)
+RunService.RenderStepped:Connect(DoSilentAim)
+RunService.RenderStepped:Connect(UpdateESP)
+
+print("[DarkSide] Rivals Script Loaded! Press Right Shift for menu.")
