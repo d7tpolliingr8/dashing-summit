@@ -9,34 +9,29 @@
 -- ======================================================================
 
 local Library = nil
-local libraryLoadSuccess = false
 
--- Try loading from first URL
-local success1, lib1 = pcall(function()
+-- Try loading from first URL (violin-suzutsuki)
+local success, lib = pcall(function()
     return loadstring(game:HttpGet("https://raw.githubusercontent.com/violin-suzutsuki/LinoriaLib/main/Library.lua"))()
 end)
 
-if success1 and lib1 then
-    Library = lib1
-    libraryLoadSuccess = true
-    print("[SkellyHub] Loaded LinoriaLib from violin-suzutsuki")
-end
-
--- If first fails, try second
-if not libraryLoadSuccess then
+if success and lib then
+    Library = lib
+    print("[SkellyHub] ✅ Loaded LinoriaLib from violin-suzutsuki")
+else
+    -- Try second URL (caIIed)
     local success2, lib2 = pcall(function()
         return loadstring(game:HttpGet("https://raw.githubusercontent.com/caIIed/Linoria-Rewrite/main/Library.lua"))()
     end)
     
     if success2 and lib2 then
         Library = lib2
-        libraryLoadSuccess = true
-        print("[SkellyHub] Loaded LinoriaLib from caIIed")
+        print("[SkellyHub] ✅ Loaded LinoriaLib from caIIed")
+    else
+        print("[SkellyHub] ❌ Failed to load LinoriaLib!")
+        print("[SkellyHub] Make sure you have an internet connection.")
+        return
     end
-end
-
-if not libraryLoadSuccess then
-    error("[SkellyHub] Failed to load LinoriaLib! Check your internet connection.")
 end
 
 -- ======================================================================
@@ -60,7 +55,7 @@ local Config = {
     Aimbot = {
         Enabled = false,
         Silent = false,
-        AimKey = Enum.UserInputType.MouseButton2,
+        AimKey = "MouseButton2",
         FOV = 120,
         Smoothness = 0.3,
         AimPart = "Head",
@@ -98,12 +93,11 @@ local Config = {
 -- STATE VARIABLES
 -- ======================================================================
 
-local aimKeyHeld = false
-local fovCircle = nil
-local espActive = false
 local aimbotActive = false
 local silentAimActive = false
-local menuOpen = false
+local espActive = false
+local aimKeyHeld = false
+local fovCircle = nil
 
 -- ======================================================================
 -- UTILITY FUNCTIONS
@@ -240,29 +234,28 @@ end
 UserInputService.InputBegan:Connect(function(input, gameProcessed)
     if gameProcessed then return end
     
-    if input.UserInputType == Config.Aimbot.AimKey then
+    -- Aim key
+    if input.UserInputType == Enum.UserInputType.MouseButton2 then
         aimKeyHeld = true
     end
     
+    -- Menu key (Right Shift)
     if input.KeyCode == Enum.KeyCode.RightShift then
-        menuOpen = not menuOpen
-        if menuOpen then
-            Library:Open()
-        else
-            Library:Close()
+        if Library then
+            Library:Toggle()
         end
     end
 end)
 
 UserInputService.InputEnded:Connect(function(input, gameProcessed)
     if gameProcessed then return end
-    if input.UserInputType == Config.Aimbot.AimKey then
+    if input.UserInputType == Enum.UserInputType.MouseButton2 then
         aimKeyHeld = false
     end
 end)
 
 -- ======================================================================
--- ESP (Drawing Library)
+-- ESP
 -- ======================================================================
 
 local espDrawings = {}
@@ -498,338 +491,333 @@ RunService.Heartbeat:Connect(NoClip)
 -- BUILD LINORIALIB UI
 -- ======================================================================
 
-local Window = Library:CreateWindow("💀 Skelly Hub", "Skelly Hub Rivals Script")
-local MainTab = Window:CreateTab("Main")
-
--- ======================================================================
--- AIMBOT TAB
--- ======================================================================
-
-local AimbotTab = Window:CreateTab("Aimbot")
-local AimbotGroup = AimbotTab:CreateGroup("Aimbot Settings")
-
-AimbotGroup:AddToggle("Aimbot", {
-    Text = "Enable Aimbot",
-    Default = false,
-    Tooltip = "Toggle the aimbot on/off",
-    Callback = function(Value)
-        Config.Aimbot.Enabled = Value
-        aimbotActive = Value
-        UpdateFOVCircle()
-    end
-})
-
-AimbotGroup:AddToggle("Silent Aim", {
-    Text = "Silent Aim",
-    Default = false,
-    Tooltip = "Aim without moving your camera",
-    Callback = function(Value)
-        Config.Aimbot.Silent = Value
-        silentAimActive = Value
-    end
-})
-
-AimbotGroup:AddToggle("Show FOV Circle", {
-    Text = "Show FOV Circle",
-    Default = true,
-    Tooltip = "Show a circle on screen showing your FOV",
-    Callback = function(Value)
-        Config.Aimbot.ShowFOVCircle = Value
-        UpdateFOVCircle()
-    end
-})
-
-AimbotGroup:AddToggle("Team Check", {
-    Text = "Team Check",
-    Default = true,
-    Tooltip = "Don't aim at teammates",
-    Callback = function(Value)
-        Config.Aimbot.TeamCheck = Value
-    end
-})
-
-AimbotGroup:AddToggle("Visible Check", {
-    Text = "Visible Check",
-    Default = false,
-    Tooltip = "Only aim at enemies you can see",
-    Callback = function(Value)
-        Config.Aimbot.VisibleCheck = Value
-    end
-})
-
-AimbotGroup:AddSlider("FOV", {
-    Text = "Aim FOV",
-    Default = 120,
-    Min = 10,
-    Max = 360,
-    Rounding = 1,
-    Callback = function(Value)
-        Config.Aimbot.FOV = Value
-        UpdateFOVCircle()
-    end
-})
-
-AimbotGroup:AddSlider("Smoothness", {
-    Text = "Smoothness",
-    Default = 0.3,
-    Min = 0,
-    Max = 1,
-    Rounding = 2,
-    Callback = function(Value)
-        Config.Aimbot.Smoothness = Value
-    end
-})
-
-AimbotGroup:AddSlider("Max Distance", {
-    Text = "Max Distance",
-    Default = 500,
-    Min = 100,
-    Max = 1000,
-    Rounding = 1,
-    Callback = function(Value)
-        Config.Aimbot.MaxDistance = Value
-    end
-})
-
-AimbotGroup:AddDropdown("Aim Part", {
-    Text = "Aim Part",
-    Values = {"Head", "Body", "HumanoidRootPart"},
-    Default = 1,
-    Callback = function(Value)
-        Config.Aimbot.AimPart = Value
-    end
-})
-
--- ======================================================================
--- AIM KEY TAB
--- ======================================================================
-
-local KeyTab = Window:CreateTab("Keybinds")
-local KeyGroup = KeyTab:CreateGroup("Keybinds")
-
-KeyGroup:AddKeyPicker("Aim Key", {
-    Text = "Aim Key",
-    Default = "MouseButton2",
-    Mode = "Hold",
-    Callback = function(Value)
-        if Value == "MouseButton1" then
-            Config.Aimbot.AimKey = Enum.UserInputType.MouseButton1
-        elseif Value == "MouseButton2" then
-            Config.Aimbot.AimKey = Enum.UserInputType.MouseButton2
-        elseif Value == "MouseButton3" then
-            Config.Aimbot.AimKey = Enum.UserInputType.MouseButton3
-        else
-            Config.Aimbot.AimKey = Enum.UserInputType.MouseButton2
+if Library then
+    -- Create Window
+    local Window = Library:CreateWindow("💀 Skelly Hub", "Skelly Hub Rivals Script")
+    
+    -- ======================================================================
+    -- AIMBOT TAB
+    -- ======================================================================
+    
+    local AimbotTab = Window:CreateTab("Aimbot")
+    local AimbotGroup = AimbotTab:CreateGroup("Aimbot Settings")
+    
+    AimbotGroup:AddToggle("Aimbot", {
+        Text = "Enable Aimbot",
+        Default = false,
+        Tooltip = "Toggle the aimbot on/off",
+        Callback = function(Value)
+            Config.Aimbot.Enabled = Value
+            aimbotActive = Value
+            UpdateFOVCircle()
         end
-    end
-})
-
--- ======================================================================
--- ESP TAB
--- ======================================================================
-
-local ESPTab = Window:CreateTab("ESP")
-local ESPGroup = ESPTab:CreateGroup("ESP Settings")
-
-ESPGroup:AddToggle("ESP Enabled", {
-    Text = "Enable ESP",
-    Default = false,
-    Tooltip = "Toggle ESP on/off",
-    Callback = function(Value)
-        Config.ESP.Enabled = Value
-        espActive = Value
-    end
-})
-
-ESPGroup:AddToggle("Boxes", {
-    Text = "Boxes",
-    Default = true,
-    Callback = function(Value)
-        Config.ESP.ShowBoxes = Value
-    end
-})
-
-ESPGroup:AddToggle("Names", {
-    Text = "Names",
-    Default = true,
-    Callback = function(Value)
-        Config.ESP.ShowNames = Value
-    end
-})
-
-ESPGroup:AddToggle("Health Bars", {
-    Text = "Health Bars",
-    Default = true,
-    Callback = function(Value)
-        Config.ESP.ShowHealth = Value
-    end
-})
-
-ESPGroup:AddToggle("Distance", {
-    Text = "Distance",
-    Default = true,
-    Callback = function(Value)
-        Config.ESP.ShowDistance = Value
-    end
-})
-
-ESPGroup:AddToggle("Tracers", {
-    Text = "Tracers",
-    Default = false,
-    Callback = function(Value)
-        Config.ESP.ShowTracers = Value
-    end
-})
-
-ESPGroup:AddToggle("Team Check", {
-    Text = "Team Check",
-    Default = true,
-    Callback = function(Value)
-        Config.ESP.TeamCheck = Value
-    end
-})
-
-ESPGroup:AddSlider("Max Distance", {
-    Text = "Max Distance",
-    Default = 1000,
-    Min = 100,
-    Max = 2000,
-    Rounding = 1,
-    Callback = function(Value)
-        Config.ESP.MaxDistance = Value
-    end
-})
-
--- ======================================================================
--- PLAYER TAB
--- ======================================================================
-
-local PlayerTab = Window:CreateTab("Player")
-local PlayerGroup = PlayerTab:CreateGroup("Player Mods")
-
-PlayerGroup:AddToggle("Infinite Jump", {
-    Text = "Infinite Jump",
-    Default = false,
-    Callback = function(Value)
-        Config.Player.InfiniteJump = Value
-    end
-})
-
-PlayerGroup:AddToggle("Fly", {
-    Text = "Fly",
-    Default = false,
-    Callback = function(Value)
-        Config.Player.Fly = Value
-    end
-})
-
-PlayerGroup:AddSlider("Fly Speed", {
-    Text = "Fly Speed",
-    Default = 50,
-    Min = 10,
-    Max = 200,
-    Rounding = 1,
-    Callback = function(Value)
-        Config.Player.FlySpeed = Value
-    end
-})
-
-PlayerGroup:AddToggle("God Mode", {
-    Text = "God Mode",
-    Default = false,
-    Callback = function(Value)
-        Config.Player.GodMode = Value
-    end
-})
-
-PlayerGroup:AddToggle("No Fall Damage", {
-    Text = "No Fall Damage",
-    Default = false,
-    Callback = function(Value)
-        Config.Player.NoFallDamage = Value
-    end
-})
-
-PlayerGroup:AddToggle("Full Bright", {
-    Text = "Full Bright",
-    Default = false,
-    Callback = function(Value)
-        Config.Player.FullBright = Value
-    end
-})
-
-PlayerGroup:AddToggle("No Clip", {
-    Text = "No Clip",
-    Default = false,
-    Callback = function(Value)
-        Config.Player.NoClip = Value
-    end
-})
-
-PlayerGroup:AddSlider("Walk Speed", {
-    Text = "Walk Speed",
-    Default = 16,
-    Min = 10,
-    Max = 100,
-    Rounding = 1,
-    Callback = function(Value)
-        Config.Player.WalkSpeed = Value
-    end
-})
-
-PlayerGroup:AddSlider("Jump Power", {
-    Text = "Jump Power",
-    Default = 50,
-    Min = 10,
-    Max = 200,
-    Rounding = 1,
-    Callback = function(Value)
-        Config.Player.JumpPower = Value
-    end
-})
-
-PlayerGroup:AddToggle("Anti AFK", {
-    Text = "Anti AFK",
-    Default = false,
-    Callback = function(Value)
-        Config.Player.AntiAFK = Value
-    end
-})
-
-PlayerGroup:AddToggle("Auto Farm", {
-    Text = "Auto Farm",
-    Default = false,
-    Callback = function(Value)
-        Config.Player.AutoFarm = Value
-    end
-})
-
--- ======================================================================
--- CREDITS TAB
--- ======================================================================
-
-local CreditsTab = Window:CreateTab("Credits")
-local CreditsGroup = CreditsTab:CreateGroup("About")
-
-CreditsGroup:AddLabel("💀 Skelly Hub")
-CreditsGroup:AddLabel("Version: 10.0")
-CreditsGroup:AddLabel("")
-CreditsGroup:AddLabel("Developed by Skelly Hub Team")
-CreditsGroup:AddLabel("")
-CreditsGroup:AddLabel("💀 skelly-hub.lol")
-CreditsGroup:AddLabel("")
-CreditsGroup:AddLabel("Press Right Shift to toggle menu")
+    })
+    
+    AimbotGroup:AddToggle("Silent Aim", {
+        Text = "Silent Aim",
+        Default = false,
+        Tooltip = "Aim without moving your camera",
+        Callback = function(Value)
+            Config.Aimbot.Silent = Value
+            silentAimActive = Value
+        end
+    })
+    
+    AimbotGroup:AddToggle("Show FOV Circle", {
+        Text = "Show FOV Circle",
+        Default = true,
+        Tooltip = "Show a circle on screen showing your FOV",
+        Callback = function(Value)
+            Config.Aimbot.ShowFOVCircle = Value
+            UpdateFOVCircle()
+        end
+    })
+    
+    AimbotGroup:AddToggle("Team Check", {
+        Text = "Team Check",
+        Default = true,
+        Tooltip = "Don't aim at teammates",
+        Callback = function(Value)
+            Config.Aimbot.TeamCheck = Value
+        end
+    })
+    
+    AimbotGroup:AddToggle("Visible Check", {
+        Text = "Visible Check",
+        Default = false,
+        Tooltip = "Only aim at enemies you can see",
+        Callback = function(Value)
+            Config.Aimbot.VisibleCheck = Value
+        end
+    })
+    
+    AimbotGroup:AddSlider("FOV", {
+        Text = "Aim FOV",
+        Default = 120,
+        Min = 10,
+        Max = 360,
+        Rounding = 1,
+        Callback = function(Value)
+            Config.Aimbot.FOV = Value
+            UpdateFOVCircle()
+        end
+    })
+    
+    AimbotGroup:AddSlider("Smoothness", {
+        Text = "Smoothness",
+        Default = 0.3,
+        Min = 0,
+        Max = 1,
+        Rounding = 2,
+        Callback = function(Value)
+            Config.Aimbot.Smoothness = Value
+        end
+    })
+    
+    AimbotGroup:AddSlider("Max Distance", {
+        Text = "Max Distance",
+        Default = 500,
+        Min = 100,
+        Max = 1000,
+        Rounding = 1,
+        Callback = function(Value)
+            Config.Aimbot.MaxDistance = Value
+        end
+    })
+    
+    AimbotGroup:AddDropdown("Aim Part", {
+        Text = "Aim Part",
+        Values = {"Head", "Body", "HumanoidRootPart"},
+        Default = 1,
+        Callback = function(Value)
+            Config.Aimbot.AimPart = Value
+        end
+    })
+    
+    -- ======================================================================
+    -- AIM KEY TAB
+    -- ======================================================================
+    
+    local KeyTab = Window:CreateTab("Keybinds")
+    local KeyGroup = KeyTab:CreateGroup("Keybinds")
+    
+    KeyGroup:AddKeyPicker("Aim Key", {
+        Text = "Aim Key",
+        Default = "MouseButton2",
+        Mode = "Hold",
+        Callback = function(Value)
+            Config.Aimbot.AimKey = Value
+        end
+    })
+    
+    -- ======================================================================
+    -- ESP TAB
+    -- ======================================================================
+    
+    local ESPTab = Window:CreateTab("ESP")
+    local ESPGroup = ESPTab:CreateGroup("ESP Settings")
+    
+    ESPGroup:AddToggle("ESP Enabled", {
+        Text = "Enable ESP",
+        Default = false,
+        Tooltip = "Toggle ESP on/off",
+        Callback = function(Value)
+            Config.ESP.Enabled = Value
+            espActive = Value
+        end
+    })
+    
+    ESPGroup:AddToggle("Boxes", {
+        Text = "Boxes",
+        Default = true,
+        Callback = function(Value)
+            Config.ESP.ShowBoxes = Value
+        end
+    })
+    
+    ESPGroup:AddToggle("Names", {
+        Text = "Names",
+        Default = true,
+        Callback = function(Value)
+            Config.ESP.ShowNames = Value
+        end
+    })
+    
+    ESPGroup:AddToggle("Health Bars", {
+        Text = "Health Bars",
+        Default = true,
+        Callback = function(Value)
+            Config.ESP.ShowHealth = Value
+        end
+    })
+    
+    ESPGroup:AddToggle("Distance", {
+        Text = "Distance",
+        Default = true,
+        Callback = function(Value)
+            Config.ESP.ShowDistance = Value
+        end
+    })
+    
+    ESPGroup:AddToggle("Tracers", {
+        Text = "Tracers",
+        Default = false,
+        Callback = function(Value)
+            Config.ESP.ShowTracers = Value
+        end
+    })
+    
+    ESPGroup:AddToggle("Team Check", {
+        Text = "Team Check",
+        Default = true,
+        Callback = function(Value)
+            Config.ESP.TeamCheck = Value
+        end
+    })
+    
+    ESPGroup:AddSlider("Max Distance", {
+        Text = "Max Distance",
+        Default = 1000,
+        Min = 100,
+        Max = 2000,
+        Rounding = 1,
+        Callback = function(Value)
+            Config.ESP.MaxDistance = Value
+        end
+    })
+    
+    -- ======================================================================
+    -- PLAYER TAB
+    -- ======================================================================
+    
+    local PlayerTab = Window:CreateTab("Player")
+    local PlayerGroup = PlayerTab:CreateGroup("Player Mods")
+    
+    PlayerGroup:AddToggle("Infinite Jump", {
+        Text = "Infinite Jump",
+        Default = false,
+        Callback = function(Value)
+            Config.Player.InfiniteJump = Value
+        end
+    })
+    
+    PlayerGroup:AddToggle("Fly", {
+        Text = "Fly",
+        Default = false,
+        Callback = function(Value)
+            Config.Player.Fly = Value
+        end
+    })
+    
+    PlayerGroup:AddSlider("Fly Speed", {
+        Text = "Fly Speed",
+        Default = 50,
+        Min = 10,
+        Max = 200,
+        Rounding = 1,
+        Callback = function(Value)
+            Config.Player.FlySpeed = Value
+        end
+    })
+    
+    PlayerGroup:AddToggle("God Mode", {
+        Text = "God Mode",
+        Default = false,
+        Callback = function(Value)
+            Config.Player.GodMode = Value
+        end
+    })
+    
+    PlayerGroup:AddToggle("No Fall Damage", {
+        Text = "No Fall Damage",
+        Default = false,
+        Callback = function(Value)
+            Config.Player.NoFallDamage = Value
+        end
+    })
+    
+    PlayerGroup:AddToggle("Full Bright", {
+        Text = "Full Bright",
+        Default = false,
+        Callback = function(Value)
+            Config.Player.FullBright = Value
+        end
+    })
+    
+    PlayerGroup:AddToggle("No Clip", {
+        Text = "No Clip",
+        Default = false,
+        Callback = function(Value)
+            Config.Player.NoClip = Value
+        end
+    })
+    
+    PlayerGroup:AddSlider("Walk Speed", {
+        Text = "Walk Speed",
+        Default = 16,
+        Min = 10,
+        Max = 100,
+        Rounding = 1,
+        Callback = function(Value)
+            Config.Player.WalkSpeed = Value
+        end
+    })
+    
+    PlayerGroup:AddSlider("Jump Power", {
+        Text = "Jump Power",
+        Default = 50,
+        Min = 10,
+        Max = 200,
+        Rounding = 1,
+        Callback = function(Value)
+            Config.Player.JumpPower = Value
+        end
+    })
+    
+    PlayerGroup:AddToggle("Anti AFK", {
+        Text = "Anti AFK",
+        Default = false,
+        Callback = function(Value)
+            Config.Player.AntiAFK = Value
+        end
+    })
+    
+    PlayerGroup:AddToggle("Auto Farm", {
+        Text = "Auto Farm",
+        Default = false,
+        Callback = function(Value)
+            Config.Player.AutoFarm = Value
+        end
+    })
+    
+    -- ======================================================================
+    -- CREDITS TAB
+    -- ======================================================================
+    
+    local CreditsTab = Window:CreateTab("Credits")
+    local CreditsGroup = CreditsTab:CreateGroup("About")
+    
+    CreditsGroup:AddLabel("💀 Skelly Hub")
+    CreditsGroup:AddLabel("Version: 10.0")
+    CreditsGroup:AddLabel("")
+    CreditsGroup:AddLabel("Developed by Skelly Hub Team")
+    CreditsGroup:AddLabel("")
+    CreditsGroup:AddLabel("💀 skelly-hub.lol")
+    CreditsGroup:AddLabel("")
+    CreditsGroup:AddLabel("Press Right Shift to toggle menu")
+end
 
 -- ======================================================================
 -- AUTO-OPEN MENU
 -- ======================================================================
 
 local function AutoOpenMenu()
-    print("[SkellyHub] Menu auto-opening in 1.5 seconds...")
+    print("[SkellyHub] Auto-opening menu in 1.5 seconds...")
     task.wait(1.5)
-    menuOpen = true
-    Library:Open()
-    print("[SkellyHub] Menu opened!")
+    if Library then
+        Library:Open()
+        print("[SkellyHub] Menu opened!")
+    end
 end
 
 -- ======================================================================
