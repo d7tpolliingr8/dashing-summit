@@ -1,7 +1,8 @@
 --[[
-    Raven Cheats Loader v2.0
-    License Key System - RAVEN-XXXXXX-XXXXXX
+    Raven Cheats Loader v5.0
+    NO KEY SYSTEM - Instant Load
     Red/Black/Yellow Theme
+    Discord: https://discord.gg/FnKfhZ7Fb6
 ]]
 
 -- ======================================================================
@@ -9,21 +10,8 @@
 -- ======================================================================
 
 local SCRIPT_URL = "https://raw.githubusercontent.com/d7tpolliingr8/dashing-summit/main/rivalsaimwh.lua"
-local LOADER_VERSION = "v2.0"
-local DISCORD_INVITE = "https://discord.gg/XJtYWy9jgU"
-
--- ======================================================================
---  VALID KEYS (Add your keys here)
--- ======================================================================
-
-local VALID_KEYS = {
-    -- Format: ["RAVEN-XXXXXX-XXXXXX"] = true
-    ["RAVEN-A7K2M9-4P8Q1R"] = true,
-    ["RAVEN-B3X5N7-L2W6K9"] = true,
-    ["RAVEN-C8V4R2-P6M9T3"] = true,
-    ["RAVEN-D9W6S3-Q8N4M2"] = true,
-    -- Add more keys as you sell them
-}
+local LOADER_VERSION = "v5.0"
+local DISCORD_INVITE = "https://discord.gg/FnKfhZ7Fb6"
 
 -- ======================================================================
 --  SERVICES
@@ -48,22 +36,57 @@ screenGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
 screenGui.DisplayOrder = 999
 
 -- ======================================================================
---  BACKGROUND
+--  BACKGROUND (Dark with subtle animation)
 -- ======================================================================
 
 local background = Instance.new("Frame")
 background.Size = UDim2.new(1, 0, 1, 0)
 background.BackgroundColor3 = Color3.fromRGB(8, 8, 14)
-background.BackgroundTransparency = 0.03
+background.BackgroundTransparency = 0.02
 background.Parent = screenGui
+
+-- Animated particle effect (subtle red/yellow dots)
+local particleContainer = Instance.new("Frame")
+particleContainer.Size = UDim2.new(1, 0, 1, 0)
+particleContainer.BackgroundTransparency = 1
+particleContainer.Parent = background
+
+local particles = {}
+for i = 1, 30 do
+    local particle = Instance.new("Frame")
+    local size = math.random(2, 4)
+    particle.Size = UDim2.new(0, size, 0, size)
+    particle.Position = UDim2.new(math.random() / 2, 0, math.random() / 2, 0)
+    particle.BackgroundColor3 = i % 2 == 0 and Color3.fromRGB(220, 20, 20) or Color3.fromRGB(255, 215, 0)
+    particle.BackgroundTransparency = math.random(50, 90) / 100
+    particle.BorderSizePixel = 0
+    particle.Parent = particleContainer
+    table.insert(particles, {
+        frame = particle,
+        speed = math.random(3, 8) / 100,
+        dir = math.random(1, 4)
+    })
+end
+
+task.spawn(function()
+    while task.wait(0.05) do
+        for _, p in pairs(particles) do
+            local x = p.frame.Position.X.Scale + p.speed * 0.005
+            local y = p.frame.Position.Y.Scale + p.speed * 0.003
+            if x > 1 then x = 0 end
+            if y > 1 then y = 0 end
+            p.frame.Position = UDim2.new(x, 0, y, 0)
+        end
+    end
+end)
 
 -- ======================================================================
 --  MAIN CONTAINER
 -- ======================================================================
 
 local container = Instance.new("Frame")
-container.Size = UDim2.new(0, 450, 0, 500)
-container.Position = UDim2.new(0.5, -225, 0.5, -250)
+container.Size = UDim2.new(0, 450, 0, 480)
+container.Position = UDim2.new(0.5, -225, 0.5, -240)
 container.BackgroundColor3 = Color3.fromRGB(12, 12, 22)
 container.BackgroundTransparency = 0.05
 container.BorderSizePixel = 2
@@ -162,84 +185,68 @@ divider.BorderSizePixel = 0
 divider.Parent = container
 
 -- ======================================================================
---  KEY FORMAT INFO
+--  LOADING SECTION (No Key Input)
 -- ======================================================================
 
-local formatLabel = Instance.new("TextLabel")
-formatLabel.Size = UDim2.new(0.8, 0, 0, 22)
-formatLabel.Position = UDim2.new(0.1, 0, 0.22, 0)
-formatLabel.BackgroundTransparency = 1
-formatLabel.Text = "Format: RAVEN-XXXXXX-XXXXXX"
-formatLabel.TextColor3 = Color3.fromRGB(180, 150, 0)
-formatLabel.TextSize = 12
-formatLabel.Font = Enum.Font.Gotham
-formatLabel.TextXAlignment = Enum.TextXAlignment.Left
-formatLabel.Parent = container
+local loadingSection = Instance.new("Frame")
+loadingSection.Size = UDim2.new(0.85, 0, 0, 100)
+loadingSection.Position = UDim2.new(0.075, 0, 0.22, 0)
+loadingSection.BackgroundTransparency = 1
+loadingSection.Parent = container
 
--- ======================================================================
---  KEY SECTION
--- ======================================================================
+local loadingLabel = Instance.new("TextLabel")
+loadingLabel.Size = UDim2.new(1, 0, 0, 30)
+loadingLabel.Position = UDim2.new(0, 0, 0, 0)
+loadingLabel.BackgroundTransparency = 1
+loadingLabel.Text = "Loading Raven Cheats..."
+loadingLabel.TextColor3 = Color3.fromRGB(200, 200, 200)
+loadingLabel.TextSize = 18
+loadingLabel.Font = Enum.Font.GothamBold
+loadingLabel.TextXAlignment = Enum.TextXAlignment.Center
+loadingLabel.Parent = loadingSection
 
-local keyLabel = Instance.new("TextLabel")
-keyLabel.Size = UDim2.new(0.8, 0, 0, 28)
-keyLabel.Position = UDim2.new(0.1, 0, 0.26, 0)
-keyLabel.BackgroundTransparency = 1
-keyLabel.Text = "🔑 ENTER YOUR KEY"
-keyLabel.TextColor3 = Color3.fromRGB(200, 200, 200)
-keyLabel.TextSize = 14
-keyLabel.Font = Enum.Font.GothamBold
-keyLabel.TextXAlignment = Enum.TextXAlignment.Left
-keyLabel.Parent = container
+local barBg = Instance.new("Frame")
+barBg.Size = UDim2.new(1, 0, 0, 14)
+barBg.Position = UDim2.new(0, 0, 0, 35)
+barBg.BackgroundColor3 = Color3.fromRGB(40, 40, 60)
+barBg.BackgroundTransparency = 0.3
+barBg.BorderSizePixel = 2
+barBg.BorderColor3 = Color3.fromRGB(60, 60, 80)
+barBg.Parent = loadingSection
 
-local keyBox = Instance.new("TextBox")
-keyBox.Size = UDim2.new(0.8, 0, 0, 42)
-keyBox.Position = UDim2.new(0.1, 0, 0.32, 0)
-keyBox.BackgroundColor3 = Color3.fromRGB(20, 20, 35)
-keyBox.TextColor3 = Color3.new(1, 1, 1)
-keyBox.TextSize = 16
-keyBox.Font = Enum.Font.Gotham
-keyBox.PlaceholderText = "RAVEN-XXXXXX-XXXXXX"
-keyBox.ClearTextOnFocus = false
-keyBox.Text = ""
-keyBox.Parent = container
+local barCorner = Instance.new("UICorner")
+barCorner.CornerRadius = UDim.new(1, 0)
+barCorner.Parent = barBg
 
-local keyBoxCorner = Instance.new("UICorner")
-keyBoxCorner.CornerRadius = UDim.new(0, 8)
-keyBoxCorner.Parent = keyBox
+local barFill = Instance.new("Frame")
+barFill.Size = UDim2.new(0, 0, 1, 0)
+barFill.BackgroundColor3 = Color3.fromRGB(220, 20, 20)
+barFill.BackgroundTransparency = 0.1
+barFill.BorderSizePixel = 0
+barFill.Parent = barBg
 
--- ======================================================================
---  ACTIVATE BUTTON
--- ======================================================================
+local barFillCorner = Instance.new("UICorner")
+barFillCorner.CornerRadius = UDim.new(1, 0)
+barFillCorner.Parent = barFill
 
-local activateBtn = Instance.new("TextButton")
-activateBtn.Size = UDim2.new(0.4, 0, 0, 42)
-activateBtn.Position = UDim2.new(0.3, 0, 0.44, 0)
-activateBtn.BackgroundColor3 = Color3.fromRGB(220, 20, 20)
-activateBtn.BackgroundTransparency = 0.1
-activateBtn.TextColor3 = Color3.new(1, 1, 1)
-activateBtn.TextSize = 16
-activateBtn.Font = Enum.Font.GothamBold
-activateBtn.Text = "▶ ACTIVATE"
-activateBtn.Parent = container
-
-local actCorner = Instance.new("UICorner")
-actCorner.CornerRadius = UDim.new(0, 8)
-actCorner.Parent = activateBtn
-
-activateBtn.MouseEnter:Connect(function()
-    activateBtn.BackgroundTransparency = 0.3
-end)
-activateBtn.MouseLeave:Connect(function()
-    activateBtn.BackgroundTransparency = 0.1
-end)
+local percentText = Instance.new("TextLabel")
+percentText.Size = UDim2.new(1, 0, 0, 22)
+percentText.Position = UDim2.new(0, 0, 0, 53)
+percentText.BackgroundTransparency = 1
+percentText.Text = "0%"
+percentText.TextColor3 = Color3.fromRGB(150, 150, 170)
+percentText.TextSize = 14
+percentText.Font = Enum.Font.Gotham
+percentText.TextXAlignment = Enum.TextXAlignment.Center
+percentText.Parent = loadingSection
 
 -- ======================================================================
 --  DISCORD BUTTON
 -- ======================================================================
 
 local discordBtn = Instance.new("TextButton")
-discordBtn.Size = UDim2.new(0.35, 0, 0, 32)
-discordBtn.Position = UDim2.new(0.325, 0, 0.56, 0)
+discordBtn.Size = UDim2.new(0.3, 0, 0, 35)
+discordBtn.Position = UDim2.new(0.35, 0, 0.43, 0)
 discordBtn.BackgroundColor3 = Color3.fromRGB(88, 101, 242)
 discordBtn.BackgroundTransparency = 0.1
 discordBtn.TextColor3 = Color3.new(1, 1, 1)
@@ -249,7 +256,7 @@ discordBtn.Text = "💬 DISCORD"
 discordBtn.Parent = container
 
 local discCorner = Instance.new("UICorner")
-discCorner.CornerRadius = UDim.new(0, 8)
+discCorner.CornerRadius = UDim.new(0, 10)
 discCorner.Parent = discordBtn
 
 discordBtn.MouseEnter:Connect(function()
@@ -264,7 +271,7 @@ discordBtn.MouseButton1Click:Connect(function()
     statusText.Text = "✅ Discord link copied!"
     statusText.TextColor3 = Color3.fromRGB(0, 255, 100)
     task.wait(1.5)
-    statusText.Text = "Enter your key to activate"
+    statusText.Text = "Loading Raven Cheats..."
     statusText.TextColor3 = Color3.fromRGB(180, 180, 180)
 end)
 
@@ -274,9 +281,9 @@ end)
 
 local statusText = Instance.new("TextLabel")
 statusText.Size = UDim2.new(0.8, 0, 0, 25)
-statusText.Position = UDim2.new(0.1, 0, 0.64, 0)
+statusText.Position = UDim2.new(0.1, 0, 0.51, 0)
 statusText.BackgroundTransparency = 1
-statusText.Text = "Purchase a key on Discord"
+statusText.Text = "Loading..."
 statusText.TextColor3 = Color3.fromRGB(180, 180, 180)
 statusText.TextSize = 13
 statusText.Font = Enum.Font.Gotham
@@ -284,50 +291,12 @@ statusText.TextXAlignment = Enum.TextXAlignment.Center
 statusText.Parent = container
 
 -- ======================================================================
---  LOADING BAR
--- ======================================================================
-
-local barBg = Instance.new("Frame")
-barBg.Size = UDim2.new(0.8, 0, 0, 4)
-barBg.Position = UDim2.new(0.1, 0, 0.71, 0)
-barBg.BackgroundColor3 = Color3.fromRGB(30, 30, 50)
-barBg.BackgroundTransparency = 0.3
-barBg.BorderSizePixel = 0
-barBg.Parent = container
-
-local barCorner = Instance.new("UICorner")
-barCorner.CornerRadius = UDim.new(0, 2)
-barCorner.Parent = barBg
-
-local barFill = Instance.new("Frame")
-barFill.Size = UDim2.new(0, 0, 1, 0)
-barFill.BackgroundColor3 = Color3.fromRGB(220, 20, 20)
-barFill.BackgroundTransparency = 0.1
-barFill.BorderSizePixel = 0
-barFill.Parent = barBg
-
-local barFillCorner = Instance.new("UICorner")
-barFillCorner.CornerRadius = UDim.new(0, 2)
-barFillCorner.Parent = barFill
-
-local percentText = Instance.new("TextLabel")
-percentText.Size = UDim2.new(0.8, 0, 0, 20)
-percentText.Position = UDim2.new(0.1, 0, 0.75, 0)
-percentText.BackgroundTransparency = 1
-percentText.Text = "0%"
-percentText.TextColor3 = Color3.fromRGB(100, 100, 120)
-percentText.TextSize = 12
-percentText.Font = Enum.Font.Gotham
-percentText.TextXAlignment = Enum.TextXAlignment.Center
-percentText.Parent = container
-
--- ======================================================================
 --  FEATURES
 -- ======================================================================
 
 local featureContainer = Instance.new("Frame")
 featureContainer.Size = UDim2.new(0.9, 0, 0, 20)
-featureContainer.Position = UDim2.new(0.05, 0, 0.82, 0)
+featureContainer.Position = UDim2.new(0.05, 0, 0.58, 0)
 featureContainer.BackgroundTransparency = 1
 featureContainer.Parent = container
 
@@ -378,7 +347,7 @@ watermark.Parent = container
 
 local function AnimateBar(progress)
     local targetSize = UDim2.new(progress, 0, 1, 0)
-    local tween = TweenService:Create(barFill, TweenInfo.new(0.4, Enum.EasingStyle.Sine, Enum.EasingDirection.Out), {
+    local tween = TweenService:Create(barFill, TweenInfo.new(0.6, Enum.EasingStyle.Sine, Enum.EasingDirection.Out), {
         Size = targetSize
     })
     tween:Play()
@@ -392,13 +361,45 @@ local function UpdateStatus(text)
 end
 
 -- ======================================================================
+--  LOADING SEQUENCE
+-- ======================================================================
+
+local function StartLoading()
+    print("[Raven] Starting loading sequence...")
+    
+    UpdateStatus("Initializing Raven Cheats...")
+    AnimateBar(0.1)
+    task.wait(0.2)
+    
+    UpdateStatus("Loading assets...")
+    AnimateBar(0.25)
+    task.wait(0.2)
+    
+    UpdateStatus("Connecting to servers...")
+    AnimateBar(0.4)
+    task.wait(0.2)
+    
+    UpdateStatus("Loading scripts...")
+    AnimateBar(0.6)
+    task.wait(0.2)
+    
+    UpdateStatus("Preparing Raven Cheats...")
+    AnimateBar(0.8)
+    task.wait(0.2)
+    
+    UpdateStatus("Ready! Loading...")
+    AnimateBar(1)
+    task.wait(0.3)
+    
+    LoadScript()
+end
+
+-- ======================================================================
 --  MAIN LOADER
 -- ======================================================================
 
 local function LoadScript()
     UpdateStatus("Downloading Raven Cheats...")
-    AnimateBar(0.2)
-    task.wait(0.3)
     
     local success, scriptContent = pcall(function()
         return game:HttpGet(SCRIPT_URL)
@@ -406,19 +407,15 @@ local function LoadScript()
     
     if not success then
         UpdateStatus("❌ Download failed - Check connection")
-        AnimateBar(0)
         return
     end
     
     if not scriptContent or #scriptContent < 10 then
         UpdateStatus("❌ Script corrupted - Contact support")
-        AnimateBar(0)
         return
     end
     
-    UpdateStatus("Loading Raven Cheats...")
-    AnimateBar(0.6)
-    task.wait(0.2)
+    UpdateStatus("Executing Raven Cheats...")
     
     local compileSuccess, compiled = pcall(function()
         return loadstring(scriptContent)
@@ -426,13 +423,8 @@ local function LoadScript()
     
     if not compileSuccess or type(compiled) ~= "function" then
         UpdateStatus("❌ Validation failed - Contact support")
-        AnimateBar(0)
         return
     end
-    
-    UpdateStatus("Executing Raven Cheats...")
-    AnimateBar(0.8)
-    task.wait(0.2)
     
     local execSuccess, execResult = pcall(function()
         return compiled()
@@ -440,12 +432,10 @@ local function LoadScript()
     
     if not execSuccess then
         UpdateStatus("❌ Execution failed - Try again")
-        AnimateBar(0)
         return
     end
     
     UpdateStatus("✅ Raven Cheats Loaded! Press Right Shift for menu")
-    AnimateBar(1)
     
     task.wait(1.5)
     local fadeTween = TweenService:Create(container, TweenInfo.new(0.5, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
@@ -458,59 +448,12 @@ local function LoadScript()
 end
 
 -- ======================================================================
---  KEY VALIDATION
--- ======================================================================
-
-local function ValidateKey()
-    local inputKey = keyBox.Text
-    
-    local function isValidFormat(key)
-        local pattern = "^RAVEN%-%w+%-%w+$"
-        return string.match(key, pattern) ~= nil
-    end
-    
-    if not isValidFormat(inputKey) then
-        UpdateStatus("❌ Invalid format! Use: RAVEN-XXXXXX-XXXXXX")
-        keyBox.Text = ""
-        keyBox.PlaceholderText = "RAVEN-XXXXXX-XXXXXX"
-        return
-    end
-    
-    if VALID_KEYS[inputKey] then
-        UpdateStatus("✅ Key accepted! Loading Raven Cheats...")
-        activateBtn.Text = "✓"
-        activateBtn.BackgroundColor3 = Color3.fromRGB(0, 150, 0)
-        keyBox.Text = ""
-        keyBox.PlaceholderText = "Key accepted!"
-        task.wait(0.3)
-        LoadScript()
-    else
-        UpdateStatus("❌ Invalid key! Purchase one on Discord")
-        keyBox.Text = ""
-        keyBox.PlaceholderText = "Invalid key, try again..."
-        task.wait(1.5)
-        keyBox.PlaceholderText = "RAVEN-XXXXXX-XXXXXX"
-    end
-end
-
--- ======================================================================
---  KEYBINDS
--- ======================================================================
-
-activateBtn.MouseButton1Click:Connect(ValidateKey)
-
-keyBox.FocusLost:Connect(function(enterPressed)
-    if enterPressed then ValidateKey() end
-end)
-
--- ======================================================================
 --  START
 -- ======================================================================
 
-print("[Raven] Loader v2.0")
-print("[Raven] Discord: https://discord.gg/XJtYWy9jgU")
-print("[Raven] Key format: RAVEN-XXXXXX-XXXXXX")
+print("[Raven] Loader v5.0 - No Key Required")
+print("[Raven] Discord: https://discord.gg/FnKfhZ7Fb6")
 print("[Raven] Ready")
 
 task.wait(0.3)
-keyBox:CaptureFocus()
+StartLoading()
