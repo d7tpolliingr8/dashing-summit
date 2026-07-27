@@ -1,465 +1,887 @@
 --[[
-    DarkSide Ultimate Loader v9.0
-    One-Key Activation
+    Skelly Hub Rivals Script v1.0
+    Skeleton Theme Menu
+    Press Right Shift to toggle
 ]]
-
--- ==================== CONFIGURATION ====================
--- ✅ UPDATED: This now points to your NEW GitHub repository
-local SCRIPT_URL = "https://raw.githubusercontent.com/d7tpolliingr8/dashing-summit/main/rivalsaimwh.lua"
-local LOADER_VERSION = "v9.0"
-local DISCORD_INVITE = "https://discord.gg/XJtYWy9jgU"  -- ← CHANGE THIS!
 
 -- ==================== SERVICES ====================
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 local UserInputService = game:GetService("UserInputService")
-local TweenService = game:GetService("TweenService")
 local LocalPlayer = Players.LocalPlayer
+local Camera = workspace.CurrentCamera
 local CoreGui = game:GetService("CoreGui")
+local Lighting = game:GetService("Lighting")
+local VirtualUser = game:GetService("VirtualUser")
 
--- ==================== CREATE GUI ====================
-local screenGui = Instance.new("ScreenGui")
-screenGui.Name = "DarkSideLoader"
-screenGui.Parent = CoreGui
-screenGui.ResetOnSpawn = false
-screenGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
-screenGui.DisplayOrder = 999
-
--- ==================== BACKGROUND ====================
-local background = Instance.new("Frame")
-background.Size = UDim2.new(1, 0, 1, 0)
-background.BackgroundColor3 = Color3.fromRGB(5, 5, 12)
-background.BackgroundTransparency = 0.02
-background.Parent = screenGui
-
--- ==================== PARTICLES ====================
-local particleContainer = Instance.new("Frame")
-particleContainer.Size = UDim2.new(1, 0, 1, 0)
-particleContainer.BackgroundTransparency = 1
-particleContainer.Parent = background
-
-for i = 1, 80 do
-    local particle = Instance.new("Frame")
-    local size = math.random(2, 6)
-    particle.Size = UDim2.new(0, size, 0, size)
-    particle.Position = UDim2.new(math.random() / 2, 0, math.random() / 2, 0)
-    particle.BackgroundColor3 = Color3.fromRGB(200, 0, 0)
-    particle.BackgroundTransparency = math.random(60, 90) / 100
-    particle.BorderSizePixel = 0
-    particle.Parent = particleContainer
-end
-
--- ==================== MAIN CONTAINER ====================
-local container = Instance.new("Frame")
-container.Size = UDim2.new(0, 520, 0, 500)
-container.Position = UDim2.new(0.5, -260, 0.5, -250)
-container.BackgroundColor3 = Color3.fromRGB(8, 8, 20)
-container.BackgroundTransparency = 0.08
-container.BorderSizePixel = 2
-container.BorderColor3 = Color3.fromRGB(180, 0, 0)
-container.Parent = background
-
-local containerCorner = Instance.new("UICorner")
-containerCorner.CornerRadius = UDim.new(0, 25)
-containerCorner.Parent = container
-
--- ==================== HEADER ====================
-local header = Instance.new("Frame")
-header.Size = UDim2.new(1, 0, 0, 80)
-header.Position = UDim2.new(0, 0, 0, 0)
-header.BackgroundColor3 = Color3.fromRGB(20, 0, 0)
-header.BackgroundTransparency = 0.3
-header.BorderSizePixel = 0
-header.Parent = container
-
-local headerCorner = Instance.new("UICorner")
-headerCorner.CornerRadius = UDim.new(0, 25)
-headerCorner.Parent = header
-
--- Logo
-local logoContainer = Instance.new("Frame")
-logoContainer.Size = UDim2.new(0, 70, 0, 70)
-logoContainer.Position = UDim2.new(0.05, 0, 0.05, 0)
-logoContainer.BackgroundColor3 = Color3.fromRGB(200, 0, 0)
-logoContainer.BackgroundTransparency = 0.1
-logoContainer.BorderSizePixel = 2
-logoContainer.BorderColor3 = Color3.fromRGB(255, 50, 50)
-logoContainer.Parent = header
-
-local logoCorner = Instance.new("UICorner")
-logoCorner.CornerRadius = UDim.new(0, 16)
-logoCorner.Parent = logoContainer
-
-local logoText = Instance.new("TextLabel")
-logoText.Size = UDim2.new(1, 0, 1, 0)
-logoText.BackgroundTransparency = 1
-logoText.Text = "DS"
-logoText.TextColor3 = Color3.new(1, 1, 1)
-logoText.TextSize = 32
-logoText.Font = Enum.Font.GothamBold
-logoText.Parent = logoContainer
-
--- Title
-local title = Instance.new("TextLabel")
-title.Size = UDim2.new(0.5, 0, 0, 35)
-title.Position = UDim2.new(0.2, 0, 0.12, 0)
-title.BackgroundTransparency = 1
-title.Text = "DARK SIDE"
-title.TextColor3 = Color3.fromRGB(255, 255, 255)
-title.TextSize = 36
-title.Font = Enum.Font.GothamBold
-title.TextXAlignment = Enum.TextXAlignment.Left
-title.Parent = header
-
-local subtitle = Instance.new("TextLabel")
-subtitle.Size = UDim2.new(0.5, 0, 0, 20)
-subtitle.Position = UDim2.new(0.2, 0, 0.5, 0)
-subtitle.BackgroundTransparency = 1
-subtitle.Text = "RIVALS SCRIPT"
-subtitle.TextColor3 = Color3.fromRGB(180, 180, 180)
-subtitle.TextSize = 14
-subtitle.Font = Enum.Font.Gotham
-subtitle.TextXAlignment = Enum.TextXAlignment.Left
-subtitle.Parent = header
-
--- Version Badge
-local versionBadge = Instance.new("Frame")
-versionBadge.Size = UDim2.new(0, 100, 0, 28)
-versionBadge.Position = UDim2.new(0.78, 0, 0.4, 0)
-versionBadge.BackgroundColor3 = Color3.fromRGB(200, 0, 0)
-versionBadge.BackgroundTransparency = 0.2
-versionBadge.BorderSizePixel = 1
-versionBadge.BorderColor3 = Color3.fromRGB(255, 50, 50)
-versionBadge.Parent = header
-
-local badgeCorner = Instance.new("UICorner")
-badgeCorner.CornerRadius = UDim.new(0, 8)
-badgeCorner.Parent = versionBadge
-
-local badgeText = Instance.new("TextLabel")
-badgeText.Size = UDim2.new(1, 0, 1, 0)
-badgeText.BackgroundTransparency = 1
-badgeText.Text = "✦ v" .. LOADER_VERSION
-badgeText.TextColor3 = Color3.fromRGB(255, 215, 0)
-badgeText.TextSize = 13
-badgeText.Font = Enum.Font.GothamBold
-badgeText.Parent = versionBadge
-
--- ==================== DIVIDER ====================
-local divider = Instance.new("Frame")
-divider.Size = UDim2.new(0.9, 0, 0, 2)
-divider.Position = UDim2.new(0.05, 0, 0.18, 0)
-divider.BackgroundColor3 = Color3.fromRGB(200, 0, 0)
-divider.BackgroundTransparency = 0.4
-divider.BorderSizePixel = 0
-divider.Parent = container
-
--- ==================== DISCORD MESSAGE ====================
-local discordMessage = Instance.new("TextLabel")
-discordMessage.Size = UDim2.new(0.9, 0, 0, 40)
-discordMessage.Position = UDim2.new(0.05, 0, 0.21, 0)
-discordMessage.BackgroundTransparency = 1
-discordMessage.Text = "📢 Join our Discord to purchase a key"
-discordMessage.TextColor3 = Color3.fromRGB(255, 255, 255)
-discordMessage.TextSize = 16
-discordMessage.Font = Enum.Font.Gotham
-discordMessage.TextWrapped = true
-discordMessage.TextXAlignment = Enum.TextXAlignment.Center
-discordMessage.Parent = container
-
--- ==================== DISCORD BUTTON ====================
-local discordBtn = Instance.new("TextButton")
-discordBtn.Size = UDim2.new(0.4, 0, 0, 45)
-discordBtn.Position = UDim2.new(0.3, 0, 0.30, 0)
-discordBtn.BackgroundColor3 = Color3.fromRGB(88, 101, 242)
-discordBtn.TextColor3 = Color3.new(1, 1, 1)
-discordBtn.TextSize = 16
-discordBtn.Font = Enum.Font.GothamBold
-discordBtn.Text = "💬 JOIN DISCORD"
-discordBtn.Parent = container
-
-local discCorner = Instance.new("UICorner")
-discCorner.CornerRadius = UDim.new(0, 10)
-discCorner.Parent = discordBtn
-
-discordBtn.MouseButton1Click:Connect(function()
-    setclipboard(DISCORD_INVITE)
-    statusText.Text = "✅ Discord link copied!"
-    statusText.TextColor3 = Color3.fromRGB(0, 255, 100)
-    task.wait(2)
-    statusText.Text = "Enter your key to activate"
-    statusText.TextColor3 = Color3.fromRGB(180, 180, 180)
-end)
-
--- ==================== KEY SECTION ====================
-local keySection = Instance.new("Frame")
-keySection.Size = UDim2.new(0.9, 0, 0, 50)
-keySection.Position = UDim2.new(0.05, 0, 0.40, 0)
-keySection.BackgroundColor3 = Color3.fromRGB(15, 15, 30)
-keySection.BackgroundTransparency = 0.3
-keySection.BorderSizePixel = 1
-keySection.BorderColor3 = Color3.fromRGB(80, 0, 0)
-keySection.Parent = container
-
-local keyCorner = Instance.new("UICorner")
-keyCorner.CornerRadius = UDim.new(0, 10)
-keyCorner.Parent = keySection
-
-local keyBox = Instance.new("TextBox")
-keyBox.Size = UDim2.new(0.7, 0, 0.7, 0)
-keyBox.Position = UDim2.new(0.05, 0, 0.15, 0)
-keyBox.BackgroundColor3 = Color3.fromRGB(25, 25, 45)
-keyBox.TextColor3 = Color3.new(1, 1, 1)
-keyBox.TextSize = 16
-keyBox.Font = Enum.Font.Gotham
-keyBox.PlaceholderText = "Enter your key..."
-keyBox.ClearTextOnFocus = false
-keyBox.Text = ""
-keyBox.Parent = keySection
-
-local keyBoxCorner = Instance.new("UICorner")
-keyBoxCorner.CornerRadius = UDim.new(0, 8)
-keyBoxCorner.Parent = keyBox
-
-local activateBtn = Instance.new("TextButton")
-activateBtn.Size = UDim2.new(0.2, 0, 0.7, 0)
-activateBtn.Position = UDim2.new(0.77, 0, 0.15, 0)
-activateBtn.BackgroundColor3 = Color3.fromRGB(200, 0, 0)
-activateBtn.TextColor3 = Color3.new(1, 1, 1)
-activateBtn.TextSize = 14
-activateBtn.Font = Enum.Font.GothamBold
-activateBtn.Text = "ACTIVATE"
-activateBtn.Parent = keySection
-
-local actCorner = Instance.new("UICorner")
-actCorner.CornerRadius = UDim.new(0, 8)
-actCorner.Parent = activateBtn
-
--- ==================== STATUS ====================
-local statusText = Instance.new("TextLabel")
-statusText.Size = UDim2.new(0.9, 0, 0, 25)
-statusText.Position = UDim2.new(0.05, 0, 0.50, 0)
-statusText.BackgroundTransparency = 1
-statusText.Text = "Enter your key to activate"
-statusText.TextColor3 = Color3.fromRGB(180, 180, 180)
-statusText.TextSize = 14
-statusText.Font = Enum.Font.Gotham
-statusText.TextXAlignment = Enum.TextXAlignment.Center
-statusText.Parent = container
-
--- ==================== LOADING BAR ====================
-local barBg = Instance.new("Frame")
-barBg.Size = UDim2.new(0.9, 0, 0, 10)
-barBg.Position = UDim2.new(0.05, 0, 0.55, 0)
-barBg.BackgroundColor3 = Color3.fromRGB(20, 20, 40)
-barBg.BackgroundTransparency = 0.3
-barBg.BorderSizePixel = 1
-barBg.BorderColor3 = Color3.fromRGB(80, 0, 0)
-barBg.Parent = container
-
-local barCorner = Instance.new("UICorner")
-barCorner.CornerRadius = UDim.new(0, 6)
-barCorner.Parent = barBg
-
-local barFill = Instance.new("Frame")
-barFill.Size = UDim2.new(0, 0, 1, 0)
-barFill.BackgroundColor3 = Color3.fromRGB(200, 0, 0)
-barFill.BackgroundTransparency = 0.1
-barFill.BorderSizePixel = 0
-barFill.Parent = barBg
-
-local barFillCorner = Instance.new("UICorner")
-barFillCorner.CornerRadius = UDim.new(0, 6)
-barFillCorner.Parent = barFill
-
-local percentText = Instance.new("TextLabel")
-percentText.Size = UDim2.new(0, 60, 0, 25)
-percentText.Position = UDim2.new(0.8, 0, 0.53, 0)
-percentText.BackgroundTransparency = 1
-percentText.Text = "0%"
-percentText.TextColor3 = Color3.fromRGB(200, 200, 200)
-percentText.TextSize = 14
-percentText.Font = Enum.Font.GothamBold
-percentText.TextXAlignment = Enum.TextXAlignment.Right
-percentText.Parent = container
-
--- ==================== FEATURES ====================
-local featureContainer = Instance.new("Frame")
-featureContainer.Size = UDim2.new(0.9, 0, 0, 70)
-featureContainer.Position = UDim2.new(0.05, 0, 0.62, 0)
-featureContainer.BackgroundTransparency = 1
-featureContainer.Parent = container
-
-local featureList = {
-    "🎯 Aimbot", "👁️ ESP", "🚀 Fly", "🛡️ God Mode",
-    "Silent Aim", "Boxes", "Infinite Jump", "Full Bright",
+-- ==================== CONFIG ====================
+local Config = {
+    Aimbot = {
+        Enabled = false,
+        AimKey = Enum.UserInputType.MouseButton2,
+        FOV = 120,
+        Smoothness = 0.3,
+        AimPart = "Head",
+        MaxDistance = 500,
+        TeamCheck = true,
+        ShowFOVCircle = true,
+    },
+    ESP = {Enabled = false, ShowBoxes = true, ShowNames = true, ShowHealth = true, ShowDistance = true, TeamCheck = true, MaxDistance = 1000},
+    Player = {InfiniteJump = false, Fly = false, FlySpeed = 50, WalkSpeed = 16, JumpPower = 50, GodMode = false, NoFallDamage = false, FullBright = false, AntiAFK = false},
+    Menu = {Key = Enum.KeyCode.RightShift}
 }
 
-for i, feature in ipairs(featureList) do
-    local row = math.floor((i - 1) / 4)
-    local col = (i - 1) % 4
-    local fText = Instance.new("TextLabel")
-    fText.Size = UDim2.new(0.24, 0, 0, 20)
-    fText.Position = UDim2.new(col * 0.25 + 0.01, 0, row * 22, 0)
-    fText.BackgroundTransparency = 1
-    fText.Text = feature
-    fText.TextColor3 = Color3.fromRGB(180, 180, 180)
-    fText.TextSize = 13
-    fText.Font = Enum.Font.Gotham
-    fText.TextXAlignment = Enum.TextXAlignment.Left
-    fText.TextTransparency = 0.2
-    fText.Parent = featureContainer
+-- Aim key state
+local aimKeyHeld = false
+
+-- FOV Circle
+local fovCircle = nil
+
+-- ==================== UTILITY ====================
+local function IsAlive(player)
+    if not player or not player.Character then return false end
+    local h = player.Character:FindFirstChild("Humanoid")
+    return h and h.Health > 0
 end
 
--- ==================== WATERMARK ====================
-local watermark = Instance.new("TextLabel")
-watermark.Size = UDim2.new(0.4, 0, 0, 20)
-watermark.Position = UDim2.new(0.6, 0, 0.93, 0)
-watermark.BackgroundTransparency = 1
-watermark.Text = "dark-side.lol"
-watermark.TextColor3 = Color3.fromRGB(60, 0, 0)
-watermark.TextSize = 12
-watermark.Font = Enum.Font.GothamBold
-watermark.TextXAlignment = Enum.TextXAlignment.Right
-watermark.Parent = container
-
--- ==================== ANIMATION FUNCTIONS ====================
-local function AnimateBar(progress)
-    local targetSize = UDim2.new(progress, 0, 1, 0)
-    local tween = TweenService:Create(barFill, TweenInfo.new(0.5, Enum.EasingStyle.Sine, Enum.EasingDirection.Out), {
-        Size = targetSize
-    })
-    tween:Play()
-    percentText.Text = math.floor(progress * 100) .. "%"
-    return tween
+local function GetRootPart(character)
+    if not character then return nil end
+    return character:FindFirstChild("HumanoidRootPart") or character:FindFirstChild("Torso") or character:FindFirstChild("UpperTorso")
 end
 
-local function UpdateStatus(text)
-    statusText.Text = text
-    print("[DarkSide] " .. text)
+local function GetAimPart(character, partName)
+    if not character then return nil end
+    if partName == "Head" then return character:FindFirstChild("Head") end
+    if partName == "Body" then return character:FindFirstChild("UpperTorso") or character:FindFirstChild("Torso") end
+    return character:FindFirstChild(partName) or GetRootPart(character)
 end
 
--- ==================== MAIN LOADER ====================
-local function LoadScript()
-    UpdateStatus("Connecting to DarkSide servers...")
-    AnimateBar(0.1)
-    task.wait(0.3)
-    
-    UpdateStatus("Downloading script...")
-    AnimateBar(0.3)
-    task.wait(0.3)
-    
-    local success, scriptContent = pcall(function()
-        return game:HttpGet(SCRIPT_URL)
-    end)
-    
-    if not success then
-        UpdateStatus("❌ Download failed! Check your connection.")
-        AnimateBar(0)
-        return
-    end
-    
-    if not scriptContent or #scriptContent < 10 then
-        UpdateStatus("❌ Script is corrupted!")
-        AnimateBar(0)
-        return
-    end
-    
-    UpdateStatus("Verifying integrity...")
-    AnimateBar(0.6)
-    task.wait(0.3)
-    
-    local compileSuccess, compiled = pcall(function()
-        return loadstring(scriptContent)
-    end)
-    
-    if not compileSuccess or type(compiled) ~= "function" then
-        UpdateStatus("❌ Script validation failed!")
-        AnimateBar(0)
-        return
-    end
-    
-    UpdateStatus("Initiating DarkSide Engine...")
-    AnimateBar(0.8)
-    task.wait(0.3)
-    
-    local execSuccess, execResult = pcall(function()
-        return compiled()
-    end)
-    
-    if not execSuccess then
-        UpdateStatus("❌ Execution failed!")
-        AnimateBar(0)
-        return
-    end
-    
-    UpdateStatus("✅ DarkSide Activated! Press Right Shift for menu")
-    AnimateBar(1)
-    
-    -- Celebration
-    for i = 1, 15 do
-        local sparkle = Instance.new("Frame")
-        local size = math.random(10, 30)
-        sparkle.Size = UDim2.new(0, size, 0, size)
-        sparkle.Position = UDim2.new(math.random() / 2, 0, math.random() / 2, 0)
-        sparkle.BackgroundColor3 = Color3.fromRGB(255, 215, 0)
-        sparkle.BackgroundTransparency = 0.3
-        sparkle.BorderSizePixel = 0
-        sparkle.Parent = container
+local function IsTeammate(player)
+    if not LocalPlayer or not player then return false end
+    if LocalPlayer.Team and player.Team then return LocalPlayer.Team == player.Team end
+    return false
+end
+
+-- ==================== FOV CIRCLE ====================
+local function UpdateFOVCircle()
+    if Config.Aimbot.ShowFOVCircle and Config.Aimbot.Enabled then
+        if not fovCircle then
+            fovCircle = Drawing.new("Circle")
+            fovCircle.Thickness = 2
+            fovCircle.NumSides = 64
+            fovCircle.Color = Color3.fromRGB(100, 100, 140)
+            fovCircle.Transparency = 0.6
+            fovCircle.Visible = true
+            fovCircle.Filled = false
+        end
         
-        local sparkleCorner = Instance.new("UICorner")
-        sparkleCorner.CornerRadius = UDim.new(0, 12)
-        sparkleCorner.Parent = sparkle
-        
-        TweenService:Create(sparkle, TweenInfo.new(1, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
-            Position = UDim2.new(0.5, math.random(-200, 200), 0.5, math.random(-200, 200)),
-            Size = UDim2.new(0, 0, 0, 0),
-            BackgroundTransparency = 1
-        }):Play()
-        
-        task.wait(0.03)
-    end
-    
-    task.wait(2)
-    local fadeTween = TweenService:Create(background, TweenInfo.new(1, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
-        BackgroundTransparency = 1
-    })
-    fadeTween:Play()
-    fadeTween.Completed:Connect(function()
-        screenGui:Destroy()
-    end)
-end
-
--- ==================== KEY ACTIVATION ====================
-local function ValidateKey()
-    local inputKey = keyBox.Text
-    if inputKey and #inputKey > 3 then
-        UpdateStatus("✅ Key accepted! Loading DarkSide...")
-        activateBtn.Text = "✓"
-        activateBtn.BackgroundColor3 = Color3.fromRGB(0, 150, 0)
-        keyBox.Text = ""
-        keyBox.PlaceholderText = "Key accepted!"
-        task.wait(0.3)
-        LoadScript()
+        local viewport = Camera.ViewportSize
+        local center = Vector2.new(viewport.X / 2, viewport.Y / 2)
+        fovCircle.Position = center
+        fovCircle.Radius = Config.Aimbot.FOV
+        fovCircle.Visible = true
     else
-        UpdateStatus("❌ Invalid key! Please try again.")
-        keyBox.Text = ""
-        keyBox.PlaceholderText = "Invalid key, try again..."
-        task.wait(1.5)
-        keyBox.PlaceholderText = "Enter your key..."
+        if fovCircle then
+            fovCircle.Visible = false
+        end
     end
 end
 
--- ==================== KEYBINDS ====================
-activateBtn.MouseButton1Click:Connect(ValidateKey)
+-- ==================== AIMBOT ====================
+local aimbotActive = false
+local silentAimActive = false
 
-keyBox.FocusLost:Connect(function(enterPressed)
-    if enterPressed then ValidateKey() end
+local function GetBestTarget()
+    local best = nil
+    local bestScore = math.huge
+    local fov = Config.Aimbot.FOV
+    local maxDist = Config.Aimbot.MaxDistance
+    local camPos = Camera.CFrame.Position
+    local cx, cy = Camera.ViewportSize.X / 2, Camera.ViewportSize.Y / 2
+    
+    for _, player in pairs(Players:GetPlayers()) do
+        if player ~= LocalPlayer and IsAlive(player) then
+            if Config.Aimbot.TeamCheck and IsTeammate(player) then continue end
+            
+            local aimPart = GetAimPart(player.Character, Config.Aimbot.AimPart)
+            if not aimPart then continue end
+            
+            local sp, onScreen = Camera:WorldToScreenPoint(aimPart.Position)
+            if not onScreen then continue end
+            
+            local d = math.sqrt((sp.X - cx)^2 + (sp.Y - cy)^2)
+            if d > fov then continue end
+            
+            local wd = (camPos - aimPart.Position).Magnitude
+            if wd > maxDist then continue end
+            
+            if d < bestScore then
+                bestScore = d
+                best = {Player = player, AimPart = aimPart}
+            end
+        end
+    end
+    return best
+end
+
+local function DoAimbot()
+    if not aimbotActive or not Config.Aimbot.Enabled or not aimKeyHeld then return end
+    
+    local target = GetBestTarget()
+    if not target then return end
+    
+    local targetPos = target.AimPart.Position
+    local camPos = Camera.CFrame.Position
+    local dir = (targetPos - camPos).Unit
+    
+    local smooth = Config.Aimbot.Smoothness
+    if smooth > 0 then
+        local curr = Camera.CFrame.LookVector
+        local newLook = curr + (dir - curr) * (1 - smooth)
+        if newLook.Magnitude > 0 then dir = newLook.Unit end
+    end
+    
+    Camera.CFrame = CFrame.lookAt(camPos, camPos + dir)
+end
+
+local function DoSilentAim()
+    if not silentAimActive or not Config.Aimbot.Silent or not aimKeyHeld then return end
+    local target = GetBestTarget()
+    if not target then return end
+    local mouse = LocalPlayer:GetMouse()
+    if mouse then mouse.Hit = CFrame.new(target.AimPart.Position) end
+end
+
+-- ==================== INPUT HANDLING ====================
+UserInputService.InputBegan:Connect(function(input, gameProcessed)
+    if gameProcessed then return end
+    
+    if input.UserInputType == Config.Aimbot.AimKey then
+        aimKeyHeld = true
+    end
+    
+    if input.KeyCode == Config.Menu.Key then
+        ToggleMenu()
+    end
 end)
 
--- ==================== START ====================
-print("[DarkSide] Ultimate Loader v9.0")
-print("[DarkSide] Ready for activation...")
+UserInputService.InputEnded:Connect(function(input, gameProcessed)
+    if gameProcessed then return end
+    if input.UserInputType == Config.Aimbot.AimKey then
+        aimKeyHeld = false
+    end
+end)
 
-task.wait(0.5)
-keyBox:CaptureFocus()
+-- ==================== ESP ====================
+local espActive = false
+local espDrawings = {}
+local espObjects = {}
+local drawingAvailable = pcall(function() return Drawing.new("Square") end)
+
+if not drawingAvailable then warn("[SkellyHub] Drawing library not available. ESP disabled.") end
+
+local function CreateESPDrawing(dType, props)
+    if not drawingAvailable then return nil end
+    local success, d = pcall(function()
+        local drawing = Drawing.new(dType)
+        for k, v in pairs(props or {}) do drawing[k] = v end
+        return drawing
+    end)
+    if success and d then table.insert(espDrawings, d); return d end
+    return nil
+end
+
+local function ClearESP()
+    for _, d in pairs(espDrawings) do pcall(function() d:Remove() end) end
+    espDrawings = {}; espObjects = {}
+end
+
+local function DrawESPPlayer(player)
+    if not drawingAvailable then return end
+    if not player or player == LocalPlayer then return end
+    if Config.ESP.TeamCheck and IsTeammate(player) then return end
+    
+    local character = player.Character
+    if not character then return end
+    local humanoid = character:FindFirstChild("Humanoid")
+    if not humanoid or humanoid.Health <= 0 then return end
+    local rootPart = GetRootPart(character)
+    if not rootPart then return end
+    
+    local rootPos = rootPart.Position
+    local sp, onScreen = Camera:WorldToScreenPoint(rootPos)
+    if not onScreen then return end
+    local distance = (Camera.CFrame.Position - rootPos).Magnitude
+    if distance > Config.ESP.MaxDistance then return end
+    
+    local playerId = player.UserId
+    if not espObjects[playerId] then espObjects[playerId] = {} end
+    local esp = espObjects[playerId]
+    
+    local head = character:FindFirstChild("Head")
+    local size = 3
+    if head then
+        local hp = Camera:WorldToScreenPoint(head.Position)
+        size = math.abs(sp.Y - hp.Y) * 2 or 3
+    end
+    
+    if Config.ESP.ShowBoxes then
+        if not esp.Box then
+            esp.Box = CreateESPDrawing("Square", {Color = Color3.fromRGB(100, 100, 140), Thickness = 2, Filled = false, Transparency = 1})
+        end
+        if esp.Box then
+            esp.Box.Position = Vector2.new(sp.X - size*0.3, sp.Y - size*0.5)
+            esp.Box.Size = Vector2.new(size*0.6, size)
+            esp.Box.Visible = true
+        end
+    end
+    
+    if Config.ESP.ShowNames then
+        if not esp.Name then
+            esp.Name = CreateESPDrawing("Text", {Color = Color3.new(1,1,1), Size = 14, Center = true, Outline = true, OutlineColor = Color3.new(0,0,0), Font = Drawing.Fonts.UI})
+        end
+        if esp.Name then
+            esp.Name.Text = player.DisplayName or player.Name
+            esp.Name.Position = Vector2.new(sp.X, sp.Y - size*0.55 - 20)
+            esp.Name.Visible = true
+        end
+    end
+    
+    if Config.ESP.ShowHealth then
+        if not esp.Health then
+            esp.Health = CreateESPDrawing("Square", {Color = Color3.fromRGB(0, 200, 0), Thickness = 2, Filled = true})
+        end
+        if esp.Health then
+            local hp = humanoid.Health / humanoid.MaxHealth
+            local bh = size * 0.8
+            esp.Health.Position = Vector2.new(sp.X + size*0.35, sp.Y - size*0.5 + (size - bh*hp))
+            esp.Health.Size = Vector2.new(4, bh*hp)
+            esp.Health.Visible = true
+            if hp < 0.3 then esp.Health.Color = Color3.new(1,0,0)
+            elseif hp < 0.6 then esp.Health.Color = Color3.new(1,1,0)
+            else esp.Health.Color = Color3.fromRGB(0, 200, 0) end
+        end
+    end
+    
+    if Config.ESP.ShowDistance then
+        if not esp.Dist then
+            esp.Dist = CreateESPDrawing("Text", {Color = Color3.fromRGB(100, 100, 140), Size = 12, Center = true, Outline = true, OutlineColor = Color3.new(0,0,0), Font = Drawing.Fonts.UI})
+        end
+        if esp.Dist then
+            esp.Dist.Text = string.format("%.0fm", distance / 3)
+            esp.Dist.Position = Vector2.new(sp.X, sp.Y + size*0.55 + 5)
+            esp.Dist.Visible = true
+        end
+    end
+end
+
+local function UpdateESP()
+    if not espActive or not Config.ESP.Enabled or not drawingAvailable then ClearESP(); return end
+    ClearESP()
+    espObjects = {}
+    for _, player in pairs(Players:GetPlayers()) do DrawESPPlayer(player) end
+end
+
+-- ==================== PLAYER MODS ====================
+UserInputService.JumpRequest:Connect(function()
+    if Config.Player.InfiniteJump and LocalPlayer.Character then
+        local h = LocalPlayer.Character:FindFirstChild("Humanoid")
+        if h then h:ChangeState(Enum.HumanoidStateType.Jumping) end
+    end
+end)
+
+local flying = false
+local flyVelocity, flyGyro
+
+RunService.Heartbeat:Connect(function()
+    local character = LocalPlayer.Character
+    if not character then return end
+    
+    if Config.Player.Fly then
+        local root = GetRootPart(character)
+        if root then
+            if not flying then
+                flying = true
+                flyVelocity = Instance.new("BodyVelocity")
+                flyVelocity.MaxForce = Vector3.new(1,1,1) * 100000
+                flyVelocity.Parent = root
+                flyGyro = Instance.new("BodyGyro")
+                flyGyro.MaxTorque = Vector3.new(1,1,1) * 100000
+                flyGyro.Parent = root
+                local h = character:FindFirstChild("Humanoid")
+                if h then h.PlatformStand = true end
+            end
+            if flyVelocity then
+                flyVelocity.Velocity = Camera.CFrame.LookVector * Config.Player.FlySpeed
+                flyGyro.CFrame = Camera.CFrame
+            end
+        end
+    elseif flying then
+        flying = false
+        if flyVelocity then flyVelocity:Destroy() end
+        if flyGyro then flyGyro:Destroy() end
+        local h = character:FindFirstChild("Humanoid")
+        if h then h.PlatformStand = false end
+    end
+end)
+
+RunService.Heartbeat:Connect(function()
+    local character = LocalPlayer.Character
+    if not character then return end
+    if Config.Player.GodMode then
+        local h = character:FindFirstChild("Humanoid")
+        if h then h.Health = h.MaxHealth; h.BreakJointsOnDeath = false end
+    end
+    if Config.Player.NoFallDamage then
+        local h = character:FindFirstChild("Humanoid")
+        if h then h:SetStateEnabled(Enum.HumanoidStateType.FallingDown, false) end
+    end
+    if Config.Player.FullBright then
+        Lighting.Brightness = 2
+        Lighting.Ambient = Color3.new(1,1,1)
+        Lighting.OutdoorAmbient = Color3.new(1,1,1)
+    end
+    local h = character:FindFirstChild("Humanoid")
+    if h then
+        if Config.Player.WalkSpeed ~= 16 then h.WalkSpeed = Config.Player.WalkSpeed end
+        if Config.Player.JumpPower ~= 50 then h.JumpPower = Config.Player.JumpPower end
+    end
+end)
+
+local function AntiAFK()
+    if Config.Player.AntiAFK then
+        local vu = VirtualUser
+        vu:CaptureController()
+        vu:ClickButton2(Vector2.new())
+    end
+end
+RunService.Heartbeat:Connect(AntiAFK)
+
+-- ==================== MENU ====================
+local menuOpen = false
+local menuGui = nil
+local currentTab = "Aimbot"
+
+-- ==================== MENU UI HELPERS ====================
+local function CreateToggleButton(parent, text, callback)
+    local btn = Instance.new("TextButton")
+    btn.Size = UDim2.new(0.9, 0, 0, 35)
+    btn.Position = UDim2.new(0.05, 0, 0, 0)
+    btn.BackgroundColor3 = Color3.fromRGB(30, 30, 50)
+    btn.TextColor3 = Color3.new(1, 1, 1)
+    btn.TextSize = 14
+    btn.Font = Enum.Font.Gotham
+    btn.Text = text .. " [OFF]"
+    btn.Parent = parent
+    
+    local state = false
+    btn.MouseButton1Click:Connect(function()
+        state = not state
+        btn.Text = text .. (state and " [ON]" or " [OFF]")
+        btn.BackgroundColor3 = state and Color3.fromRGB(0, 100, 0) or Color3.fromRGB(30, 30, 50)
+        if callback then callback(state) end
+    end)
+    return btn
+end
+
+local function CreateLabel(parent, text, color, size)
+    local label = Instance.new("TextLabel")
+    label.Size = UDim2.new(0.9, 0, 0, 25)
+    label.Position = UDim2.new(0.05, 0, 0, 0)
+    label.BackgroundTransparency = 1
+    label.Text = text
+    label.TextColor3 = color or Color3.fromRGB(180, 180, 200)
+    label.TextSize = size or 14
+    label.Font = Enum.Font.GothamBold
+    label.TextXAlignment = Enum.TextXAlignment.Left
+    label.Parent = parent
+    return label
+end
+
+-- ==================== AIM KEY SELECTOR ====================
+local aimKeyOptions = {
+    {name = "Left Click", value = Enum.UserInputType.MouseButton1},
+    {name = "Right Click", value = Enum.UserInputType.MouseButton2},
+    {name = "Middle Click", value = Enum.UserInputType.MouseButton3},
+}
+
+local function CreateAimKeySelector(parent)
+    local container = Instance.new("Frame")
+    container.Size = UDim2.new(1, 0, 0, 60)
+    container.BackgroundTransparency = 1
+    container.Parent = parent
+    
+    local label = Instance.new("TextLabel")
+    label.Size = UDim2.new(1, -10, 0, 25)
+    label.Position = UDim2.new(0.05, 0, 0, 0)
+    label.BackgroundTransparency = 1
+    label.Text = "💀 Aim Key: " .. getAimKeyName(Config.Aimbot.AimKey)
+    label.TextColor3 = Color3.fromRGB(180, 180, 200)
+    label.TextSize = 14
+    label.Font = Enum.Font.GothamBold
+    label.TextXAlignment = Enum.TextXAlignment.Left
+    label.Parent = container
+    
+    local btnContainer = Instance.new("Frame")
+    btnContainer.Size = UDim2.new(1, 0, 0, 30)
+    btnContainer.Position = UDim2.new(0, 0, 0, 28)
+    btnContainer.BackgroundTransparency = 1
+    btnContainer.Parent = container
+    
+    for i, option in ipairs(aimKeyOptions) do
+        local btn = Instance.new("TextButton")
+        btn.Size = UDim2.new(0.3, 0, 1, 0)
+        btn.Position = UDim2.new((i - 1) * 0.33, 0, 0, 0)
+        btn.BackgroundColor3 = (Config.Aimbot.AimKey == option.value) and Color3.fromRGB(0, 100, 0) or Color3.fromRGB(30, 30, 50)
+        btn.TextColor3 = Color3.new(1, 1, 1)
+        btn.TextSize = 12
+        btn.Font = Enum.Font.Gotham
+        btn.Text = option.name
+        btn.Parent = btnContainer
+        
+        btn.MouseButton1Click:Connect(function()
+            Config.Aimbot.AimKey = option.value
+            label.Text = "💀 Aim Key: " .. option.name
+            for _, child in pairs(btnContainer:GetChildren()) do
+                if child:IsA("TextButton") then
+                    child.BackgroundColor3 = Color3.fromRGB(30, 30, 50)
+                end
+            end
+            btn.BackgroundColor3 = Color3.fromRGB(0, 100, 0)
+            print("[SkellyHub] Aim key set to: " .. option.name)
+        end)
+    end
+    
+    return container
+end
+
+local function getAimKeyName(key)
+    for _, option in ipairs(aimKeyOptions) do
+        if option.value == key then
+            return option.name
+        end
+    end
+    return "Right Click"
+end
+
+-- ==================== CREATE MENU ====================
+local function CreateMenu()
+    if menuGui then
+        pcall(function() menuGui:Destroy() end)
+        menuGui = nil
+    end
+    
+    print("[SkellyHub] Creating menu...")
+    
+    menuGui = Instance.new("ScreenGui")
+    menuGui.Name = "SkellyHubMenu"
+    menuGui.Parent = CoreGui
+    menuGui.ResetOnSpawn = false
+    menuGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
+    menuGui.DisplayOrder = 999
+    
+    -- Main Frame
+    local main = Instance.new("Frame")
+    main.Size = UDim2.new(0, 480, 0, 480)
+    main.Position = UDim2.new(0.5, -240, 0.5, -240)
+    main.BackgroundColor3 = Color3.fromRGB(10, 10, 20)
+    main.BackgroundTransparency = 0.05
+    main.BorderSizePixel = 1
+    main.BorderColor3 = Color3.fromRGB(40, 40, 60)
+    main.Parent = menuGui
+    
+    local mainCorner = Instance.new("UICorner")
+    mainCorner.CornerRadius = UDim.new(0, 14)
+    mainCorner.Parent = main
+    
+    -- Title Bar
+    local titleBar = Instance.new("Frame")
+    titleBar.Size = UDim2.new(1, 0, 0, 50)
+    titleBar.BackgroundColor3 = Color3.fromRGB(15, 15, 28)
+    titleBar.BackgroundTransparency = 0.3
+    titleBar.BorderSizePixel = 0
+    titleBar.Parent = main
+    
+    local titleCorner = Instance.new("UICorner")
+    titleCorner.CornerRadius = UDim.new(0, 14)
+    titleCorner.Parent = titleBar
+    
+    -- Skeleton Icon in Title
+    local titleIcon = Instance.new("TextLabel")
+    titleIcon.Size = UDim2.new(0, 35, 0, 35)
+    titleIcon.Position = UDim2.new(0.02, 0, 0.08, 0)
+    titleIcon.BackgroundTransparency = 1
+    titleIcon.Text = "💀"
+    titleIcon.TextColor3 = Color3.fromRGB(200, 200, 200)
+    titleIcon.TextSize = 28
+    titleIcon.Font = Enum.Font.Gotham
+    titleIcon.Parent = titleBar
+    
+    local title = Instance.new("TextLabel")
+    title.Size = UDim2.new(0.6, 0, 1, 0)
+    title.Position = UDim2.new(0.1, 0, 0, 0)
+    title.BackgroundTransparency = 1
+    title.Text = "SKELLY HUB"
+    title.TextColor3 = Color3.new(1, 1, 1)
+    title.TextSize = 22
+    title.Font = Enum.Font.GothamBold
+    title.TextXAlignment = Enum.TextXAlignment.Left
+    title.Parent = titleBar
+    
+    local subTitle = Instance.new("TextLabel")
+    subTitle.Size = UDim2.new(0.3, 0, 1, 0)
+    subTitle.Position = UDim2.new(0.7, 0, 0, 0)
+    subTitle.BackgroundTransparency = 1
+    subTitle.Text = "RIVALS v1.0"
+    subTitle.TextColor3 = Color3.fromRGB(100, 100, 120)
+    subTitle.TextSize = 12
+    subTitle.Font = Enum.Font.Gotham
+    subTitle.TextXAlignment = Enum.TextXAlignment.Right
+    subTitle.Parent = titleBar
+    
+    -- Tab Bar
+    local tabBar = Instance.new("Frame")
+    tabBar.Size = UDim2.new(1, 0, 0, 35)
+    tabBar.Position = UDim2.new(0, 0, 0, 50)
+    tabBar.BackgroundColor3 = Color3.fromRGB(15, 15, 28)
+    tabBar.BackgroundTransparency = 0.3
+    tabBar.BorderSizePixel = 0
+    tabBar.Parent = main
+    
+    local tabs = {"Aimbot", "ESP", "Player", "Misc"}
+    local tabButtons = {}
+    
+    for i, tabName in ipairs(tabs) do
+        local btn = Instance.new("TextButton")
+        btn.Size = UDim2.new(0.25, 0, 1, 0)
+        btn.Position = UDim2.new((i - 1) * 0.25, 0, 0, 0)
+        btn.BackgroundColor3 = (currentTab == tabName) and Color3.fromRGB(40, 40, 60) or Color3.fromRGB(20, 20, 35)
+        btn.BackgroundTransparency = (currentTab == tabName) and 0.3 or 0.6
+        btn.TextColor3 = Color3.new(1, 1, 1)
+        btn.TextSize = 13
+        btn.Font = Enum.Font.GothamBold
+        btn.Text = tabName
+        btn.Parent = tabBar
+        
+        tabButtons[tabName] = btn
+        
+        btn.MouseButton1Click:Connect(function()
+            currentTab = tabName
+            for name, button in pairs(tabButtons) do
+                if name == tabName then
+                    button.BackgroundColor3 = Color3.fromRGB(40, 40, 60)
+                    button.BackgroundTransparency = 0.3
+                else
+                    button.BackgroundColor3 = Color3.fromRGB(20, 20, 35)
+                    button.BackgroundTransparency = 0.6
+                end
+            end
+            RefreshContent()
+        end)
+    end
+    
+    -- Content Container
+    local contentContainer = Instance.new("ScrollingFrame")
+    contentContainer.Size = UDim2.new(1, -20, 1, -115)
+    contentContainer.Position = UDim2.new(0, 10, 0, 90)
+    contentContainer.BackgroundTransparency = 1
+    contentContainer.CanvasSize = UDim2.new(0, 0, 0, 0)
+    contentContainer.ScrollBarThickness = 6
+    contentContainer.ScrollBarImageColor3 = Color3.fromRGB(60, 60, 80)
+    contentContainer.Parent = main
+    
+    local layout = Instance.new("UIListLayout")
+    layout.Parent = contentContainer
+    layout.Spacing = 6
+    layout.Padding = UDim.new(0, 10)
+    layout.SortOrder = Enum.SortOrder.LayoutOrder
+    
+    -- Close Button
+    local closeBtn = Instance.new("TextButton")
+    closeBtn.Size = UDim2.new(0.2, 0, 0, 35)
+    closeBtn.Position = UDim2.new(0.4, 0, 1, -42)
+    closeBtn.BackgroundColor3 = Color3.fromRGB(30, 30, 50)
+    closeBtn.BackgroundTransparency = 0.3
+    closeBtn.TextColor3 = Color3.new(1, 1, 1)
+    closeBtn.TextSize = 14
+    closeBtn.Font = Enum.Font.GothamBold
+    closeBtn.Text = "CLOSE"
+    closeBtn.Parent = main
+    
+    local closeCorner = Instance.new("UICorner")
+    closeCorner.CornerRadius = UDim.new(0, 6)
+    closeCorner.Parent = closeBtn
+    
+    closeBtn.MouseButton1Click:Connect(function()
+        menuOpen = false
+        if menuGui then menuGui.Enabled = false end
+    end)
+    
+    -- ==================== REFRESH CONTENT ====================
+    function RefreshContent()
+        print("[SkellyHub] Refreshing content for tab: " .. currentTab)
+        
+        for _, child in pairs(contentContainer:GetChildren()) do
+            if child:IsA("TextButton") or child:IsA("TextLabel") or child:IsA("Frame") then
+                child:Destroy()
+            end
+        end
+        
+        if currentTab == "Aimbot" then
+            print("[SkellyHub] Loading Aimbot content")
+            
+            -- Aim Key Selector
+            CreateAimKeySelector(contentContainer)
+            
+            -- Head/Body selector
+            local selectorLabel = CreateLabel(contentContainer, "💀 Aim Part: " .. Config.Aimbot.AimPart)
+            
+            local btnContainer = Instance.new("Frame")
+            btnContainer.Size = UDim2.new(1, 0, 0, 35)
+            btnContainer.BackgroundTransparency = 1
+            btnContainer.Parent = contentContainer
+            
+            local headBtn = Instance.new("TextButton")
+            headBtn.Size = UDim2.new(0.45, 0, 1, 0)
+            headBtn.Position = UDim2.new(0.02, 0, 0, 0)
+            headBtn.BackgroundColor3 = Config.Aimbot.AimPart == "Head" and Color3.fromRGB(0, 100, 0) or Color3.fromRGB(30, 30, 50)
+            headBtn.TextColor3 = Color3.new(1, 1, 1)
+            headBtn.TextSize = 14
+            headBtn.Font = Enum.Font.Gotham
+            headBtn.Text = "Head"
+            headBtn.Parent = btnContainer
+            
+            headBtn.MouseButton1Click:Connect(function()
+                Config.Aimbot.AimPart = "Head"
+                selectorLabel.Text = "💀 Aim Part: Head"
+                headBtn.BackgroundColor3 = Color3.fromRGB(0, 100, 0)
+                bodyBtn.BackgroundColor3 = Color3.fromRGB(30, 30, 50)
+                UpdateFOVCircle()
+            end)
+            
+            local bodyBtn = Instance.new("TextButton")
+            bodyBtn.Size = UDim2.new(0.45, 0, 1, 0)
+            bodyBtn.Position = UDim2.new(0.53, 0, 0, 0)
+            bodyBtn.BackgroundColor3 = Config.Aimbot.AimPart == "Body" and Color3.fromRGB(0, 100, 0) or Color3.fromRGB(30, 30, 50)
+            bodyBtn.TextColor3 = Color3.new(1, 1, 1)
+            bodyBtn.TextSize = 14
+            bodyBtn.Font = Enum.Font.Gotham
+            bodyBtn.Text = "Body"
+            bodyBtn.Parent = btnContainer
+            
+            bodyBtn.MouseButton1Click:Connect(function()
+                Config.Aimbot.AimPart = "Body"
+                selectorLabel.Text = "💀 Aim Part: Body"
+                bodyBtn.BackgroundColor3 = Color3.fromRGB(0, 100, 0)
+                headBtn.BackgroundColor3 = Color3.fromRGB(30, 30, 50)
+                UpdateFOVCircle()
+            end)
+            
+            -- FOV
+            local fovLabel = CreateLabel(contentContainer, "💀 Aim FOV: " .. Config.Aimbot.FOV)
+            
+            local fovContainer = Instance.new("Frame")
+            fovContainer.Size = UDim2.new(1, 0, 0, 30)
+            fovContainer.BackgroundTransparency = 1
+            fovContainer.Parent = contentContainer
+            
+            local fovDown = Instance.new("TextButton")
+            fovDown.Size = UDim2.new(0.1, 0, 1, 0)
+            fovDown.Position = UDim2.new(0.05, 0, 0, 0)
+            fovDown.BackgroundColor3 = Color3.fromRGB(30, 30, 50)
+            fovDown.TextColor3 = Color3.new(1, 1, 1)
+            fovDown.TextSize = 18
+            fovDown.Font = Enum.Font.GothamBold
+            fovDown.Text = "-"
+            fovDown.Parent = fovContainer
+            
+            fovDown.MouseButton1Click:Connect(function()
+                Config.Aimbot.FOV = math.max(10, Config.Aimbot.FOV - 5)
+                fovLabel.Text = "💀 Aim FOV: " .. Config.Aimbot.FOV
+                UpdateFOVCircle()
+            end)
+            
+            local fovUp = Instance.new("TextButton")
+            fovUp.Size = UDim2.new(0.1, 0, 1, 0)
+            fovUp.Position = UDim2.new(0.2, 0, 0, 0)
+            fovUp.BackgroundColor3 = Color3.fromRGB(30, 30, 50)
+            fovUp.TextColor3 = Color3.new(1, 1, 1)
+            fovUp.TextSize = 18
+            fovUp.Font = Enum.Font.GothamBold
+            fovUp.Text = "+"
+            fovUp.Parent = fovContainer
+            
+            fovUp.MouseButton1Click:Connect(function()
+                Config.Aimbot.FOV = math.min(360, Config.Aimbot.FOV + 5)
+                fovLabel.Text = "💀 Aim FOV: " .. Config.Aimbot.FOV
+                UpdateFOVCircle()
+            end)
+            
+            -- Smoothness
+            local smoothLabel = CreateLabel(contentContainer, "💀 Smoothness: " .. string.format("%.1f", Config.Aimbot.Smoothness))
+            
+            local smoothContainer = Instance.new("Frame")
+            smoothContainer.Size = UDim2.new(1, 0, 0, 30)
+            smoothContainer.BackgroundTransparency = 1
+            smoothContainer.Parent = contentContainer
+            
+            local smoothDown = Instance.new("TextButton")
+            smoothDown.Size = UDim2.new(0.1, 0, 1, 0)
+            smoothDown.Position = UDim2.new(0.05, 0, 0, 0)
+            smoothDown.BackgroundColor3 = Color3.fromRGB(30, 30, 50)
+            smoothDown.TextColor3 = Color3.new(1, 1, 1)
+            smoothDown.TextSize = 18
+            smoothDown.Font = Enum.Font.GothamBold
+            smoothDown.Text = "-"
+            smoothDown.Parent = smoothContainer
+            
+            smoothDown.MouseButton1Click:Connect(function()
+                Config.Aimbot.Smoothness = math.max(0, Config.Aimbot.Smoothness - 0.05)
+                smoothLabel.Text = "💀 Smoothness: " .. string.format("%.1f", Config.Aimbot.Smoothness)
+            end)
+            
+            local smoothUp = Instance.new("TextButton")
+            smoothUp.Size = UDim2.new(0.1, 0, 1, 0)
+            smoothUp.Position = UDim2.new(0.2, 0, 0, 0)
+            smoothUp.BackgroundColor3 = Color3.fromRGB(30, 30, 50)
+            smoothUp.TextColor3 = Color3.new(1, 1, 1)
+            smoothUp.TextSize = 18
+            smoothUp.Font = Enum.Font.GothamBold
+            smoothUp.Text = "+"
+            smoothUp.Parent = smoothContainer
+            
+            smoothUp.MouseButton1Click:Connect(function()
+                Config.Aimbot.Smoothness = math.min(1, Config.Aimbot.Smoothness + 0.05)
+                smoothLabel.Text = "💀 Smoothness: " .. string.format("%.1f", Config.Aimbot.Smoothness)
+            end)
+            
+            -- Toggles
+            CreateToggleButton(contentContainer, "Show FOV Circle", function(s)
+                Config.Aimbot.ShowFOVCircle = s
+                UpdateFOVCircle()
+            end)
+            
+            CreateToggleButton(contentContainer, "Aimbot", function(s)
+                Config.Aimbot.Enabled = s
+                aimbotActive = s
+                UpdateFOVCircle()
+            end)
+            
+            CreateToggleButton(contentContainer, "Silent Aim", function(s)
+                Config.Aimbot.Silent = s
+                silentAimActive = s
+            end)
+            
+            CreateToggleButton(contentContainer, "Team Check", function(s)
+                Config.Aimbot.TeamCheck = s
+            end)
+            
+        elseif currentTab == "ESP" then
+            print("[SkellyHub] Loading ESP content")
+            
+            CreateToggleButton(contentContainer, "ESP Enabled", function(s)
+                Config.ESP.Enabled = s
+                espActive = s
+            end)
+            
+            CreateToggleButton(contentContainer, "Boxes", function(s)
+                Config.ESP.ShowBoxes = s
+            end)
+            
+            CreateToggleButton(contentContainer, "Names", function(s)
+                Config.ESP.ShowNames = s
+            end)
+            
+            CreateToggleButton(contentContainer, "Health Bars", function(s)
+                Config.ESP.ShowHealth = s
+            end)
+            
+            CreateToggleButton(contentContainer, "Distance", function(s)
+                Config.ESP.ShowDistance = s
+            end)
+            
+            CreateToggleButton(contentContainer, "Team Check", function(s)
+                Config.ESP.TeamCheck = s
+            end)
+            
+        elseif currentTab == "Player" then
+            print("[SkellyHub] Loading Player content")
+            
+            CreateToggleButton(contentContainer, "Infinite Jump", function(s)
+                Config.Player.InfiniteJump = s
+            end)
+            
+            CreateToggleButton(contentContainer, "Fly", function(s)
+                Config.Player.Fly = s
+            end)
+            
+            CreateToggleButton(contentContainer, "God Mode", function(s)
+                Config.Player.GodMode = s
+            end)
+            
+            CreateToggleButton(contentContainer, "No Fall Damage", function(s)
+                Config.Player.NoFallDamage = s
+            end)
+            
+            CreateToggleButton(contentContainer, "Full Bright", function(s)
+                Config.Player.FullBright = s
+            end)
+            
+        elseif currentTab == "Misc" then
+            print("[SkellyHub] Loading Misc content")
+            
+            CreateToggleButton(contentContainer, "Anti AFK", function(s)
+                Config.Player.AntiAFK = s
+            end)
+            
+            CreateLabel(contentContainer, "💀 Developed by Skelly Hub", Color3.fromRGB(150, 150, 170), 14)
+            CreateLabel(contentContainer, "skelly-hub.lol", Color3.fromRGB(80, 80, 100), 12)
+        end
+        
+        task.wait(0.05)
+        local totalH = 0
+        for _, child in pairs(contentContainer:GetChildren()) do
+            if child:IsA("TextButton") or child:IsA("TextLabel") or child:IsA("Frame") then
+                totalH = totalH + child.Size.Y.Offset + 6
+            end
+        end
+        contentContainer.CanvasSize = UDim2.new(0, 0, 0, totalH + 20)
+        print("[SkellyHub] Canvas height: " .. totalH)
+    end
+    
+    RefreshContent()
+    print("[SkellyHub] Menu created successfully!")
+end
+
+local function ToggleMenu()
+    menuOpen = not menuOpen
+    print("[SkellyHub] ToggleMenu called. menuOpen = " .. tostring(menuOpen))
+    
+    if menuOpen then
+        CreateMenu()
+        if menuGui then
+            menuGui.Enabled = true
+            print("[SkellyHub] Menu should be visible now.")
+        end
+    else
+        if menuGui then
+            menuGui.Enabled = false
+            print("[SkellyHub] Menu hidden.")
+        end
+    end
+end
+
+-- ==================== START ====================
+print("[SkellyHub] Rivals Script v1.0 Loading...")
+print("[SkellyHub] Press Right Shift to open menu.")
+print("[SkellyHub] Hold Right Click (RMB) to aim.")
+
+RunService.RenderStepped:Connect(function()
+    UpdateFOVCircle()
+end)
+
+RunService.RenderStepped:Connect(DoAimbot)
+RunService.RenderStepped:Connect(DoSilentAim)
+RunService.RenderStepped:Connect(UpdateESP)
+
+print("[SkellyHub] Rivals Script Loaded!")
