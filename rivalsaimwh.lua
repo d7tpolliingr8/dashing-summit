@@ -1,7 +1,7 @@
 --[[
-    DarkSide Rivals Script v10.0
-    Drawing-Based Menu (ImGui Style)
-    Press Right Shift to toggle
+    DarkSide Rivals Script v14.0
+    With FOV Circle & Smoothing Slider
+    Press Right Shift to toggle menu
 ]]
 
 -- ==================== SERVICES ====================
@@ -10,399 +10,32 @@ local RunService = game:GetService("RunService")
 local UserInputService = game:GetService("UserInputService")
 local LocalPlayer = Players.LocalPlayer
 local Camera = workspace.CurrentCamera
+local CoreGui = game:GetService("CoreGui")
 local Lighting = game:GetService("Lighting")
 local VirtualUser = game:GetService("VirtualUser")
 
 -- ==================== CONFIG ====================
 local Config = {
-    Aimbot = {Enabled = false, FOV = 120, Smoothness = 0.3, AimPart = "Head", MaxDistance = 500, TeamCheck = true},
+    Aimbot = {
+        Enabled = false,
+        AimKey = Enum.UserInputType.MouseButton2,
+        FOV = 120,
+        Smoothness = 0.3,
+        AimPart = "Head",
+        MaxDistance = 500,
+        TeamCheck = true,
+        ShowFOVCircle = true,
+    },
     ESP = {Enabled = false, ShowBoxes = true, ShowNames = true, ShowHealth = true, ShowDistance = true, TeamCheck = true, MaxDistance = 1000},
     Player = {InfiniteJump = false, Fly = false, FlySpeed = 50, WalkSpeed = 16, JumpPower = 50, GodMode = false, NoFallDamage = false, FullBright = false, AntiAFK = false},
     Menu = {Key = Enum.KeyCode.RightShift}
 }
 
--- ==================== DRAWING MENU ====================
-local menuOpen = false
-local menuDrawings = {}
-local menuObjects = {}
-local selectedTab = 1
-local tabs = {"Aimbot", "ESP", "Player", "Misc"}
+-- Aim key state
+local aimKeyHeld = false
 
--- Colors
-local colors = {
-    bg = Color3.fromRGB(12, 12, 25),
-    border = Color3.fromRGB(180, 0, 0),
-    accent = Color3.fromRGB(200, 0, 0),
-    text = Color3.fromRGB(220, 220, 220),
-    textDim = Color3.fromRGB(150, 150, 150),
-    green = Color3.fromRGB(0, 200, 0),
-    red = Color3.fromRGB(200, 0, 0),
-    gold = Color3.fromRGB(255, 215, 0),
-}
-
--- ==================== DRAWING HELPERS ====================
-local function CreateDrawing(dType, props)
-    local success, d = pcall(function()
-        local drawing = Drawing.new(dType)
-        for k, v in pairs(props or {}) do
-            drawing[k] = v
-        end
-        return drawing
-    end)
-    if success and d then
-        table.insert(menuDrawings, d)
-        return d
-    end
-    return nil
-end
-
-local function ClearMenu()
-    for _, d in pairs(menuDrawings) do
-        pcall(function() d:Remove() end)
-    end
-    menuDrawings = {}
-    menuObjects = {}
-end
-
-local function CreateText(text, position, color, size, center)
-    return CreateDrawing("Text", {
-        Text = text,
-        Position = position,
-        Color = color or colors.text,
-        Size = size or 16,
-        Center = center or false,
-        Outline = true,
-        OutlineColor = Color3.new(0,0,0),
-        Font = Drawing.Fonts.UI,
-    })
-end
-
-local function CreateRect(position, size, color, thickness, filled)
-    return CreateDrawing("Square", {
-        Position = position,
-        Size = size,
-        Color = color or colors.border,
-        Thickness = thickness or 2,
-        Filled = filled or false,
-        Transparency = 0.8,
-    })
-end
-
-local function CreateLine(from, to, color, thickness)
-    return CreateDrawing("Line", {
-        From = from,
-        To = to,
-        Color = color or colors.border,
-        Thickness = thickness or 2,
-    })
-end
-
--- ==================== MENU DRAWING ====================
-local function DrawMenu()
-    ClearMenu()
-    
-    local viewport = Camera.ViewportSize
-    local menuWidth = 400
-    local menuHeight = 420
-    local menuX = (viewport.X - menuWidth) / 2
-    local menuY = (viewport.Y - menuHeight) / 2
-    
-    -- Background
-    local bg = CreateRect(Vector2.new(menuX, menuY), Vector2.new(menuWidth, menuHeight), colors.bg, 0, true)
-    bg.Transparency = 0.05
-    
-    -- Border
-    local border = CreateRect(Vector2.new(menuX, menuY), Vector2.new(menuWidth, menuHeight), colors.border, 2, false)
-    border.Transparency = 0.3
-    
-    -- Title Bar
-    local titleBg = CreateRect(Vector2.new(menuX + 2, menuY + 2), Vector2.new(menuWidth - 4, 40), colors.accent, 0, true)
-    titleBg.Transparency = 0.2
-    
-    local title = CreateText("DARK SIDE", Vector2.new(menuX + 20, menuY + 8), Color3.new(1,1,1), 24, false)
-    local subTitle = CreateText("RIVALS SCRIPT v10.0", Vector2.new(menuX + menuWidth - 150, menuY + 14), colors.textDim, 12, false)
-    
-    -- Tab Bar
-    local tabY = menuY + 42
-    local tabWidth = menuWidth / #tabs
-    for i, tabName in ipairs(tabs) do
-        local tabX = menuX + (i - 1) * tabWidth
-        local isSelected = (i == selectedTab)
-        
-        local tabBg = CreateRect(Vector2.new(tabX, tabY), Vector2.new(tabWidth, 35), isSelected and colors.accent or colors.bg, 0, true)
-        tabBg.Transparency = isSelected and 0.3 or 0.6
-        
-        local tabText = CreateText(tabName, Vector2.new(tabX + tabWidth/2, tabY + 8), isSelected and Color3.new(1,1,1) or colors.textDim, 14, true)
-        
-        -- Store click area
-        table.insert(menuObjects, {
-            type = "tab",
-            index = i,
-            x1 = tabX,
-            y1 = tabY,
-            x2 = tabX + tabWidth,
-            y2 = tabY + 35,
-        })
-    end
-    
-    -- Divider
-    local divider = CreateLine(Vector2.new(menuX + 10, tabY + 37), Vector2.new(menuX + menuWidth - 10, tabY + 37), colors.border, 1)
-    divider.Transparency = 0.5
-    
-    -- Content Area
-    local contentX = menuX + 15
-    local contentY = tabY + 45
-    local contentWidth = menuWidth - 30
-    
-    -- Draw content based on selected tab
-    if selectedTab == 1 then -- Aimbot
-        DrawAimbotContent(contentX, contentY, contentWidth)
-    elseif selectedTab == 2 then -- ESP
-        DrawESPContent(contentX, contentY, contentWidth)
-    elseif selectedTab == 3 then -- Player
-        DrawPlayerContent(contentX, contentY, contentWidth)
-    elseif selectedTab == 4 then -- Misc
-        DrawMiscContent(contentX, contentY, contentWidth)
-    end
-    
-    -- Footer - Watermark
-    local footer = CreateText("dark-side.lol", Vector2.new(menuX + menuWidth - 80, menuY + menuHeight - 22), Color3.fromRGB(60,0,0), 11, false)
-end
-
--- ==================== TAB CONTENT ====================
-local function DrawToggle(x, y, label, state, callback)
-    local toggleX = x + 150
-    local toggleWidth = 40
-    local toggleHeight = 20
-    
-    -- Label
-    local labelText = CreateText(label, Vector2.new(x, y), state and colors.green or colors.text, 14, false)
-    
-    -- Toggle background
-    local toggleBg = CreateRect(Vector2.new(toggleX, y), Vector2.new(toggleWidth, toggleHeight), state and colors.green or colors.red, 0, true)
-    toggleBg.Transparency = 0.3
-    
-    -- Toggle border
-    local toggleBorder = CreateRect(Vector2.new(toggleX, y), Vector2.new(toggleWidth, toggleHeight), state and colors.green or colors.red, 1, false)
-    toggleBorder.Transparency = 0.3
-    
-    -- Toggle indicator
-    local dotX = state and toggleX + toggleWidth - 18 or toggleX + 2
-    local dot = CreateRect(Vector2.new(dotX, y + 2), Vector2.new(16, 16), Color3.new(1,1,1), 0, true)
-    dot.Transparency = 0.1
-    
-    -- Store click area
-    table.insert(menuObjects, {
-        type = "toggle",
-        label = label,
-        state = state,
-        callback = callback,
-        x1 = toggleX,
-        y1 = y,
-        x2 = toggleX + toggleWidth,
-        y2 = y + toggleHeight,
-    })
-    
-    return toggleBg
-end
-
-local function DrawSlider(x, y, label, value, min, max, step, callback)
-    local sliderWidth = 150
-    local sliderX = x + 120
-    
-    -- Label
-    local labelText = CreateText(label .. ": " .. tostring(value), Vector2.new(x, y), colors.text, 14, false)
-    
-    -- Slider background
-    local sliderBg = CreateRect(Vector2.new(sliderX, y + 8), Vector2.new(sliderWidth, 4), colors.textDim, 0, true)
-    sliderBg.Transparency = 0.5
-    
-    -- Slider fill
-    local fillWidth = ((value - min) / (max - min)) * sliderWidth
-    local sliderFill = CreateRect(Vector2.new(sliderX, y + 8), Vector2.new(fillWidth, 4), colors.accent, 0, true)
-    sliderFill.Transparency = 0.3
-    
-    -- Slider handle
-    local handleX = sliderX + fillWidth - 6
-    local handle = CreateRect(Vector2.new(handleX, y + 4), Vector2.new(12, 12), colors.accent, 1, true)
-    handle.Transparency = 0.2
-    
-    -- Store click area
-    table.insert(menuObjects, {
-        type = "slider",
-        label = label,
-        value = value,
-        min = min,
-        max = max,
-        step = step,
-        callback = callback,
-        x1 = sliderX,
-        y1 = y + 4,
-        x2 = sliderX + sliderWidth,
-        y2 = y + 16,
-    })
-end
-
-local function DrawAimbotContent(x, y, width)
-    local yPos = y
-    
-    -- Head/Body selector
-    local headBtnX = x
-    local bodyBtnX = x + 80
-    
-    local headBg = CreateRect(Vector2.new(headBtnX, yPos), Vector2.new(70, 25), Config.Aimbot.AimPart == "Head" and colors.green or colors.bg, 1, true)
-    headBg.Transparency = 0.2
-    local headText = CreateText("Head", Vector2.new(headBtnX + 35, yPos + 5), Config.Aimbot.AimPart == "Head" and Color3.new(1,1,1) or colors.textDim, 13, true)
-    
-    local bodyBg = CreateRect(Vector2.new(bodyBtnX, yPos), Vector2.new(70, 25), Config.Aimbot.AimPart == "Body" and colors.green or colors.bg, 1, true)
-    bodyBg.Transparency = 0.2
-    local bodyText = CreateText("Body", Vector2.new(bodyBtnX + 35, yPos + 5), Config.Aimbot.AimPart == "Body" and Color3.new(1,1,1) or colors.textDim, 13, true)
-    
-    table.insert(menuObjects, {type = "headbody", x1 = headBtnX, y1 = yPos, x2 = headBtnX + 70, y2 = yPos + 25})
-    table.insert(menuObjects, {type = "headbody", x1 = bodyBtnX, y1 = yPos, x2 = bodyBtnX + 70, y2 = yPos + 25})
-    
-    yPos = yPos + 35
-    
-    -- FOV Slider
-    DrawSlider(x, yPos, "Aim FOV", Config.Aimbot.FOV, 10, 360, 5, function(val)
-        Config.Aimbot.FOV = val
-    end)
-    yPos = yPos + 30
-    
-    -- Toggles
-    DrawToggle(x, yPos, "Aimbot", Config.Aimbot.Enabled, function(s)
-        Config.Aimbot.Enabled = s
-        aimbotActive = s
-    end)
-    yPos = yPos + 30
-    
-    DrawToggle(x, yPos, "Silent Aim", Config.Aimbot.Silent, function(s)
-        Config.Aimbot.Silent = s
-        silentAimActive = s
-    end)
-    yPos = yPos + 30
-    
-    DrawToggle(x, yPos, "Team Check", Config.Aimbot.TeamCheck, function(s)
-        Config.Aimbot.TeamCheck = s
-    end)
-end
-
-local function DrawESPContent(x, y, width)
-    local yPos = y
-    
-    DrawToggle(x, yPos, "ESP Enabled", Config.ESP.Enabled, function(s)
-        Config.ESP.Enabled = s
-        espActive = s
-    end)
-    yPos = yPos + 30
-    
-    DrawToggle(x, yPos, "Boxes", Config.ESP.ShowBoxes, function(s)
-        Config.ESP.ShowBoxes = s
-    end)
-    yPos = yPos + 30
-    
-    DrawToggle(x, yPos, "Names", Config.ESP.ShowNames, function(s)
-        Config.ESP.ShowNames = s
-    end)
-    yPos = yPos + 30
-    
-    DrawToggle(x, yPos, "Health Bars", Config.ESP.ShowHealth, function(s)
-        Config.ESP.ShowHealth = s
-    end)
-    yPos = yPos + 30
-    
-    DrawToggle(x, yPos, "Distance", Config.ESP.ShowDistance, function(s)
-        Config.ESP.ShowDistance = s
-    end)
-    yPos = yPos + 30
-    
-    DrawToggle(x, yPos, "Team Check", Config.ESP.TeamCheck, function(s)
-        Config.ESP.TeamCheck = s
-    end)
-end
-
-local function DrawPlayerContent(x, y, width)
-    local yPos = y
-    
-    DrawToggle(x, yPos, "Infinite Jump", Config.Player.InfiniteJump, function(s)
-        Config.Player.InfiniteJump = s
-    end)
-    yPos = yPos + 30
-    
-    DrawToggle(x, yPos, "Fly", Config.Player.Fly, function(s)
-        Config.Player.Fly = s
-    end)
-    yPos = yPos + 30
-    
-    DrawToggle(x, yPos, "God Mode", Config.Player.GodMode, function(s)
-        Config.Player.GodMode = s
-    end)
-    yPos = yPos + 30
-    
-    DrawToggle(x, yPos, "No Fall Damage", Config.Player.NoFallDamage, function(s)
-        Config.Player.NoFallDamage = s
-    end)
-    yPos = yPos + 30
-    
-    DrawToggle(x, yPos, "Full Bright", Config.Player.FullBright, function(s)
-        Config.Player.FullBright = s
-    end)
-end
-
-local function DrawMiscContent(x, y, width)
-    local yPos = y
-    
-    DrawToggle(x, yPos, "Anti AFK", Config.Player.AntiAFK, function(s)
-        Config.Player.AntiAFK = s
-    end)
-    yPos = yPos + 30
-    
-    -- Credits
-    yPos = yPos + 20
-    local credit1 = CreateText("DarkSide Script v10.0", Vector2.new(x, yPos), colors.textDim, 14, false)
-    yPos = yPos + 22
-    local credit2 = CreateText("Developed by DarkSide Team", Vector2.new(x, yPos), colors.textDim, 12, false)
-    yPos = yPos + 22
-    local credit3 = CreateText("dark-side.lol", Vector2.new(x, yPos), Color3.fromRGB(60,0,0), 12, false)
-end
-
--- ==================== CLICK HANDLING ====================
-local function HandleClick(input)
-    if input.UserInputType ~= Enum.UserInputType.MouseButton1 then return end
-    
-    local pos = input.Position
-    local handled = false
-    
-    for _, obj in pairs(menuObjects) do
-        if pos.X >= obj.x1 and pos.X <= obj.x2 and pos.Y >= obj.y1 and pos.Y <= obj.y2 then
-            if obj.type == "tab" then
-                selectedTab = obj.index
-                handled = true
-            elseif obj.type == "toggle" and obj.callback then
-                obj.callback(not obj.state)
-                handled = true
-            elseif obj.type == "headbody" then
-                -- Check which button was clicked
-                if obj.x1 < pos.X and obj.x1 + 35 > pos.X then
-                    Config.Aimbot.AimPart = "Head"
-                else
-                    Config.Aimbot.AimPart = "Body"
-                end
-                handled = true
-            elseif obj.type == "slider" and obj.callback then
-                local percent = (pos.X - obj.x1) / (obj.x2 - obj.x1)
-                local val = math.floor((percent * (obj.max - obj.min) + obj.min) / obj.step) * obj.step
-                val = math.clamp(val, obj.min, obj.max)
-                obj.callback(val)
-                handled = true
-            end
-        end
-    end
-    
-    if handled then
-        DrawMenu()
-    end
-end
+-- FOV Circle Drawing
+local fovCircle = nil
 
 -- ==================== UTILITY ====================
 local function IsAlive(player)
@@ -427,6 +60,31 @@ local function IsTeammate(player)
     if not LocalPlayer or not player then return false end
     if LocalPlayer.Team and player.Team then return LocalPlayer.Team == player.Team end
     return false
+end
+
+-- ==================== FOV CIRCLE ====================
+local function UpdateFOVCircle()
+    if Config.Aimbot.ShowFOVCircle and Config.Aimbot.Enabled then
+        if not fovCircle then
+            fovCircle = Drawing.new("Circle")
+            fovCircle.Thickness = 2
+            fovCircle.NumSides = 64
+            fovCircle.Color = Color3.fromRGB(200, 0, 0)
+            fovCircle.Transparency = 0.6
+            fovCircle.Visible = true
+            fovCircle.Filled = false
+        end
+        
+        local viewport = Camera.ViewportSize
+        local center = Vector2.new(viewport.X / 2, viewport.Y / 2)
+        fovCircle.Position = center
+        fovCircle.Radius = Config.Aimbot.FOV
+        fovCircle.Visible = true
+    else
+        if fovCircle then
+            fovCircle.Visible = false
+        end
+    end
 end
 
 -- ==================== AIMBOT ====================
@@ -467,7 +125,9 @@ local function GetBestTarget()
 end
 
 local function DoAimbot()
-    if not aimbotActive or not Config.Aimbot.Enabled then return end
+    -- Only aim if aimbot is enabled AND the aim key is held
+    if not aimbotActive or not Config.Aimbot.Enabled or not aimKeyHeld then return end
+    
     local target = GetBestTarget()
     if not target then return end
     
@@ -486,12 +146,32 @@ local function DoAimbot()
 end
 
 local function DoSilentAim()
-    if not silentAimActive or not Config.Aimbot.Silent then return end
+    if not silentAimActive or not Config.Aimbot.Silent or not aimKeyHeld then return end
     local target = GetBestTarget()
     if not target then return end
     local mouse = LocalPlayer:GetMouse()
     if mouse then mouse.Hit = CFrame.new(target.AimPart.Position) end
 end
+
+-- ==================== AIM KEY INPUT HANDLING ====================
+UserInputService.InputBegan:Connect(function(input, gameProcessed)
+    if gameProcessed then return end
+    
+    if input.UserInputType == Config.Aimbot.AimKey then
+        aimKeyHeld = true
+    end
+    
+    if input.KeyCode == Config.Menu.Key then
+        ToggleMenu()
+    end
+end)
+
+UserInputService.InputEnded:Connect(function(input, gameProcessed)
+    if gameProcessed then return end
+    if input.UserInputType == Config.Aimbot.AimKey then
+        aimKeyHeld = false
+    end
+end)
 
 -- ==================== ESP ====================
 local espActive = false
@@ -678,36 +358,514 @@ local function AntiAFK()
 end
 RunService.Heartbeat:Connect(AntiAFK)
 
--- ==================== MENU TOGGLE ====================
+-- ==================== MENU ====================
+local menuOpen = false
+local menuGui = nil
+local currentTab = "Aimbot"
+
+-- ==================== MENU UI HELPERS ====================
+local function CreateToggleButton(parent, text, callback)
+    local btn = Instance.new("TextButton")
+    btn.Size = UDim2.new(0.9, 0, 0, 35)
+    btn.Position = UDim2.new(0.05, 0, 0, 0)
+    btn.BackgroundColor3 = Color3.fromRGB(40, 40, 70)
+    btn.TextColor3 = Color3.new(1, 1, 1)
+    btn.TextSize = 15
+    btn.Font = Enum.Font.Gotham
+    btn.Text = text .. " [OFF]"
+    btn.Parent = parent
+    
+    local state = false
+    btn.MouseButton1Click:Connect(function()
+        state = not state
+        btn.Text = text .. (state and " [ON]" or " [OFF]")
+        btn.BackgroundColor3 = state and Color3.fromRGB(0, 100, 0) or Color3.fromRGB(40, 40, 70)
+        if callback then callback(state) end
+    end)
+    return btn
+end
+
+local function CreateLabel(parent, text, color, size)
+    local label = Instance.new("TextLabel")
+    label.Size = UDim2.new(0.9, 0, 0, 25)
+    label.Position = UDim2.new(0.05, 0, 0, 0)
+    label.BackgroundTransparency = 1
+    label.Text = text
+    label.TextColor3 = color or Color3.fromRGB(200, 200, 200)
+    label.TextSize = size or 14
+    label.Font = Enum.Font.GothamBold
+    label.TextXAlignment = Enum.TextXAlignment.Left
+    label.Parent = parent
+    return label
+end
+
+-- ==================== AIM KEY SELECTOR ====================
+local aimKeyOptions = {
+    {name = "Left Click (LMB)", value = Enum.UserInputType.MouseButton1},
+    {name = "Right Click (RMB)", value = Enum.UserInputType.MouseButton2},
+    {name = "Middle Click (MMB)", value = Enum.UserInputType.MouseButton3},
+}
+
+local function CreateAimKeySelector(parent)
+    local container = Instance.new("Frame")
+    container.Size = UDim2.new(1, 0, 0, 60)
+    container.BackgroundTransparency = 1
+    container.Parent = parent
+    
+    local label = Instance.new("TextLabel")
+    label.Size = UDim2.new(1, -10, 0, 25)
+    label.Position = UDim2.new(0.05, 0, 0, 0)
+    label.BackgroundTransparency = 1
+    label.Text = "Aim Key: " .. getAimKeyName(Config.Aimbot.AimKey)
+    label.TextColor3 = Color3.fromRGB(200, 200, 200)
+    label.TextSize = 14
+    label.Font = Enum.Font.GothamBold
+    label.TextXAlignment = Enum.TextXAlignment.Left
+    label.Parent = container
+    
+    local btnContainer = Instance.new("Frame")
+    btnContainer.Size = UDim2.new(1, 0, 0, 30)
+    btnContainer.Position = UDim2.new(0, 0, 0, 28)
+    btnContainer.BackgroundTransparency = 1
+    btnContainer.Parent = container
+    
+    for i, option in ipairs(aimKeyOptions) do
+        local btn = Instance.new("TextButton")
+        btn.Size = UDim2.new(0.3, 0, 1, 0)
+        btn.Position = UDim2.new((i - 1) * 0.33, 0, 0, 0)
+        btn.BackgroundColor3 = (Config.Aimbot.AimKey == option.value) and Color3.fromRGB(0, 100, 0) or Color3.fromRGB(40, 40, 70)
+        btn.TextColor3 = Color3.new(1, 1, 1)
+        btn.TextSize = 13
+        btn.Font = Enum.Font.Gotham
+        btn.Text = option.name
+        btn.Parent = btnContainer
+        
+        btn.MouseButton1Click:Connect(function()
+            Config.Aimbot.AimKey = option.value
+            label.Text = "Aim Key: " .. option.name
+            for _, child in pairs(btnContainer:GetChildren()) do
+                if child:IsA("TextButton") then
+                    child.BackgroundColor3 = Color3.fromRGB(40, 40, 70)
+                end
+            end
+            btn.BackgroundColor3 = Color3.fromRGB(0, 100, 0)
+            print("[DarkSide] Aim key set to: " .. option.name)
+        end)
+    end
+    
+    return container
+end
+
+local function getAimKeyName(key)
+    for _, option in ipairs(aimKeyOptions) do
+        if option.value == key then
+            return option.name
+        end
+    end
+    return "Right Click (RMB)"
+end
+
+-- ==================== CREATE MENU ====================
+local function CreateMenu()
+    if menuGui then
+        pcall(function() menuGui:Destroy() end)
+        menuGui = nil
+    end
+    
+    print("[DarkSide] Creating menu...")
+    
+    menuGui = Instance.new("ScreenGui")
+    menuGui.Name = "DarkSideMenu"
+    menuGui.Parent = CoreGui
+    menuGui.ResetOnSpawn = false
+    menuGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
+    menuGui.DisplayOrder = 999
+    
+    -- Main Frame
+    local main = Instance.new("Frame")
+    main.Size = UDim2.new(0, 480, 0, 520)
+    main.Position = UDim2.new(0.5, -240, 0.5, -260)
+    main.BackgroundColor3 = Color3.fromRGB(10, 10, 22)
+    main.BackgroundTransparency = 0.05
+    main.BorderSizePixel = 2
+    main.BorderColor3 = Color3.fromRGB(200, 0, 0)
+    main.Parent = menuGui
+    
+    local mainCorner = Instance.new("UICorner")
+    mainCorner.CornerRadius = UDim.new(0, 16)
+    mainCorner.Parent = main
+    
+    -- Title Bar
+    local titleBar = Instance.new("Frame")
+    titleBar.Size = UDim2.new(1, 0, 0, 45)
+    titleBar.BackgroundColor3 = Color3.fromRGB(200, 0, 0)
+    titleBar.BackgroundTransparency = 0.2
+    titleBar.BorderSizePixel = 0
+    titleBar.Parent = main
+    
+    local titleCorner = Instance.new("UICorner")
+    titleCorner.CornerRadius = UDim.new(0, 16)
+    titleCorner.Parent = titleBar
+    
+    local title = Instance.new("TextLabel")
+    title.Size = UDim2.new(1, 0, 1, 0)
+    title.BackgroundTransparency = 1
+    title.Text = "DARK SIDE"
+    title.TextColor3 = Color3.new(1, 1, 1)
+    title.TextSize = 28
+    title.Font = Enum.Font.GothamBold
+    title.Parent = titleBar
+    
+    -- Tab Bar
+    local tabBar = Instance.new("Frame")
+    tabBar.Size = UDim2.new(1, 0, 0, 35)
+    tabBar.Position = UDim2.new(0, 0, 0, 45)
+    tabBar.BackgroundColor3 = Color3.fromRGB(15, 15, 30)
+    tabBar.BackgroundTransparency = 0.3
+    tabBar.BorderSizePixel = 0
+    tabBar.Parent = main
+    
+    local tabs = {"Aimbot", "ESP", "Player", "Misc"}
+    local tabButtons = {}
+    
+    for i, tabName in ipairs(tabs) do
+        local btn = Instance.new("TextButton")
+        btn.Size = UDim2.new(0.25, 0, 1, 0)
+        btn.Position = UDim2.new((i - 1) * 0.25, 0, 0, 0)
+        btn.BackgroundColor3 = (currentTab == tabName) and Color3.fromRGB(200, 0, 0) or Color3.fromRGB(30, 30, 50)
+        btn.BackgroundTransparency = (currentTab == tabName) and 0.3 or 0.6
+        btn.TextColor3 = Color3.new(1, 1, 1)
+        btn.TextSize = 14
+        btn.Font = Enum.Font.GothamBold
+        btn.Text = tabName
+        btn.Parent = tabBar
+        
+        tabButtons[tabName] = btn
+        
+        btn.MouseButton1Click:Connect(function()
+            currentTab = tabName
+            for name, button in pairs(tabButtons) do
+                if name == tabName then
+                    button.BackgroundColor3 = Color3.fromRGB(200, 0, 0)
+                    button.BackgroundTransparency = 0.3
+                else
+                    button.BackgroundColor3 = Color3.fromRGB(30, 30, 50)
+                    button.BackgroundTransparency = 0.6
+                end
+            end
+            RefreshContent()
+        end)
+    end
+    
+    -- Content Container
+    local contentContainer = Instance.new("ScrollingFrame")
+    contentContainer.Size = UDim2.new(1, -20, 1, -115)
+    contentContainer.Position = UDim2.new(0, 10, 0, 85)
+    contentContainer.BackgroundTransparency = 1
+    contentContainer.CanvasSize = UDim2.new(0, 0, 0, 0)
+    contentContainer.ScrollBarThickness = 6
+    contentContainer.ScrollBarImageColor3 = Color3.fromRGB(200, 0, 0)
+    contentContainer.Parent = main
+    
+    local layout = Instance.new("UIListLayout")
+    layout.Parent = contentContainer
+    layout.Spacing = 6
+    layout.Padding = UDim.new(0, 10)
+    layout.SortOrder = Enum.SortOrder.LayoutOrder
+    
+    -- Close Button
+    local closeBtn = Instance.new("TextButton")
+    closeBtn.Size = UDim2.new(0.2, 0, 0, 35)
+    closeBtn.Position = UDim2.new(0.4, 0, 1, -42)
+    closeBtn.BackgroundColor3 = Color3.fromRGB(80, 20, 20)
+    closeBtn.TextColor3 = Color3.new(1, 1, 1)
+    closeBtn.TextSize = 14
+    closeBtn.Font = Enum.Font.GothamBold
+    closeBtn.Text = "CLOSE"
+    closeBtn.Parent = main
+    
+    local closeCorner = Instance.new("UICorner")
+    closeCorner.CornerRadius = UDim.new(0, 6)
+    closeCorner.Parent = closeBtn
+    
+    closeBtn.MouseButton1Click:Connect(function()
+        menuOpen = false
+        if menuGui then menuGui.Enabled = false end
+    end)
+    
+    -- ==================== REFRESH CONTENT ====================
+    function RefreshContent()
+        print("[DarkSide] Refreshing content for tab: " .. currentTab)
+        
+        for _, child in pairs(contentContainer:GetChildren()) do
+            if child:IsA("TextButton") or child:IsA("TextLabel") or child:IsA("Frame") then
+                child:Destroy()
+            end
+        end
+        
+        if currentTab == "Aimbot" then
+            print("[DarkSide] Loading Aimbot content")
+            
+            -- Aim Key Selector
+            CreateAimKeySelector(contentContainer)
+            
+            -- Head/Body selector
+            local selectorLabel = CreateLabel(contentContainer, "Aim Part: " .. Config.Aimbot.AimPart)
+            
+            local btnContainer = Instance.new("Frame")
+            btnContainer.Size = UDim2.new(1, 0, 0, 35)
+            btnContainer.BackgroundTransparency = 1
+            btnContainer.Parent = contentContainer
+            
+            local headBtn = Instance.new("TextButton")
+            headBtn.Size = UDim2.new(0.45, 0, 1, 0)
+            headBtn.Position = UDim2.new(0.02, 0, 0, 0)
+            headBtn.BackgroundColor3 = Config.Aimbot.AimPart == "Head" and Color3.fromRGB(0, 100, 0) or Color3.fromRGB(40, 40, 70)
+            headBtn.TextColor3 = Color3.new(1, 1, 1)
+            headBtn.TextSize = 14
+            headBtn.Font = Enum.Font.Gotham
+            headBtn.Text = "Head"
+            headBtn.Parent = btnContainer
+            
+            headBtn.MouseButton1Click:Connect(function()
+                Config.Aimbot.AimPart = "Head"
+                selectorLabel.Text = "Aim Part: Head"
+                headBtn.BackgroundColor3 = Color3.fromRGB(0, 100, 0)
+                bodyBtn.BackgroundColor3 = Color3.fromRGB(40, 40, 70)
+                UpdateFOVCircle()
+            end)
+            
+            local bodyBtn = Instance.new("TextButton")
+            bodyBtn.Size = UDim2.new(0.45, 0, 1, 0)
+            bodyBtn.Position = UDim2.new(0.53, 0, 0, 0)
+            bodyBtn.BackgroundColor3 = Config.Aimbot.AimPart == "Body" and Color3.fromRGB(0, 100, 0) or Color3.fromRGB(40, 40, 70)
+            bodyBtn.TextColor3 = Color3.new(1, 1, 1)
+            bodyBtn.TextSize = 14
+            bodyBtn.Font = Enum.Font.Gotham
+            bodyBtn.Text = "Body"
+            bodyBtn.Parent = btnContainer
+            
+            bodyBtn.MouseButton1Click:Connect(function()
+                Config.Aimbot.AimPart = "Body"
+                selectorLabel.Text = "Aim Part: Body"
+                bodyBtn.BackgroundColor3 = Color3.fromRGB(0, 100, 0)
+                headBtn.BackgroundColor3 = Color3.fromRGB(40, 40, 70)
+                UpdateFOVCircle()
+            end)
+            
+            -- FOV Label + Slider
+            local fovLabel = CreateLabel(contentContainer, "Aim FOV: " .. Config.Aimbot.FOV)
+            
+            local fovContainer = Instance.new("Frame")
+            fovContainer.Size = UDim2.new(1, 0, 0, 30)
+            fovContainer.BackgroundTransparency = 1
+            fovContainer.Parent = contentContainer
+            
+            local fovDown = Instance.new("TextButton")
+            fovDown.Size = UDim2.new(0.1, 0, 1, 0)
+            fovDown.Position = UDim2.new(0.05, 0, 0, 0)
+            fovDown.BackgroundColor3 = Color3.fromRGB(40, 40, 70)
+            fovDown.TextColor3 = Color3.new(1, 1, 1)
+            fovDown.TextSize = 18
+            fovDown.Font = Enum.Font.GothamBold
+            fovDown.Text = "-"
+            fovDown.Parent = fovContainer
+            
+            fovDown.MouseButton1Click:Connect(function()
+                Config.Aimbot.FOV = math.max(10, Config.Aimbot.FOV - 5)
+                fovLabel.Text = "Aim FOV: " .. Config.Aimbot.FOV
+                UpdateFOVCircle()
+            end)
+            
+            local fovUp = Instance.new("TextButton")
+            fovUp.Size = UDim2.new(0.1, 0, 1, 0)
+            fovUp.Position = UDim2.new(0.2, 0, 0, 0)
+            fovUp.BackgroundColor3 = Color3.fromRGB(40, 40, 70)
+            fovUp.TextColor3 = Color3.new(1, 1, 1)
+            fovUp.TextSize = 18
+            fovUp.Font = Enum.Font.GothamBold
+            fovUp.Text = "+"
+            fovUp.Parent = fovContainer
+            
+            fovUp.MouseButton1Click:Connect(function()
+                Config.Aimbot.FOV = math.min(360, Config.Aimbot.FOV + 5)
+                fovLabel.Text = "Aim FOV: " .. Config.Aimbot.FOV
+                UpdateFOVCircle()
+            end)
+            
+            -- Smoothness Label + Slider
+            local smoothLabel = CreateLabel(contentContainer, "Smoothness: " .. string.format("%.1f", Config.Aimbot.Smoothness))
+            
+            local smoothContainer = Instance.new("Frame")
+            smoothContainer.Size = UDim2.new(1, 0, 0, 30)
+            smoothContainer.BackgroundTransparency = 1
+            smoothContainer.Parent = contentContainer
+            
+            local smoothDown = Instance.new("TextButton")
+            smoothDown.Size = UDim2.new(0.1, 0, 1, 0)
+            smoothDown.Position = UDim2.new(0.05, 0, 0, 0)
+            smoothDown.BackgroundColor3 = Color3.fromRGB(40, 40, 70)
+            smoothDown.TextColor3 = Color3.new(1, 1, 1)
+            smoothDown.TextSize = 18
+            smoothDown.Font = Enum.Font.GothamBold
+            smoothDown.Text = "-"
+            smoothDown.Parent = smoothContainer
+            
+            smoothDown.MouseButton1Click:Connect(function()
+                Config.Aimbot.Smoothness = math.max(0, Config.Aimbot.Smoothness - 0.05)
+                smoothLabel.Text = "Smoothness: " .. string.format("%.1f", Config.Aimbot.Smoothness)
+            end)
+            
+            local smoothUp = Instance.new("TextButton")
+            smoothUp.Size = UDim2.new(0.1, 0, 1, 0)
+            smoothUp.Position = UDim2.new(0.2, 0, 0, 0)
+            smoothUp.BackgroundColor3 = Color3.fromRGB(40, 40, 70)
+            smoothUp.TextColor3 = Color3.new(1, 1, 1)
+            smoothUp.TextSize = 18
+            smoothUp.Font = Enum.Font.GothamBold
+            smoothUp.Text = "+"
+            smoothUp.Parent = smoothContainer
+            
+            smoothUp.MouseButton1Click:Connect(function()
+                Config.Aimbot.Smoothness = math.min(1, Config.Aimbot.Smoothness + 0.05)
+                smoothLabel.Text = "Smoothness: " .. string.format("%.1f", Config.Aimbot.Smoothness)
+            end)
+            
+            -- Toggles
+            CreateToggleButton(contentContainer, "Show FOV Circle", function(s)
+                Config.Aimbot.ShowFOVCircle = s
+                UpdateFOVCircle()
+                print("[DarkSide] FOV Circle: " .. (s and "ON" or "OFF"))
+            end)
+            
+            CreateToggleButton(contentContainer, "Aimbot", function(s)
+                Config.Aimbot.Enabled = s
+                aimbotActive = s
+                UpdateFOVCircle()
+                print("[DarkSide] Aimbot: " .. (s and "ON" or "OFF"))
+            end)
+            
+            CreateToggleButton(contentContainer, "Silent Aim", function(s)
+                Config.Aimbot.Silent = s
+                silentAimActive = s
+                print("[DarkSide] Silent Aim: " .. (s and "ON" or "OFF"))
+            end)
+            
+            CreateToggleButton(contentContainer, "Team Check", function(s)
+                Config.Aimbot.TeamCheck = s
+            end)
+            
+        elseif currentTab == "ESP" then
+            print("[DarkSide] Loading ESP content")
+            
+            CreateToggleButton(contentContainer, "ESP Enabled", function(s)
+                Config.ESP.Enabled = s
+                espActive = s
+                print("[DarkSide] ESP: " .. (s and "ON" or "OFF"))
+            end)
+            
+            CreateToggleButton(contentContainer, "Boxes", function(s)
+                Config.ESP.ShowBoxes = s
+            end)
+            
+            CreateToggleButton(contentContainer, "Names", function(s)
+                Config.ESP.ShowNames = s
+            end)
+            
+            CreateToggleButton(contentContainer, "Health Bars", function(s)
+                Config.ESP.ShowHealth = s
+            end)
+            
+            CreateToggleButton(contentContainer, "Distance", function(s)
+                Config.ESP.ShowDistance = s
+            end)
+            
+            CreateToggleButton(contentContainer, "Team Check", function(s)
+                Config.ESP.TeamCheck = s
+            end)
+            
+        elseif currentTab == "Player" then
+            print("[DarkSide] Loading Player content")
+            
+            CreateToggleButton(contentContainer, "Infinite Jump", function(s)
+                Config.Player.InfiniteJump = s
+                print("[DarkSide] Infinite Jump: " .. (s and "ON" or "OFF"))
+            end)
+            
+            CreateToggleButton(contentContainer, "Fly", function(s)
+                Config.Player.Fly = s
+                print("[DarkSide] Fly: " .. (s and "ON" or "OFF"))
+            end)
+            
+            CreateToggleButton(contentContainer, "God Mode", function(s)
+                Config.Player.GodMode = s
+                print("[DarkSide] God Mode: " .. (s and "ON" or "OFF"))
+            end)
+            
+            CreateToggleButton(contentContainer, "No Fall Damage", function(s)
+                Config.Player.NoFallDamage = s
+            end)
+            
+            CreateToggleButton(contentContainer, "Full Bright", function(s)
+                Config.Player.FullBright = s
+            end)
+            
+        elseif currentTab == "Misc" then
+            print("[DarkSide] Loading Misc content")
+            
+            CreateToggleButton(contentContainer, "Anti AFK", function(s)
+                Config.Player.AntiAFK = s
+            end)
+            
+            CreateLabel(contentContainer, "─ Developed by DarkSide Team ─", Color3.fromRGB(150, 150, 150), 14)
+            CreateLabel(contentContainer, "dark-side.lol", Color3.fromRGB(100, 100, 100), 12)
+        end
+        
+        task.wait(0.05)
+        local totalH = 0
+        for _, child in pairs(contentContainer:GetChildren()) do
+            if child:IsA("TextButton") or child:IsA("TextLabel") or child:IsA("Frame") then
+                totalH = totalH + child.Size.Y.Offset + 6
+            end
+        end
+        contentContainer.CanvasSize = UDim2.new(0, 0, 0, totalH + 20)
+        print("[DarkSide] Canvas height: " .. totalH)
+    end
+    
+    RefreshContent()
+    print("[DarkSide] Menu created successfully!")
+end
+
 local function ToggleMenu()
     menuOpen = not menuOpen
+    print("[DarkSide] ToggleMenu called. menuOpen = " .. tostring(menuOpen))
+    
     if menuOpen then
-        DrawMenu()
+        CreateMenu()
+        if menuGui then
+            menuGui.Enabled = true
+            print("[DarkSide] Menu should be visible now.")
+        end
     else
-        ClearMenu()
+        if menuGui then
+            menuGui.Enabled = false
+            print("[DarkSide] Menu hidden.")
+        end
     end
 end
 
--- ==================== INPUT HANDLING ====================
-UserInputService.InputBegan:Connect(function(input, gameProcessed)
-    if gameProcessed then return end
-    
-    if input.KeyCode == Config.Menu.Key then
-        ToggleMenu()
-        return
-    end
-    
-    if menuOpen and input.UserInputType == Enum.UserInputType.MouseButton1 then
-        HandleClick(input)
-    end
-end)
-
 -- ==================== START ====================
-print("[DarkSide] Rivals Script v10.0 Loading...")
-print("[DarkSide] Drawing-based menu enabled.")
+print("[DarkSide] Rivals Script v14.0 Loading...")
+print("[DarkSide] Press Right Shift to open menu.")
+print("[DarkSide] Hold Right Mouse Button (RMB) to aim.")
+
+-- Update FOV circle on render
+RunService.RenderStepped:Connect(function()
+    UpdateFOVCircle()
+end)
 
 RunService.RenderStepped:Connect(DoAimbot)
 RunService.RenderStepped:Connect(DoSilentAim)
 RunService.RenderStepped:Connect(UpdateESP)
 
-print("[DarkSide] Rivals Script Loaded! Press Right Shift for menu.")
+print("[DarkSide] Rivals Script Loaded!")
