@@ -1,5 +1,6 @@
 --[[
-    Raven Cheats Loader v6.0
+    Raven Cheats Loader v7.0
+    FIXED - No 100% Hang
     Red/Black/Yellow Theme
     Discord: https://discord.gg/FnKfhZ7Fb6
 ]]
@@ -9,7 +10,7 @@
 -- ======================================================================
 
 local SCRIPT_URL = "https://raw.githubusercontent.com/d7tpolliingr8/dashing-summit/main/rivalsaimwh.lua"
-local LOADER_VERSION = "v6.0"
+local LOADER_VERSION = "v7.0"
 local DISCORD_INVITE = "https://discord.gg/FnKfhZ7Fb6"
 
 -- ======================================================================
@@ -21,6 +22,7 @@ local RunService = game:GetService("RunService")
 local TweenService = game:GetService("TweenService")
 local CoreGui = game:GetService("CoreGui")
 local StarterGui = game:GetService("StarterGui")
+local HttpService = game:GetService("HttpService")
 
 -- ======================================================================
 --  CREATE GUI
@@ -34,7 +36,7 @@ screenGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
 screenGui.DisplayOrder = 999
 
 -- ======================================================================
---  BACKGROUND (Dark with red accent)
+--  BACKGROUND
 -- ======================================================================
 
 local background = Instance.new("Frame")
@@ -358,6 +360,99 @@ local function UpdateStatus(text)
 end
 
 -- ======================================================================
+--  MAIN LOADER (FIXED - No Hang)
+-- ======================================================================
+
+local function LoadScript()
+    UpdateStatus("Downloading Raven Cheats...")
+    AnimateBar(0.3)
+    
+    -- Use spawn to prevent blocking
+    task.spawn(function()
+        local success, scriptContent = pcall(function()
+            return game:HttpGet(SCRIPT_URL)
+        end)
+        
+        if not success then
+            UpdateStatus("❌ Download failed - Check connection")
+            AnimateBar(0)
+            StarterGui:SetCore("SendNotification", {
+                Title = "Raven Cheats",
+                Text = "❌ Download failed. Check your connection.",
+                Duration = 3,
+            })
+            return
+        end
+        
+        if not scriptContent or #scriptContent < 10 then
+            UpdateStatus("❌ Script corrupted - Contact support")
+            AnimateBar(0)
+            StarterGui:SetCore("SendNotification", {
+                Title = "Raven Cheats",
+                Text = "❌ Script corrupted. Contact support.",
+                Duration = 3,
+            })
+            return
+        end
+        
+        UpdateStatus("Compiling script...")
+        AnimateBar(0.6)
+        task.wait(0.2)
+        
+        local compileSuccess, compiled = pcall(function()
+            return loadstring(scriptContent)
+        end)
+        
+        if not compileSuccess or type(compiled) ~= "function" then
+            UpdateStatus("❌ Validation failed - Contact support")
+            AnimateBar(0)
+            StarterGui:SetCore("SendNotification", {
+                Title = "Raven Cheats",
+                Text = "❌ Validation failed. Contact support.",
+                Duration = 3,
+            })
+            return
+        end
+        
+        UpdateStatus("Executing Raven Cheats...")
+        AnimateBar(0.8)
+        task.wait(0.2)
+        
+        local execSuccess, execResult = pcall(function()
+            return compiled()
+        end)
+        
+        if not execSuccess then
+            UpdateStatus("❌ Execution failed - Try again")
+            AnimateBar(0)
+            StarterGui:SetCore("SendNotification", {
+                Title = "Raven Cheats",
+                Text = "❌ Execution failed. Try again.",
+                Duration = 3,
+            })
+            return
+        end
+        
+        UpdateStatus("✅ Raven Cheats Loaded! Press Right Shift for menu")
+        AnimateBar(1)
+        StarterGui:SetCore("SendNotification", {
+            Title = "Raven Cheats",
+            Text = "✅ Loaded! Press Right Shift for menu.",
+            Duration = 2,
+        })
+        
+        task.wait(1.5)
+        local fadeTween = TweenService:Create(container, TweenInfo.new(0.5, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
+            BackgroundTransparency = 1
+        })
+        fadeTween:Play()
+        fadeTween.Completed:Connect(function()
+            screenGui:Destroy()
+        end)
+    end)
+end
+
+-- ======================================================================
 --  LOADING SEQUENCE
 -- ======================================================================
 
@@ -365,115 +460,37 @@ local function StartLoading()
     print("[Raven] Starting loading sequence...")
     
     UpdateStatus("Initializing Raven Cheats...")
-    AnimateBar(0.1)
+    AnimateBar(0.05)
     task.wait(0.2)
     
     UpdateStatus("Loading assets...")
-    AnimateBar(0.25)
+    AnimateBar(0.15)
     task.wait(0.2)
     
     UpdateStatus("Connecting to servers...")
-    AnimateBar(0.4)
+    AnimateBar(0.25)
     task.wait(0.2)
     
     UpdateStatus("Loading scripts...")
-    AnimateBar(0.6)
+    AnimateBar(0.4)
     task.wait(0.2)
     
     UpdateStatus("Preparing Raven Cheats...")
-    AnimateBar(0.8)
+    AnimateBar(0.6)
     task.wait(0.2)
     
     UpdateStatus("Ready! Loading...")
-    AnimateBar(1)
+    AnimateBar(0.8)
     task.wait(0.3)
     
     LoadScript()
 end
 
 -- ======================================================================
---  MAIN LOADER
--- ======================================================================
-
-local function LoadScript()
-    UpdateStatus("Downloading Raven Cheats...")
-    
-    local success, scriptContent = pcall(function()
-        return game:HttpGet(SCRIPT_URL)
-    end)
-    
-    if not success then
-        UpdateStatus("❌ Download failed - Check connection")
-        StarterGui:SetCore("SendNotification", {
-            Title = "Raven Cheats",
-            Text = "❌ Download failed. Check your connection.",
-            Duration = 3,
-        })
-        return
-    end
-    
-    if not scriptContent or #scriptContent < 10 then
-        UpdateStatus("❌ Script corrupted - Contact support")
-        StarterGui:SetCore("SendNotification", {
-            Title = "Raven Cheats",
-            Text = "❌ Script corrupted. Contact support.",
-            Duration = 3,
-        })
-        return
-    end
-    
-    UpdateStatus("Executing Raven Cheats...")
-    
-    local compileSuccess, compiled = pcall(function()
-        return loadstring(scriptContent)
-    end)
-    
-    if not compileSuccess or type(compiled) ~= "function" then
-        UpdateStatus("❌ Validation failed - Contact support")
-        StarterGui:SetCore("SendNotification", {
-            Title = "Raven Cheats",
-            Text = "❌ Validation failed. Contact support.",
-            Duration = 3,
-        })
-        return
-    end
-    
-    local execSuccess, execResult = pcall(function()
-        return compiled()
-    end)
-    
-    if not execSuccess then
-        UpdateStatus("❌ Execution failed - Try again")
-        StarterGui:SetCore("SendNotification", {
-            Title = "Raven Cheats",
-            Text = "❌ Execution failed. Try again.",
-            Duration = 3,
-        })
-        return
-    end
-    
-    UpdateStatus("✅ Raven Cheats Loaded! Press Right Shift for menu")
-    StarterGui:SetCore("SendNotification", {
-        Title = "Raven Cheats",
-        Text = "✅ Loaded! Press Right Shift for menu.",
-        Duration = 2,
-    })
-    
-    task.wait(1.5)
-    local fadeTween = TweenService:Create(container, TweenInfo.new(0.5, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
-        BackgroundTransparency = 1
-    })
-    fadeTween:Play()
-    fadeTween.Completed:Connect(function()
-        screenGui:Destroy()
-    end)
-end
-
--- ======================================================================
 --  START
 -- ======================================================================
 
-print("[Raven] Loader v6.0")
+print("[Raven] Loader v7.0 - Fixed")
 print("[Raven] Discord: https://discord.gg/FnKfhZ7Fb6")
 print("[Raven] Ready")
 
