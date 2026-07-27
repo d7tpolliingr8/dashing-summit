@@ -1,5 +1,5 @@
--- // Skelly Hub | Solara Compatible (Target Select + Custom Offset Millisecond TP)
--- // Rebranded from Rotex Framework
+-- // Raven Cheats | Solara Compatible (Target Select + Custom Offset Millisecond TP)
+-- // Red/Black/Yellow Theme
 
 -- ================================================
 --  STUBS
@@ -18,6 +18,8 @@ local Workspace        = game:GetService("Workspace")
 local Lighting         = game:GetService("Lighting")
 local StarterGui       = game:GetService("StarterGui")
 local CoreGui          = game:GetService("CoreGui")
+local Teams            = game:GetService("Teams")
+local CollectionService = game:GetService("CollectionService")
 
 local Camera           = Workspace.CurrentCamera
 local LP               = Players.LocalPlayer
@@ -43,9 +45,9 @@ for _, url in ipairs({
 end
 
 if not LibraryLoaded then
-    warn("[Skelly Hub] Failed to load UI library")
+    warn("[Raven Cheats] Failed to load UI library")
     StarterGui:SetCore("SendNotification", {
-        Title = "Skelly Hub",
+        Title = "Raven Cheats",
         Text = "Failed to load UI library. Please try again.",
         Duration = 5,
     })
@@ -60,30 +62,31 @@ pcall(function()
 end)
 
 -- ================================================
---  SKELLY HUB THEME (Dark Purple/Skeleton)
+--  RAVEN CHEATS THEME (Red/Black/Yellow)
 -- ================================================
-local PURPLE     = Color3.fromRGB(160, 80, 220)
-local PURPLE_DARK = Color3.fromRGB(80, 30, 120)
+local RED        = Color3.fromRGB(220, 20, 20)
+local RED_DARK   = Color3.fromRGB(120, 10, 10)
+local YELLOW     = Color3.fromRGB(255, 215, 0)
+local YELLOW_DIM = Color3.fromRGB(180, 150, 0)
 local WHITE      = Color3.fromRGB(255, 255, 255)
 local BLACK      = Color3.fromRGB(0, 0, 0)
-local GREEN      = Color3.fromRGB(75, 195, 95)
-local RED        = Color3.fromRGB(255, 50, 50)
-local GOLD       = Color3.fromRGB(255, 215, 0)
 local GRAY       = Color3.fromRGB(180, 180, 180)
+local DARK_GRAY  = Color3.fromRGB(40, 40, 45)
+local GREEN      = Color3.fromRGB(75, 195, 95)
 
-local function ApplySkellyTheme()
+local function ApplyRavenTheme()
     if not Library then return end
     pcall(function()
-        Library.AccentColor     = PURPLE
-        Library.AccentColorDark = PURPLE_DARK
+        Library.AccentColor     = RED
+        Library.AccentColorDark = RED_DARK
         Library.FontColor       = Color3.fromRGB(240, 240, 240)
-        Library.MainColor       = Color3.fromRGB(18, 16, 22)
-        Library.BackgroundColor = Color3.fromRGB(14, 12, 18)
-        Library.OutlineColor    = Color3.fromRGB(35, 30, 45)
+        Library.MainColor       = Color3.fromRGB(14, 14, 18)
+        Library.BackgroundColor = Color3.fromRGB(10, 10, 14)
+        Library.OutlineColor    = Color3.fromRGB(50, 50, 55)
         Library:UpdateColorsUsingRegistry()
         
         if ThemeManager then
-            ThemeManager:ApplyTheme("SkellyHub")
+            ThemeManager:ApplyTheme("RavenCheats")
         end
     end)
 end
@@ -105,7 +108,7 @@ local Cfg = {
         Tracers = false, 
         TraceColor = WHITE,
         Chams = true, 
-        ChamsColor = PURPLE, 
+        ChamsColor = RED, 
         ChamsTrans = 0.4, 
         ChamsOut = Color3.fromRGB(0, 0, 0), 
         ChamsOutT = 1, 
@@ -133,7 +136,7 @@ local Cfg = {
         FullBright = false,
         NoFog = false,
         Crosshair = false,
-        CrosshairColor = WHITE,
+        CrosshairColor = YELLOW,
         CrosshairSize = 12,
         CrosshairGap = 4,
         CrosshairSpinSpeed = 2.0,
@@ -150,8 +153,81 @@ local Cfg = {
         StickyTP = false,
         SelectedTarget = "None",
         HeightOffset = 5,
+        TeamCheck = true,
     }
 }
+
+-- ================================================
+--  WORKING TEAM CHECK
+-- ================================================
+
+local function IsTeammate(player)
+    if not player or player == LP then return false end
+    
+    -- If team check is disabled, return false
+    if not Cfg.TargetUtility.TeamCheck then
+        return false
+    end
+    
+    -- Method 1: Check Team property
+    if LP.Team and player.Team then
+        if LP.Team == player.Team then
+            return true
+        end
+    end
+    
+    -- Method 2: Check TeamColor
+    if LP.TeamColor and player.TeamColor then
+        if LP.TeamColor == player.TeamColor then
+            return true
+        end
+    end
+    
+    -- Method 3: Check via Teams service
+    if Teams then
+        for _, team in pairs(Teams:GetTeams()) do
+            if team:FindFirstChild(LP.Name) and team:FindFirstChild(player.Name) then
+                return true
+            end
+        end
+    end
+    
+    -- Method 4: Check via Character's BrickColor
+    local lpChar = LP.Character
+    local targetChar = player.Character
+    if lpChar and targetChar then
+        local lpHead = lpChar:FindFirstChild("Head")
+        local targetHead = targetChar:FindFirstChild("Head")
+        if lpHead and targetHead then
+            local lpColor = lpHead.BrickColor
+            local targetColor = targetHead.BrickColor
+            if lpColor and targetColor and lpColor == targetColor then
+                return true
+            end
+        end
+    end
+    
+    -- Method 5: Check via Tags (CollectionService)
+    if lpChar and targetChar then
+        if CollectionService:HasTag(lpChar, "Team1") and CollectionService:HasTag(targetChar, "Team1") then
+            return true
+        end
+        if CollectionService:HasTag(lpChar, "Team2") and CollectionService:HasTag(targetChar, "Team2") then
+            return true
+        end
+    end
+    
+    -- Method 6: Check via HumanoidRootPart BrickColor
+    local lpRoot = lpChar and lpChar:FindFirstChild("HumanoidRootPart")
+    local targetRoot = targetChar and targetChar:FindFirstChild("HumanoidRootPart")
+    if lpRoot and targetRoot then
+        if lpRoot.BrickColor == targetRoot.BrickColor then
+            return true
+        end
+    end
+    
+    return false
+end
 
 -- ================================================
 --  DRAWING HELPERS
@@ -439,6 +515,12 @@ end
 local function UpdateESP()
     for _, player in ipairs(Players:GetPlayers()) do
         if player == LP then continue end
+        
+        -- Skip teammates if TeamCheck is enabled
+        if Cfg.TargetUtility.TeamCheck and IsTeammate(player) then
+            continue
+        end
+        
         CreateESPObjects(player)
         local o = ESPs[player]
         local char = player.Character
@@ -653,6 +735,12 @@ end
 
 local function IsValidTarget(player)
     if not player or player == LP then return false end
+    
+    -- Skip teammates if TeamCheck is enabled
+    if Cfg.TargetUtility.TeamCheck and IsTeammate(player) then
+        return false
+    end
+    
     local char = player.Character
     if not char then return false end
     local hum = char:FindFirstChildOfClass("Humanoid")
@@ -770,8 +858,7 @@ local function GetPlayerNames()
             table.insert(names, player.Name)
         end
     end
-    return names
-end
+    return namesend
 
 RunService.RenderStepped:Connect(function()
     if Cfg.Movement.SpeedHack then
@@ -890,7 +977,7 @@ local function UpdateCrosshair()
 end
 
 -- ================================================
---  FLIGHT SYSTEM (FIXED KEYBIND ENGINE)
+--  FLIGHT SYSTEM
 -- ================================================
 local flyConnection = nil
 local flyEnabled = false
@@ -972,15 +1059,15 @@ local function ToggleFly()
     if flyEnabled then
         StartFly()
         StarterGui:SetCore("SendNotification", {
-            Title = "Skelly Hub",
-            Text = "💀 Flight enabled",
+            Title = "Raven Cheats",
+            Text = "🦅 Flight enabled",
             Duration = 1,
         })
     else
         StopFly()
         StarterGui:SetCore("SendNotification", {
-            Title = "Skelly Hub",
-            Text = "💀 Flight disabled",
+            Title = "Raven Cheats",
+            Text = "🦅 Flight disabled",
             Duration = 1,
         })
     end
@@ -1112,7 +1199,7 @@ RunService.RenderStepped:Connect(function()
     pcall(UpdateCrosshair)
 end)
 
-RunService:BindToRenderStep("SkellyAim", Enum.RenderPriority.Last.Value, function()
+RunService:BindToRenderStep("RavenAim", Enum.RenderPriority.Last.Value, function()
     Camera = Workspace.CurrentCamera
     pcall(DoAim)
 end)
@@ -1121,7 +1208,7 @@ end)
 --  USER INTERFACE
 -- ================================================
 local Window = Library:CreateWindow({
-    Title = "💀 Skelly Hub",
+    Title = "🦅 Raven Cheats",
     Center = true,
     AutoShow = true,
     TabPadding = 8,
@@ -1134,7 +1221,7 @@ local Window = Library:CreateWindow({
 pcall(function()
     if Window and Window.Holder then
         local logoContainer = Instance.new("Frame")
-        logoContainer.Name = "SkellyLogoContainer"
+        logoContainer.Name = "RavenLogoContainer"
         logoContainer.BackgroundTransparency = 1
         logoContainer.AnchorPoint = Vector2.new(0, 1)
         logoContainer.Position = UDim2.new(0, 12, 1, -12)
@@ -1155,7 +1242,7 @@ pcall(function()
         cornerGlass.Parent = glassBg
         
         local strokeGlass = Instance.new("UIStroke")
-        strokeGlass.Color = PURPLE
+        strokeGlass.Color = RED
         strokeGlass.Transparency = 0.4
         strokeGlass.Thickness = 1.2
         strokeGlass.Parent = glassBg
@@ -1169,11 +1256,11 @@ pcall(function()
         iconFrame.Parent = logoContainer
         
         local logoLabel = Instance.new("TextLabel")
-        logoLabel.Name = "SkellyLogoText"
+        logoLabel.Name = "RavenLogoText"
         logoLabel.BackgroundTransparency = 1
         logoLabel.Size = UDim2.new(1, 0, 1, 0)
-        logoLabel.Text = "💀"
-        logoLabel.TextColor3 = WHITE
+        logoLabel.Text = "🦅"
+        logoLabel.TextColor3 = YELLOW
         logoLabel.TextSize = 32
         logoLabel.Font = Enum.Font.Gotham
         logoLabel.ZIndex = 6
@@ -1192,7 +1279,7 @@ pcall(function()
         titleLabel.BackgroundTransparency = 1
         titleLabel.Size = UDim2.new(1, 0, 0, 18)
         titleLabel.Font = Enum.Font.GothamBold
-        titleLabel.Text = "SKELLY HUB"
+        titleLabel.Text = "RAVEN CHEATS"
         titleLabel.TextColor3 = WHITE
         titleLabel.TextSize = 12
         titleLabel.TextXAlignment = Enum.TextXAlignment.Left
@@ -1206,7 +1293,7 @@ pcall(function()
         subLabel.Size = UDim2.new(1, 0, 0, 16)
         subLabel.Font = Enum.Font.GothamMedium
         subLabel.Text = "RIVALS SUITE"
-        subLabel.TextColor3 = PURPLE
+        subLabel.TextColor3 = YELLOW
         subLabel.TextSize = 9
         subLabel.TextXAlignment = Enum.TextXAlignment.Left
         subLabel.ZIndex = 6
@@ -1217,7 +1304,7 @@ pcall(function()
 end)
 
 local Tabs = {
-    ESP = Window:AddTab("💀 ESP"),
+    ESP = Window:AddTab("🦅 ESP"),
     Aim = Window:AddTab("🎯 Aim"),
     Util = Window:AddTab("🔄 Utils"),
     Move = Window:AddTab("🚀 Move"),
@@ -1225,12 +1312,12 @@ local Tabs = {
     Settings = Window:AddTab("⚙️ Settings"),
 }
 
-ApplySkellyTheme()
+ApplyRavenTheme()
 CreateCrosshair()
 
 task.spawn(function()
     task.wait(0.2)
-    ApplySkellyTheme()
+    ApplyRavenTheme()
 end)
 
 -- =============================================
@@ -1292,7 +1379,7 @@ AimGroup:AddSlider("AimPred", { Text = "Prediction", Default = Cfg.Aim.Predictio
 Options.AimPred:OnChanged(function(v) Cfg.Aim.Prediction = v end)
 
 -- =============================================
--- UTILS TAB
+-- UTILS TAB (Team Check Here)
 -- =============================================
 local UtilGroup = Tabs.Util:AddLeftGroupbox("Target Teleportation")
 
@@ -1302,8 +1389,8 @@ Options.TargetDropdown:OnChanged(function(v) Cfg.TargetUtility.SelectedTarget = 
 UtilGroup:AddButton("Refresh List", function()
     Options.TargetDropdown:SetValues(GetPlayerNames())
     StarterGui:SetCore("SendNotification", {
-        Title = "Skelly Hub",
-        Text = "💀 Player list updated.",
+        Title = "Raven Cheats",
+        Text = "🦅 Player list updated.",
         Duration = 2,
     })
 end)
@@ -1313,6 +1400,25 @@ Options.HeightOffsetSlider:OnChanged(function(v) Cfg.TargetUtility.HeightOffset 
 
 UtilGroup:AddToggle("StickyTP", { Text = "Enable TP", Default = Cfg.TargetUtility.StickyTP })
 Toggles.StickyTP:OnChanged(function(v) Cfg.TargetUtility.StickyTP = v end)
+
+-- =============================================
+-- TEAM CHECK IN UTILS TAB
+-- =============================================
+local TeamGroup = Tabs.Util:AddRightGroupbox("Team Settings")
+
+TeamGroup:AddToggle("TeamCheckToggle", { 
+    Text = "Enable Team Check", 
+    Default = Cfg.TargetUtility.TeamCheck,
+    Tooltip = "Prevents aiming at and ESP on teammates"
+})
+Toggles.TeamCheckToggle:OnChanged(function(v)
+    Cfg.TargetUtility.TeamCheck = v
+    StarterGui:SetCore("SendNotification", {
+        Title = "Raven Cheats",
+        Text = v and "🦅 Team Check ENABLED" or "🦅 Team Check DISABLED",
+        Duration = 1.5,
+    })
+end)
 
 -- =============================================
 -- MOVE TAB
@@ -1373,7 +1479,7 @@ Options.CrosshairSpin:OnChanged(function(v) Cfg.Visuals.CrosshairSpinSpeed = v e
 -- =============================================
 -- SETTINGS TAB
 -- =============================================
-Library:SetWatermark("💀 Skelly Hub")
+Library:SetWatermark("🦅 Raven Cheats")
 ThemeManager:SetLibrary(Library)
 SaveManager:SetLibrary(Library)
 ThemeManager:ApplyToTab(Tabs.Settings)
@@ -1383,5 +1489,5 @@ SaveManager:LoadAutoloadConfig()
 -- =============================================
 -- WATERMARK / KEYBIND DISPLAY
 -- =============================================
-print("[Skelly Hub] Loaded successfully!")
-print("[Skelly Hub] Press Right Shift to toggle menu.")
+print("[Raven Cheats] Loaded successfully!")
+print("[Raven Cheats] Press Right Shift to toggle menu.")
