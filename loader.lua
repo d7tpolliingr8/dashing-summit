@@ -4,9 +4,11 @@
 ]]
 
 -- ==================== CONFIGURATION ====================
-local SCRIPT_URL = "https://pastebin.com/raw/YOUR_SCRIPT_PASTE_ID"  -- ← CHANGE THIS!
+-- ✅ UPDATED: This now points to your actual script on GitHub
+local SCRIPT_URL = "https://raw.githubusercontent.com/jabu62012-commits/dashing-summit/main/rivalsaimwh.lua"
 local LOADER_VERSION = "v9.0"
-local DISCORD_INVITE = "https://discord.gg/yourserver"  -- ← CHANGE THIS!
+-- ✅ UPDATED: Change this to your actual Discord invite link
+local DISCORD_INVITE = "https://discord.gg/XJtYWy9jgU"
 
 -- ==================== SERVICES ====================
 local Players = game:GetService("Players")
