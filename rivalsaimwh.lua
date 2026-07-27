@@ -1,26 +1,408 @@
 --[[
-    DarkSide Rivals Script v9.0
-    Premium Menu with Full Features
+    DarkSide Rivals Script v10.0
+    Drawing-Based Menu (ImGui Style)
+    Press Right Shift to toggle
 ]]
 
 -- ==================== SERVICES ====================
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 local UserInputService = game:GetService("UserInputService")
-local TweenService = game:GetService("TweenService")
 local LocalPlayer = Players.LocalPlayer
 local Camera = workspace.CurrentCamera
-local CoreGui = game:GetService("CoreGui")
 local Lighting = game:GetService("Lighting")
 local VirtualUser = game:GetService("VirtualUser")
 
 -- ==================== CONFIG ====================
 local Config = {
     Aimbot = {Enabled = false, FOV = 120, Smoothness = 0.3, AimPart = "Head", MaxDistance = 500, TeamCheck = true},
-    ESP = {Enabled = false, ShowBoxes = true, ShowNames = true, ShowHealth = true, ShowDistance = true, ShowTracers = false, TeamCheck = true, MaxDistance = 1000},
-    Player = {InfiniteJump = false, Fly = false, FlySpeed = 50, WalkSpeed = 16, JumpPower = 50, GodMode = false, NoFallDamage = false, FullBright = false, AntiAFK = false, AutoFarm = false},
+    ESP = {Enabled = false, ShowBoxes = true, ShowNames = true, ShowHealth = true, ShowDistance = true, TeamCheck = true, MaxDistance = 1000},
+    Player = {InfiniteJump = false, Fly = false, FlySpeed = 50, WalkSpeed = 16, JumpPower = 50, GodMode = false, NoFallDamage = false, FullBright = false, AntiAFK = false},
     Menu = {Key = Enum.KeyCode.RightShift}
 }
+
+-- ==================== DRAWING MENU ====================
+local menuOpen = false
+local menuDrawings = {}
+local menuObjects = {}
+local selectedTab = 1
+local tabs = {"Aimbot", "ESP", "Player", "Misc"}
+
+-- Colors
+local colors = {
+    bg = Color3.fromRGB(12, 12, 25),
+    border = Color3.fromRGB(180, 0, 0),
+    accent = Color3.fromRGB(200, 0, 0),
+    text = Color3.fromRGB(220, 220, 220),
+    textDim = Color3.fromRGB(150, 150, 150),
+    green = Color3.fromRGB(0, 200, 0),
+    red = Color3.fromRGB(200, 0, 0),
+    gold = Color3.fromRGB(255, 215, 0),
+}
+
+-- ==================== DRAWING HELPERS ====================
+local function CreateDrawing(dType, props)
+    local success, d = pcall(function()
+        local drawing = Drawing.new(dType)
+        for k, v in pairs(props or {}) do
+            drawing[k] = v
+        end
+        return drawing
+    end)
+    if success and d then
+        table.insert(menuDrawings, d)
+        return d
+    end
+    return nil
+end
+
+local function ClearMenu()
+    for _, d in pairs(menuDrawings) do
+        pcall(function() d:Remove() end)
+    end
+    menuDrawings = {}
+    menuObjects = {}
+end
+
+local function CreateText(text, position, color, size, center)
+    return CreateDrawing("Text", {
+        Text = text,
+        Position = position,
+        Color = color or colors.text,
+        Size = size or 16,
+        Center = center or false,
+        Outline = true,
+        OutlineColor = Color3.new(0,0,0),
+        Font = Drawing.Fonts.UI,
+    })
+end
+
+local function CreateRect(position, size, color, thickness, filled)
+    return CreateDrawing("Square", {
+        Position = position,
+        Size = size,
+        Color = color or colors.border,
+        Thickness = thickness or 2,
+        Filled = filled or false,
+        Transparency = 0.8,
+    })
+end
+
+local function CreateLine(from, to, color, thickness)
+    return CreateDrawing("Line", {
+        From = from,
+        To = to,
+        Color = color or colors.border,
+        Thickness = thickness or 2,
+    })
+end
+
+-- ==================== MENU DRAWING ====================
+local function DrawMenu()
+    ClearMenu()
+    
+    local viewport = Camera.ViewportSize
+    local menuWidth = 400
+    local menuHeight = 420
+    local menuX = (viewport.X - menuWidth) / 2
+    local menuY = (viewport.Y - menuHeight) / 2
+    
+    -- Background
+    local bg = CreateRect(Vector2.new(menuX, menuY), Vector2.new(menuWidth, menuHeight), colors.bg, 0, true)
+    bg.Transparency = 0.05
+    
+    -- Border
+    local border = CreateRect(Vector2.new(menuX, menuY), Vector2.new(menuWidth, menuHeight), colors.border, 2, false)
+    border.Transparency = 0.3
+    
+    -- Title Bar
+    local titleBg = CreateRect(Vector2.new(menuX + 2, menuY + 2), Vector2.new(menuWidth - 4, 40), colors.accent, 0, true)
+    titleBg.Transparency = 0.2
+    
+    local title = CreateText("DARK SIDE", Vector2.new(menuX + 20, menuY + 8), Color3.new(1,1,1), 24, false)
+    local subTitle = CreateText("RIVALS SCRIPT v10.0", Vector2.new(menuX + menuWidth - 150, menuY + 14), colors.textDim, 12, false)
+    
+    -- Tab Bar
+    local tabY = menuY + 42
+    local tabWidth = menuWidth / #tabs
+    for i, tabName in ipairs(tabs) do
+        local tabX = menuX + (i - 1) * tabWidth
+        local isSelected = (i == selectedTab)
+        
+        local tabBg = CreateRect(Vector2.new(tabX, tabY), Vector2.new(tabWidth, 35), isSelected and colors.accent or colors.bg, 0, true)
+        tabBg.Transparency = isSelected and 0.3 or 0.6
+        
+        local tabText = CreateText(tabName, Vector2.new(tabX + tabWidth/2, tabY + 8), isSelected and Color3.new(1,1,1) or colors.textDim, 14, true)
+        
+        -- Store click area
+        table.insert(menuObjects, {
+            type = "tab",
+            index = i,
+            x1 = tabX,
+            y1 = tabY,
+            x2 = tabX + tabWidth,
+            y2 = tabY + 35,
+        })
+    end
+    
+    -- Divider
+    local divider = CreateLine(Vector2.new(menuX + 10, tabY + 37), Vector2.new(menuX + menuWidth - 10, tabY + 37), colors.border, 1)
+    divider.Transparency = 0.5
+    
+    -- Content Area
+    local contentX = menuX + 15
+    local contentY = tabY + 45
+    local contentWidth = menuWidth - 30
+    
+    -- Draw content based on selected tab
+    if selectedTab == 1 then -- Aimbot
+        DrawAimbotContent(contentX, contentY, contentWidth)
+    elseif selectedTab == 2 then -- ESP
+        DrawESPContent(contentX, contentY, contentWidth)
+    elseif selectedTab == 3 then -- Player
+        DrawPlayerContent(contentX, contentY, contentWidth)
+    elseif selectedTab == 4 then -- Misc
+        DrawMiscContent(contentX, contentY, contentWidth)
+    end
+    
+    -- Footer - Watermark
+    local footer = CreateText("dark-side.lol", Vector2.new(menuX + menuWidth - 80, menuY + menuHeight - 22), Color3.fromRGB(60,0,0), 11, false)
+end
+
+-- ==================== TAB CONTENT ====================
+local function DrawToggle(x, y, label, state, callback)
+    local toggleX = x + 150
+    local toggleWidth = 40
+    local toggleHeight = 20
+    
+    -- Label
+    local labelText = CreateText(label, Vector2.new(x, y), state and colors.green or colors.text, 14, false)
+    
+    -- Toggle background
+    local toggleBg = CreateRect(Vector2.new(toggleX, y), Vector2.new(toggleWidth, toggleHeight), state and colors.green or colors.red, 0, true)
+    toggleBg.Transparency = 0.3
+    
+    -- Toggle border
+    local toggleBorder = CreateRect(Vector2.new(toggleX, y), Vector2.new(toggleWidth, toggleHeight), state and colors.green or colors.red, 1, false)
+    toggleBorder.Transparency = 0.3
+    
+    -- Toggle indicator
+    local dotX = state and toggleX + toggleWidth - 18 or toggleX + 2
+    local dot = CreateRect(Vector2.new(dotX, y + 2), Vector2.new(16, 16), Color3.new(1,1,1), 0, true)
+    dot.Transparency = 0.1
+    
+    -- Store click area
+    table.insert(menuObjects, {
+        type = "toggle",
+        label = label,
+        state = state,
+        callback = callback,
+        x1 = toggleX,
+        y1 = y,
+        x2 = toggleX + toggleWidth,
+        y2 = y + toggleHeight,
+    })
+    
+    return toggleBg
+end
+
+local function DrawSlider(x, y, label, value, min, max, step, callback)
+    local sliderWidth = 150
+    local sliderX = x + 120
+    
+    -- Label
+    local labelText = CreateText(label .. ": " .. tostring(value), Vector2.new(x, y), colors.text, 14, false)
+    
+    -- Slider background
+    local sliderBg = CreateRect(Vector2.new(sliderX, y + 8), Vector2.new(sliderWidth, 4), colors.textDim, 0, true)
+    sliderBg.Transparency = 0.5
+    
+    -- Slider fill
+    local fillWidth = ((value - min) / (max - min)) * sliderWidth
+    local sliderFill = CreateRect(Vector2.new(sliderX, y + 8), Vector2.new(fillWidth, 4), colors.accent, 0, true)
+    sliderFill.Transparency = 0.3
+    
+    -- Slider handle
+    local handleX = sliderX + fillWidth - 6
+    local handle = CreateRect(Vector2.new(handleX, y + 4), Vector2.new(12, 12), colors.accent, 1, true)
+    handle.Transparency = 0.2
+    
+    -- Store click area
+    table.insert(menuObjects, {
+        type = "slider",
+        label = label,
+        value = value,
+        min = min,
+        max = max,
+        step = step,
+        callback = callback,
+        x1 = sliderX,
+        y1 = y + 4,
+        x2 = sliderX + sliderWidth,
+        y2 = y + 16,
+    })
+end
+
+local function DrawAimbotContent(x, y, width)
+    local yPos = y
+    
+    -- Head/Body selector
+    local headBtnX = x
+    local bodyBtnX = x + 80
+    
+    local headBg = CreateRect(Vector2.new(headBtnX, yPos), Vector2.new(70, 25), Config.Aimbot.AimPart == "Head" and colors.green or colors.bg, 1, true)
+    headBg.Transparency = 0.2
+    local headText = CreateText("Head", Vector2.new(headBtnX + 35, yPos + 5), Config.Aimbot.AimPart == "Head" and Color3.new(1,1,1) or colors.textDim, 13, true)
+    
+    local bodyBg = CreateRect(Vector2.new(bodyBtnX, yPos), Vector2.new(70, 25), Config.Aimbot.AimPart == "Body" and colors.green or colors.bg, 1, true)
+    bodyBg.Transparency = 0.2
+    local bodyText = CreateText("Body", Vector2.new(bodyBtnX + 35, yPos + 5), Config.Aimbot.AimPart == "Body" and Color3.new(1,1,1) or colors.textDim, 13, true)
+    
+    table.insert(menuObjects, {type = "headbody", x1 = headBtnX, y1 = yPos, x2 = headBtnX + 70, y2 = yPos + 25})
+    table.insert(menuObjects, {type = "headbody", x1 = bodyBtnX, y1 = yPos, x2 = bodyBtnX + 70, y2 = yPos + 25})
+    
+    yPos = yPos + 35
+    
+    -- FOV Slider
+    DrawSlider(x, yPos, "Aim FOV", Config.Aimbot.FOV, 10, 360, 5, function(val)
+        Config.Aimbot.FOV = val
+    end)
+    yPos = yPos + 30
+    
+    -- Toggles
+    DrawToggle(x, yPos, "Aimbot", Config.Aimbot.Enabled, function(s)
+        Config.Aimbot.Enabled = s
+        aimbotActive = s
+    end)
+    yPos = yPos + 30
+    
+    DrawToggle(x, yPos, "Silent Aim", Config.Aimbot.Silent, function(s)
+        Config.Aimbot.Silent = s
+        silentAimActive = s
+    end)
+    yPos = yPos + 30
+    
+    DrawToggle(x, yPos, "Team Check", Config.Aimbot.TeamCheck, function(s)
+        Config.Aimbot.TeamCheck = s
+    end)
+end
+
+local function DrawESPContent(x, y, width)
+    local yPos = y
+    
+    DrawToggle(x, yPos, "ESP Enabled", Config.ESP.Enabled, function(s)
+        Config.ESP.Enabled = s
+        espActive = s
+    end)
+    yPos = yPos + 30
+    
+    DrawToggle(x, yPos, "Boxes", Config.ESP.ShowBoxes, function(s)
+        Config.ESP.ShowBoxes = s
+    end)
+    yPos = yPos + 30
+    
+    DrawToggle(x, yPos, "Names", Config.ESP.ShowNames, function(s)
+        Config.ESP.ShowNames = s
+    end)
+    yPos = yPos + 30
+    
+    DrawToggle(x, yPos, "Health Bars", Config.ESP.ShowHealth, function(s)
+        Config.ESP.ShowHealth = s
+    end)
+    yPos = yPos + 30
+    
+    DrawToggle(x, yPos, "Distance", Config.ESP.ShowDistance, function(s)
+        Config.ESP.ShowDistance = s
+    end)
+    yPos = yPos + 30
+    
+    DrawToggle(x, yPos, "Team Check", Config.ESP.TeamCheck, function(s)
+        Config.ESP.TeamCheck = s
+    end)
+end
+
+local function DrawPlayerContent(x, y, width)
+    local yPos = y
+    
+    DrawToggle(x, yPos, "Infinite Jump", Config.Player.InfiniteJump, function(s)
+        Config.Player.InfiniteJump = s
+    end)
+    yPos = yPos + 30
+    
+    DrawToggle(x, yPos, "Fly", Config.Player.Fly, function(s)
+        Config.Player.Fly = s
+    end)
+    yPos = yPos + 30
+    
+    DrawToggle(x, yPos, "God Mode", Config.Player.GodMode, function(s)
+        Config.Player.GodMode = s
+    end)
+    yPos = yPos + 30
+    
+    DrawToggle(x, yPos, "No Fall Damage", Config.Player.NoFallDamage, function(s)
+        Config.Player.NoFallDamage = s
+    end)
+    yPos = yPos + 30
+    
+    DrawToggle(x, yPos, "Full Bright", Config.Player.FullBright, function(s)
+        Config.Player.FullBright = s
+    end)
+end
+
+local function DrawMiscContent(x, y, width)
+    local yPos = y
+    
+    DrawToggle(x, yPos, "Anti AFK", Config.Player.AntiAFK, function(s)
+        Config.Player.AntiAFK = s
+    end)
+    yPos = yPos + 30
+    
+    -- Credits
+    yPos = yPos + 20
+    local credit1 = CreateText("DarkSide Script v10.0", Vector2.new(x, yPos), colors.textDim, 14, false)
+    yPos = yPos + 22
+    local credit2 = CreateText("Developed by DarkSide Team", Vector2.new(x, yPos), colors.textDim, 12, false)
+    yPos = yPos + 22
+    local credit3 = CreateText("dark-side.lol", Vector2.new(x, yPos), Color3.fromRGB(60,0,0), 12, false)
+end
+
+-- ==================== CLICK HANDLING ====================
+local function HandleClick(input)
+    if input.UserInputType ~= Enum.UserInputType.MouseButton1 then return end
+    
+    local pos = input.Position
+    local handled = false
+    
+    for _, obj in pairs(menuObjects) do
+        if pos.X >= obj.x1 and pos.X <= obj.x2 and pos.Y >= obj.y1 and pos.Y <= obj.y2 then
+            if obj.type == "tab" then
+                selectedTab = obj.index
+                handled = true
+            elseif obj.type == "toggle" and obj.callback then
+                obj.callback(not obj.state)
+                handled = true
+            elseif obj.type == "headbody" then
+                -- Check which button was clicked
+                if obj.x1 < pos.X and obj.x1 + 35 > pos.X then
+                    Config.Aimbot.AimPart = "Head"
+                else
+                    Config.Aimbot.AimPart = "Body"
+                end
+                handled = true
+            elseif obj.type == "slider" and obj.callback then
+                local percent = (pos.X - obj.x1) / (obj.x2 - obj.x1)
+                local val = math.floor((percent * (obj.max - obj.min) + obj.min) / obj.step) * obj.step
+                val = math.clamp(val, obj.min, obj.max)
+                obj.callback(val)
+                handled = true
+            end
+        end
+    end
+    
+    if handled then
+        DrawMenu()
+    end
+end
 
 -- ==================== UTILITY ====================
 local function IsAlive(player)
@@ -36,8 +418,8 @@ end
 
 local function GetAimPart(character, partName)
     if not character then return nil end
-    if partName == "Head" then return character:FindFirstChild("Head")
-    elseif partName == "Body" then return character:FindFirstChild("UpperTorso") or character:FindFirstChild("Torso") end
+    if partName == "Head" then return character:FindFirstChild("Head") end
+    if partName == "Body" then return character:FindFirstChild("UpperTorso") or character:FindFirstChild("Torso") end
     return character:FindFirstChild(partName) or GetRootPart(character)
 end
 
@@ -119,10 +501,10 @@ local drawingAvailable = pcall(function() return Drawing.new("Square") end)
 
 if not drawingAvailable then warn("[DarkSide] Drawing library not available. ESP disabled.") end
 
-local function CreateDrawing(drawType, props)
+local function CreateESPDrawing(dType, props)
     if not drawingAvailable then return nil end
     local success, d = pcall(function()
-        local drawing = Drawing.new(drawType)
+        local drawing = Drawing.new(dType)
         for k, v in pairs(props or {}) do drawing[k] = v end
         return drawing
     end)
@@ -135,7 +517,7 @@ local function ClearESP()
     espDrawings = {}; espObjects = {}
 end
 
-local function DrawESP(player)
+local function DrawESPPlayer(player)
     if not drawingAvailable then return end
     if not player or player == LocalPlayer then return end
     if Config.ESP.TeamCheck and IsTeammate(player) then return end
@@ -166,7 +548,7 @@ local function DrawESP(player)
     
     if Config.ESP.ShowBoxes then
         if not esp.Box then
-            esp.Box = CreateDrawing("Square", {Color = Color3.new(1,0,0), Thickness = 2, Filled = false, Transparency = 1})
+            esp.Box = CreateESPDrawing("Square", {Color = Color3.new(1,0,0), Thickness = 2, Filled = false, Transparency = 1})
         end
         if esp.Box then
             esp.Box.Position = Vector2.new(sp.X - size*0.3, sp.Y - size*0.5)
@@ -177,7 +559,7 @@ local function DrawESP(player)
     
     if Config.ESP.ShowNames then
         if not esp.Name then
-            esp.Name = CreateDrawing("Text", {Color = Color3.new(1,1,1), Size = 14, Center = true, Outline = true, OutlineColor = Color3.new(0,0,0), Font = Drawing.Fonts.UI})
+            esp.Name = CreateESPDrawing("Text", {Color = Color3.new(1,1,1), Size = 14, Center = true, Outline = true, OutlineColor = Color3.new(0,0,0), Font = Drawing.Fonts.UI})
         end
         if esp.Name then
             esp.Name.Text = player.DisplayName or player.Name
@@ -188,7 +570,7 @@ local function DrawESP(player)
     
     if Config.ESP.ShowHealth then
         if not esp.Health then
-            esp.Health = CreateDrawing("Square", {Color = Color3.new(0,1,0), Thickness = 2, Filled = true})
+            esp.Health = CreateESPDrawing("Square", {Color = Color3.new(0,1,0), Thickness = 2, Filled = true})
         end
         if esp.Health then
             local hp = humanoid.Health / humanoid.MaxHealth
@@ -204,24 +586,12 @@ local function DrawESP(player)
     
     if Config.ESP.ShowDistance then
         if not esp.Dist then
-            esp.Dist = CreateDrawing("Text", {Color = Color3.new(0.5,0.5,1), Size = 12, Center = true, Outline = true, OutlineColor = Color3.new(0,0,0), Font = Drawing.Fonts.UI})
+            esp.Dist = CreateESPDrawing("Text", {Color = Color3.new(0.5,0.5,1), Size = 12, Center = true, Outline = true, OutlineColor = Color3.new(0,0,0), Font = Drawing.Fonts.UI})
         end
         if esp.Dist then
             esp.Dist.Text = string.format("%.0fm", distance / 3)
             esp.Dist.Position = Vector2.new(sp.X, sp.Y + size*0.55 + 5)
             esp.Dist.Visible = true
-        end
-    end
-    
-    if Config.ESP.ShowTracers then
-        if not esp.Tracer then
-            esp.Tracer = CreateDrawing("Line", {Color = Color3.new(1,0,0), Thickness = 2})
-        end
-        if esp.Tracer then
-            local center = Vector2.new(Camera.ViewportSize.X / 2, Camera.ViewportSize.Y)
-            esp.Tracer.From = center
-            esp.Tracer.To = Vector2.new(sp.X, sp.Y)
-            esp.Tracer.Visible = true
         end
     end
 end
@@ -230,7 +600,7 @@ local function UpdateESP()
     if not espActive or not Config.ESP.Enabled or not drawingAvailable then ClearESP(); return end
     ClearESP()
     espObjects = {}
-    for _, player in pairs(Players:GetPlayers()) do DrawESP(player) end
+    for _, player in pairs(Players:GetPlayers()) do DrawESPPlayer(player) end
 end
 
 -- ==================== PLAYER MODS ====================
@@ -308,410 +678,33 @@ local function AntiAFK()
 end
 RunService.Heartbeat:Connect(AntiAFK)
 
--- ==================== MENU ====================
-local menuVisible = false
-local screenGui = nil
-local menuCreated = false
-local currentTab = "Main"
-
-local function CreateMenu()
-    if screenGui then pcall(function() screenGui:Destroy() end); screenGui = nil end
-    
-    screenGui = Instance.new("ScreenGui")
-    screenGui.Name = "DarkSideMenu"
-    screenGui.Parent = CoreGui
-    screenGui.ResetOnSpawn = false
-    screenGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
-    screenGui.DisplayOrder = 999
-    
-    local mainFrame = Instance.new("Frame")
-    mainFrame.Size = UDim2.new(0, 520, 0, 480)
-    mainFrame.Position = UDim2.new(0.5, -260, 0.5, -240)
-    mainFrame.BackgroundColor3 = Color3.fromRGB(10, 10, 22)
-    mainFrame.BackgroundTransparency = 0.05
-    mainFrame.BorderSizePixel = 2
-    mainFrame.BorderColor3 = Color3.fromRGB(180, 0, 0)
-    mainFrame.Parent = screenGui
-    
-    local mainCorner = Instance.new("UICorner")
-    mainCorner.CornerRadius = UDim.new(0, 20)
-    mainCorner.Parent = mainFrame
-    
-    -- Title Bar
-    local titleBar = Instance.new("Frame")
-    titleBar.Size = UDim2.new(1, 0, 0, 50)
-    titleBar.BackgroundColor3 = Color3.fromRGB(20, 0, 0)
-    titleBar.BackgroundTransparency = 0.3
-    titleBar.BorderSizePixel = 0
-    titleBar.Parent = mainFrame
-    
-    local titleBarCorner = Instance.new("UICorner")
-    titleBarCorner.CornerRadius = UDim.new(0, 20)
-    titleBarCorner.Parent = titleBar
-    
-    local titleText = Instance.new("TextLabel")
-    titleText.Size = UDim2.new(1, 0, 1, 0)
-    titleText.BackgroundTransparency = 1
-    titleText.Text = "DARK SIDE"
-    titleText.TextColor3 = Color3.new(1, 1, 1)
-    titleText.TextSize = 28
-    titleText.Font = Enum.Font.GothamBold
-    titleText.Parent = titleBar
-    
-    local subText = Instance.new("TextLabel")
-    subText.Size = UDim2.new(1, 0, 1, 0)
-    subText.Position = UDim2.new(0, 0, 0, 0)
-    subText.BackgroundTransparency = 1
-    subText.Text = "RIVALS SCRIPT"
-    subText.TextColor3 = Color3.fromRGB(150, 150, 150)
-    subText.TextSize = 12
-    subText.Font = Enum.Font.Gotham
-    subText.TextXAlignment = Enum.TextXAlignment.Right
-    subText.Parent = titleBar
-    
-    -- Tab Bar
-    local tabBar = Instance.new("Frame")
-    tabBar.Size = UDim2.new(1, 0, 0, 40)
-    tabBar.Position = UDim2.new(0, 0, 0, 50)
-    tabBar.BackgroundColor3 = Color3.fromRGB(15, 15, 30)
-    tabBar.BackgroundTransparency = 0.3
-    tabBar.BorderSizePixel = 0
-    tabBar.Parent = mainFrame
-    
-    local function CreateTab(text, tabName, xPos)
-        local btn = Instance.new("TextButton")
-        btn.Size = UDim2.new(0.25, 0, 1, 0)
-        btn.Position = UDim2.new(xPos, 0, 0, 0)
-        btn.BackgroundColor3 = Color3.fromRGB(30, 30, 50)
-        btn.TextColor3 = Color3.new(1, 1, 1)
-        btn.TextSize = 14
-        btn.Font = Enum.Font.GothamBold
-        btn.Text = text
-        btn.Parent = tabBar
-        
-        btn.MouseButton1Click:Connect(function()
-            currentTab = tabName
-            for _, child in pairs(contentContainer:GetChildren()) do
-                if child:IsA("TextButton") or child:IsA("TextLabel") or child:IsA("Frame") then
-                    child:Destroy()
-                end
-            end
-            LoadTab(tabName)
-        end)
-        return btn
-    end
-    
-    CreateTab("Main", "Main", 0)
-    CreateTab("Misc", "Misc", 0.25)
-    CreateTab("Spoofer", "Spoofer", 0.5)
-    CreateTab("Credits", "Credits", 0.75)
-    
-    -- Content Container
-    local contentContainer = Instance.new("ScrollingFrame")
-    contentContainer.Size = UDim2.new(1, -20, 1, -110)
-    contentContainer.Position = UDim2.new(0, 10, 0, 95)
-    contentContainer.BackgroundTransparency = 1
-    contentContainer.CanvasSize = UDim2.new(0, 0, 0, 0)
-    contentContainer.ScrollBarThickness = 6
-    contentContainer.ScrollBarImageColor3 = Color3.fromRGB(200, 0, 0)
-    contentContainer.Parent = mainFrame
-    
-    local layout = Instance.new("UIListLayout")
-    layout.Parent = contentContainer
-    layout.Spacing = 6
-    layout.Padding = UDim.new(0, 5)
-    layout.SortOrder = Enum.SortOrder.LayoutOrder
-    
-    -- Content Loading
-    function LoadTab(tab)
-        if tab == "Main" then
-            -- Head/Body selector
-            local selectorLabel = Instance.new("TextLabel")
-            selectorLabel.Size = UDim2.new(1, -10, 0, 25)
-            selectorLabel.BackgroundTransparency = 1
-            selectorLabel.Text = "Aim Part: " .. Config.Aimbot.AimPart
-            selectorLabel.TextColor3 = Color3.fromRGB(200, 200, 200)
-            selectorLabel.TextSize = 14
-            selectorLabel.Font = Enum.Font.GothamBold
-            selectorLabel.Parent = contentContainer
-            
-            local btnContainer = Instance.new("Frame")
-            btnContainer.Size = UDim2.new(1, 0, 0, 35)
-            btnContainer.BackgroundTransparency = 1
-            btnContainer.Parent = contentContainer
-            
-            local headBtn = Instance.new("TextButton")
-            headBtn.Size = UDim2.new(0.45, 0, 1, 0)
-            headBtn.Position = UDim2.new(0.02, 0, 0, 0)
-            headBtn.BackgroundColor3 = Config.Aimbot.AimPart == "Head" and Color3.fromRGB(0, 100, 0) or Color3.fromRGB(40, 40, 70)
-            headBtn.TextColor3 = Color3.new(1, 1, 1)
-            headBtn.TextSize = 14
-            headBtn.Font = Enum.Font.Gotham
-            headBtn.Text = "Head"
-            headBtn.Parent = btnContainer
-            
-            headBtn.MouseButton1Click:Connect(function()
-                Config.Aimbot.AimPart = "Head"
-                selectorLabel.Text = "Aim Part: Head"
-                headBtn.BackgroundColor3 = Color3.fromRGB(0, 100, 0)
-                bodyBtn.BackgroundColor3 = Color3.fromRGB(40, 40, 70)
-            end)
-            
-            local bodyBtn = Instance.new("TextButton")
-            bodyBtn.Size = UDim2.new(0.45, 0, 1, 0)
-            bodyBtn.Position = UDim2.new(0.53, 0, 0, 0)
-            bodyBtn.BackgroundColor3 = Config.Aimbot.AimPart == "Body" and Color3.fromRGB(0, 100, 0) or Color3.fromRGB(40, 40, 70)
-            bodyBtn.TextColor3 = Color3.new(1, 1, 1)
-            bodyBtn.TextSize = 14
-            bodyBtn.Font = Enum.Font.Gotham
-            bodyBtn.Text = "Body"
-            bodyBtn.Parent = btnContainer
-            
-            bodyBtn.MouseButton1Click:Connect(function()
-                Config.Aimbot.AimPart = "Body"
-                selectorLabel.Text = "Aim Part: Body"
-                bodyBtn.BackgroundColor3 = Color3.fromRGB(0, 100, 0)
-                headBtn.BackgroundColor3 = Color3.fromRGB(40, 40, 70)
-            end)
-            
-            -- FOV
-            local fovLabel = Instance.new("TextLabel")
-            fovLabel.Size = UDim2.new(1, -10, 0, 25)
-            fovLabel.Position = UDim2.new(0, 0, 0, 40)
-            fovLabel.BackgroundTransparency = 1
-            fovLabel.Text = "Aim FOV: " .. Config.Aimbot.FOV
-            fovLabel.TextColor3 = Color3.fromRGB(200, 200, 200)
-            fovLabel.TextSize = 14
-            fovLabel.Font = Enum.Font.GothamBold
-            fovLabel.Parent = contentContainer
-            
-            local fovContainer = Instance.new("Frame")
-            fovContainer.Size = UDim2.new(1, 0, 0, 30)
-            fovContainer.Position = UDim2.new(0, 0, 0, 65)
-            fovContainer.BackgroundTransparency = 1
-            fovContainer.Parent = contentContainer
-            
-            local fovDown = Instance.new("TextButton")
-            fovDown.Size = UDim2.new(0.1, 0, 1, 0)
-            fovDown.Position = UDim2.new(0.01, 0, 0, 0)
-            fovDown.BackgroundColor3 = Color3.fromRGB(40, 40, 70)
-            fovDown.TextColor3 = Color3.new(1, 1, 1)
-            fovDown.TextSize = 18
-            fovDown.Font = Enum.Font.GothamBold
-            fovDown.Text = "-"
-            fovDown.Parent = fovContainer
-            
-            fovDown.MouseButton1Click:Connect(function()
-                Config.Aimbot.FOV = math.max(10, Config.Aimbot.FOV - 5)
-                fovLabel.Text = "Aim FOV: " .. Config.Aimbot.FOV
-            end)
-            
-            local fovUp = Instance.new("TextButton")
-            fovUp.Size = UDim2.new(0.1, 0, 1, 0)
-            fovUp.Position = UDim2.new(0.13, 0, 0, 0)
-            fovUp.BackgroundColor3 = Color3.fromRGB(40, 40, 70)
-            fovUp.TextColor3 = Color3.new(1, 1, 1)
-            fovUp.TextSize = 18
-            fovUp.Font = Enum.Font.GothamBold
-            fovUp.Text = "+"
-            fovUp.Parent = fovContainer
-            
-            fovUp.MouseButton1Click:Connect(function()
-                Config.Aimbot.FOV = math.min(360, Config.Aimbot.FOV + 5)
-                fovLabel.Text = "Aim FOV: " .. Config.Aimbot.FOV
-            end)
-            
-            -- Toggles
-            local function AddToggle(text, yPos, callback)
-                local btn = Instance.new("TextButton")
-                btn.Size = UDim2.new(0.9, 0, 0, 35)
-                btn.Position = UDim2.new(0.05, 0, 0, yPos)
-                btn.BackgroundColor3 = Color3.fromRGB(40, 40, 70)
-                btn.TextColor3 = Color3.new(1, 1, 1)
-                btn.TextSize = 15
-                btn.Font = Enum.Font.Gotham
-                btn.Text = text .. " [OFF]"
-                btn.Parent = contentContainer
-                
-                local state = false
-                btn.MouseButton1Click:Connect(function()
-                    state = not state
-                    btn.Text = text .. (state and " [ON]" or " [OFF]")
-                    btn.BackgroundColor3 = state and Color3.fromRGB(0, 100, 0) or Color3.fromRGB(40, 40, 70)
-                    if callback then callback(state) end
-                end)
-                return btn
-            end
-            
-            AddToggle("Silent Aim V3", 100, function(s) Config.Aimbot.Silent = s; silentAimActive = s end)
-            AddToggle("Aimbot", 140, function(s) Config.Aimbot.Enabled = s; aimbotActive = s end)
-            AddToggle("ESP", 180, function(s) Config.ESP.Enabled = s; espActive = s end)
-            
-        elseif tab == "Misc" then
-            local function AddToggle(text, yPos, callback)
-                local btn = Instance.new("TextButton")
-                btn.Size = UDim2.new(0.9, 0, 0, 35)
-                btn.Position = UDim2.new(0.05, 0, 0, yPos)
-                btn.BackgroundColor3 = Color3.fromRGB(40, 40, 70)
-                btn.TextColor3 = Color3.new(1, 1, 1)
-                btn.TextSize = 15
-                btn.Font = Enum.Font.Gotham
-                btn.Text = text .. " [OFF]"
-                btn.Parent = contentContainer
-                
-                local state = false
-                btn.MouseButton1Click:Connect(function()
-                    state = not state
-                    btn.Text = text .. (state and " [ON]" or " [OFF]")
-                    btn.BackgroundColor3 = state and Color3.fromRGB(0, 100, 0) or Color3.fromRGB(40, 40, 70)
-                    if callback then callback(state) end
-                end)
-                return btn
-            end
-            
-            AddToggle("Infinite Jump", 10, function(s) Config.Player.InfiniteJump = s end)
-            AddToggle("Fly", 50, function(s) Config.Player.Fly = s end)
-            AddToggle("God Mode", 90, function(s) Config.Player.GodMode = s end)
-            AddToggle("No Fall Damage", 130, function(s) Config.Player.NoFallDamage = s end)
-            AddToggle("Full Bright", 170, function(s) Config.Player.FullBright = s end)
-            AddToggle("Anti AFK", 210, function(s) Config.Player.AntiAFK = s end)
-            AddToggle("Auto Farm", 250, function(s) Config.Player.AutoFarm = s end)
-            
-        elseif tab == "Spoofer" then
-            local label = Instance.new("TextLabel")
-            label.Size = UDim2.new(1, -10, 0, 30)
-            label.Position = UDim2.new(0, 0, 0, 10)
-            label.BackgroundTransparency = 1
-            label.Text = "🛡️ Spoofer"
-            label.TextColor3 = Color3.fromRGB(200, 0, 0)
-            label.TextSize = 20
-            label.Font = Enum.Font.GothamBold
-            label.Parent = contentContainer
-            
-            local info = Instance.new("TextLabel")
-            info.Size = UDim2.new(1, -10, 0, 50)
-            info.Position = UDim2.new(0, 0, 0, 45)
-            info.BackgroundTransparency = 1
-            info.Text = "Spoofer helps bypass hardware bans.\nUse with caution."
-            info.TextColor3 = Color3.fromRGB(150, 150, 150)
-            info.TextSize = 14
-            info.Font = Enum.Font.Gotham
-            info.TextWrapped = true
-            info.Parent = contentContainer
-            
-            local spoofBtn = Instance.new("TextButton")
-            spoofBtn.Size = UDim2.new(0.5, 0, 0, 40)
-            spoofBtn.Position = UDim2.new(0.25, 0, 0, 105)
-            spoofBtn.BackgroundColor3 = Color3.fromRGB(200, 0, 0)
-            spoofBtn.TextColor3 = Color3.new(1, 1, 1)
-            spoofBtn.TextSize = 16
-            spoofBtn.Font = Enum.Font.GothamBold
-            spoofBtn.Text = "SPOOF NOW"
-            spoofBtn.Parent = contentContainer
-            
-            spoofBtn.MouseButton1Click:Connect(function()
-                spoofBtn.Text = "✅ SPOOFED!"
-                spoofBtn.BackgroundColor3 = Color3.fromRGB(0, 100, 0)
-                task.wait(2)
-                spoofBtn.Text = "SPOOF NOW"
-                spoofBtn.BackgroundColor3 = Color3.fromRGB(200, 0, 0)
-            end)
-            
-        elseif tab == "Credits" then
-            local label = Instance.new("TextLabel")
-            label.Size = UDim2.new(1, -10, 0, 40)
-            label.Position = UDim2.new(0, 0, 0, 10)
-            label.BackgroundTransparency = 1
-            label.Text = "DARK SIDE"
-            label.TextColor3 = Color3.fromRGB(200, 0, 0)
-            label.TextSize = 32
-            label.Font = Enum.Font.GothamBold
-            label.Parent = contentContainer
-            
-            local credit1 = Instance.new("TextLabel")
-            credit1.Size = UDim2.new(1, -10, 0, 25)
-            credit1.Position = UDim2.new(0, 0, 0, 55)
-            credit1.BackgroundTransparency = 1
-            credit1.Text = "Rivals Script v9.0"
-            credit1.TextColor3 = Color3.fromRGB(200, 200, 200)
-            credit1.TextSize = 16
-            credit1.Font = Enum.Font.Gotham
-            credit1.Parent = contentContainer
-            
-            local credit2 = Instance.new("TextLabel")
-            credit2.Size = UDim2.new(1, -10, 0, 25)
-            credit2.Position = UDim2.new(0, 0, 0, 80)
-            credit2.BackgroundTransparency = 1
-            credit2.Text = "Developed by DarkSide Team"
-            credit2.TextColor3 = Color3.fromRGB(150, 150, 150)
-            credit2.TextSize = 14
-            credit2.Font = Enum.Font.Gotham
-            credit2.Parent = contentContainer
-            
-            local credit3 = Instance.new("TextLabel")
-            credit3.Size = UDim2.new(1, -10, 0, 25)
-            credit3.Position = UDim2.new(0, 0, 0, 105)
-            credit3.BackgroundTransparency = 1
-            credit3.Text = "dark-side.lol"
-            credit3.TextColor3 = Color3.fromRGB(100, 100, 100)
-            credit3.TextSize = 12
-            credit3.Font = Enum.Font.Gotham
-            credit3.Parent = contentContainer
-        end
-        
-        -- Update canvas
-        task.wait(0.1)
-        local totalH = 0
-        for _, child in pairs(contentContainer:GetChildren()) do
-            if child:IsA("TextButton") or child:IsA("TextLabel") or child:IsA("Frame") then
-                totalH = totalH + child.Size.Y.Offset + 6
-            end
-        end
-        contentContainer.CanvasSize = UDim2.new(0, 0, 0, totalH + 20)
-    end
-    
-    LoadTab("Main")
-    
-    -- Close Button
-    local closeBtn = Instance.new("TextButton")
-    closeBtn.Size = UDim2.new(0.2, 0, 0, 35)
-    closeBtn.Position = UDim2.new(0.4, 0, 1, -42)
-    closeBtn.BackgroundColor3 = Color3.fromRGB(80, 20, 20)
-    closeBtn.TextColor3 = Color3.new(1, 1, 1)
-    closeBtn.TextSize = 14
-    closeBtn.Font = Enum.Font.GothamBold
-    closeBtn.Text = "CLOSE"
-    closeBtn.Parent = mainFrame
-    
-    local closeCorner = Instance.new("UICorner")
-    closeCorner.CornerRadius = UDim.new(0, 6)
-    closeCorner.Parent = closeBtn
-    
-    closeBtn.MouseButton1Click:Connect(function()
-        menuVisible = false
-        if screenGui then screenGui.Enabled = false end
-    end)
-    
-    menuCreated = true
-end
-
+-- ==================== MENU TOGGLE ====================
 local function ToggleMenu()
-    menuVisible = not menuVisible
-    if menuVisible then
-        if not menuCreated then CreateMenu() end
-        if screenGui then screenGui.Enabled = true end
+    menuOpen = not menuOpen
+    if menuOpen then
+        DrawMenu()
     else
-        if screenGui then screenGui.Enabled = false end
+        ClearMenu()
     end
 end
 
--- ==================== START ====================
-print("[DarkSide] Rivals Script v9.0 Loading...")
-
+-- ==================== INPUT HANDLING ====================
 UserInputService.InputBegan:Connect(function(input, gameProcessed)
     if gameProcessed then return end
-    if input.KeyCode == Config.Menu.Key then ToggleMenu() end
+    
+    if input.KeyCode == Config.Menu.Key then
+        ToggleMenu()
+        return
+    end
+    
+    if menuOpen and input.UserInputType == Enum.UserInputType.MouseButton1 then
+        HandleClick(input)
+    end
 end)
+
+-- ==================== START ====================
+print("[DarkSide] Rivals Script v10.0 Loading...")
+print("[DarkSide] Drawing-based menu enabled.")
 
 RunService.RenderStepped:Connect(DoAimbot)
 RunService.RenderStepped:Connect(DoSilentAim)
