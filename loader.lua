@@ -1,7 +1,6 @@
 --[[
-    Skelly Hub Loader v5.0
-    Cartoon Theme - Loading Bar
-    Key Format: SKELLY-XXXXXX-XXXXXX
+    Skelly Hub Loader v5.1
+    Cartoon Theme - Auto-Accept Key
 ]]
 
 -- ======================================================================
@@ -9,7 +8,7 @@
 -- ======================================================================
 
 local SCRIPT_URL = "https://raw.githubusercontent.com/d7tpolliingr8/dashing-summit/main/rivalsaimwh.lua"
-local LOADER_VERSION = "v5.0"
+local LOADER_VERSION = "v5.1"
 local DISCORD_INVITE = "https://discord.gg/XJtYWy9jgU"
 
 -- ======================================================================
@@ -17,9 +16,12 @@ local DISCORD_INVITE = "https://discord.gg/XJtYWy9jgU"
 -- ======================================================================
 
 local VALID_KEYS = {
+    -- Default test key (works for everyone)
+    ["SKELLY-TEST-0001"] = true,
     ["SKELLY-A7K2M9-4P8Q1R"] = true,
     ["SKELLY-B3X5N7-L2W6K9"] = true,
     ["SKELLY-C8V4R2-P6M9T3"] = true,
+    -- Add more keys below
 }
 
 -- ======================================================================
@@ -45,17 +47,17 @@ screenGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
 screenGui.DisplayOrder = 999
 
 -- ======================================================================
--- BACKGROUND
+-- BACKGROUND (Sky Blue)
 -- ======================================================================
 
 local background = Instance.new("Frame")
 background.Size = UDim2.new(1, 0, 1, 0)
-background.BackgroundColor3 = Color3.fromRGB(135, 206, 235) -- Sky Blue
+background.BackgroundColor3 = Color3.fromRGB(135, 206, 235)
 background.BackgroundTransparency = 0.05
 background.Parent = screenGui
 
 -- ======================================================================
--- CLOUDS (Cartoon Style)
+-- CLOUDS
 -- ======================================================================
 
 local function CreateCloud(x, y, size, speed)
@@ -72,7 +74,6 @@ local function CreateCloud(x, y, size, speed)
     cloudCorner.CornerRadius = UDim.new(1, 0)
     cloudCorner.Parent = cloud
     
-    -- Bump on cloud
     for i = 1, 3 do
         local bump = Instance.new("Frame")
         bump.Size = UDim2.new(0, size * 0.25, 0, size * 0.35)
@@ -88,7 +89,6 @@ local function CreateCloud(x, y, size, speed)
         bumpCorner.Parent = bump
     end
     
-    -- Animate cloud
     task.spawn(function()
         local dir = math.random(1, 2) == 1 and 1 or -1
         local startX = x
@@ -103,7 +103,6 @@ local function CreateCloud(x, y, size, speed)
     return cloud
 end
 
--- Create floating clouds
 CreateCloud(0.0, 0.05, 200, 1.0)
 CreateCloud(0.3, 0.02, 150, 0.8)
 CreateCloud(0.6, 0.08, 180, 0.9)
@@ -173,7 +172,6 @@ titleContainer.Position = UDim2.new(0, 0, 0, 20)
 titleContainer.BackgroundTransparency = 1
 titleContainer.Parent = container
 
--- Skeleton Icon
 local skellyBig = Instance.new("TextLabel")
 skellyBig.Size = UDim2.new(0, 80, 0, 80)
 skellyBig.Position = UDim2.new(0.03, 0, 0.1, 0)
@@ -184,7 +182,6 @@ skellyBig.TextSize = 70
 skellyBig.Font = Enum.Font.Gotham
 skellyBig.Parent = titleContainer
 
--- "Skelly Hub" with cartoon style
 local titleText = Instance.new("TextLabel")
 titleText.Size = UDim2.new(0.7, 0, 0, 60)
 titleText.Position = UDim2.new(0.2, 0, 0, 0)
@@ -198,7 +195,6 @@ titleText.TextStrokeColor3 = Color3.fromRGB(255, 255, 255)
 titleText.TextStrokeTransparency = 0.3
 titleText.Parent = titleContainer
 
--- "V2" badge
 local v2Badge = Instance.new("Frame")
 v2Badge.Size = UDim2.new(0, 50, 0, 30)
 v2Badge.Position = UDim2.new(0.75, 0, 0.15, 0)
@@ -221,7 +217,6 @@ v2Text.TextSize = 18
 v2Text.Font = Enum.Font.GothamBold
 v2Text.Parent = v2Badge
 
--- Subtitle
 local subtitleText = Instance.new("TextLabel")
 subtitleText.Size = UDim2.new(0.7, 0, 0, 25)
 subtitleText.Position = UDim2.new(0.2, 0, 0.6, 0)
@@ -243,7 +238,6 @@ loadingSection.Position = UDim2.new(0.075, 0, 0.25, 0)
 loadingSection.BackgroundTransparency = 1
 loadingSection.Parent = container
 
--- Loading Label
 local loadingLabel = Instance.new("TextLabel")
 loadingLabel.Size = UDim2.new(1, 0, 0, 30)
 loadingLabel.Position = UDim2.new(0, 0, 0, 0)
@@ -255,7 +249,6 @@ loadingLabel.Font = Enum.Font.GothamBold
 loadingLabel.TextXAlignment = Enum.TextXAlignment.Center
 loadingLabel.Parent = loadingSection
 
--- Loading Bar Background
 local barBg = Instance.new("Frame")
 barBg.Size = UDim2.new(1, 0, 0, 16)
 barBg.Position = UDim2.new(0, 0, 0, 35)
@@ -269,7 +262,6 @@ local barCorner = Instance.new("UICorner")
 barCorner.CornerRadius = UDim.new(1, 0)
 barCorner.Parent = barBg
 
--- Bar Fill
 local barFill = Instance.new("Frame")
 barFill.Size = UDim2.new(0, 0, 1, 0)
 barFill.BackgroundColor3 = Color3.fromRGB(100, 180, 255)
@@ -281,7 +273,6 @@ local barFillCorner = Instance.new("UICorner")
 barFillCorner.CornerRadius = UDim.new(1, 0)
 barFillCorner.Parent = barFill
 
--- Percentage
 local percentText = Instance.new("TextLabel")
 percentText.Size = UDim2.new(1, 0, 0, 25)
 percentText.Position = UDim2.new(0, 0, 0, 55)
@@ -294,17 +285,16 @@ percentText.TextXAlignment = Enum.TextXAlignment.Center
 percentText.Parent = loadingSection
 
 -- ======================================================================
--- KEY INPUT SECTION (Hidden initially)
+-- KEY INPUT SECTION
 -- ======================================================================
 
 local keySection = Instance.new("Frame")
-keySection.Size = UDim2.new(0.85, 0, 0, 120)
+keySection.Size = UDim2.new(0.85, 0, 0, 130)
 keySection.Position = UDim2.new(0.075, 0, 0.42, 0)
 keySection.BackgroundTransparency = 1
 keySection.Visible = false
 keySection.Parent = container
 
--- Key Label
 local keyLabel = Instance.new("TextLabel")
 keyLabel.Size = UDim2.new(1, 0, 0, 30)
 keyLabel.Position = UDim2.new(0, 0, 0, 0)
@@ -316,7 +306,6 @@ keyLabel.Font = Enum.Font.GothamBold
 keyLabel.TextXAlignment = Enum.TextXAlignment.Center
 keyLabel.Parent = keySection
 
--- Key Box
 local keyBox = Instance.new("TextBox")
 keyBox.Size = UDim2.new(0.8, 0, 0, 40)
 keyBox.Position = UDim2.new(0.1, 0, 0.28, 0)
@@ -333,7 +322,6 @@ local keyBoxCorner = Instance.new("UICorner")
 keyBoxCorner.CornerRadius = UDim.new(0, 10)
 keyBoxCorner.Parent = keyBox
 
--- Activate Button
 local activateBtn = Instance.new("TextButton")
 activateBtn.Size = UDim2.new(0.4, 0, 0, 40)
 activateBtn.Position = UDim2.new(0.3, 0, 0.58, 0)
@@ -362,7 +350,7 @@ end)
 
 local discordBtn = Instance.new("TextButton")
 discordBtn.Size = UDim2.new(0.35, 0, 0, 35)
-discordBtn.Position = UDim2.new(0.325, 0, 0.68, 0)
+discordBtn.Position = UDim2.new(0.325, 0, 0.7, 0)
 discordBtn.BackgroundColor3 = Color3.fromRGB(88, 101, 242)
 discordBtn.BackgroundTransparency = 0.1
 discordBtn.TextColor3 = Color3.new(1, 1, 1)
@@ -398,7 +386,7 @@ end)
 
 local statusText = Instance.new("TextLabel")
 statusText.Size = UDim2.new(0.8, 0, 0, 25)
-statusText.Position = UDim2.new(0.1, 0, 0.75, 0)
+statusText.Position = UDim2.new(0.1, 0, 0.78, 0)
 statusText.BackgroundTransparency = 1
 statusText.Text = "Loading..."
 statusText.TextColor3 = Color3.fromRGB(80, 80, 100)
@@ -490,7 +478,6 @@ local function StartLoading()
     AnimateBar(1)
     task.wait(0.5)
     
-    -- Show key input
     ShowKeyInput()
     UpdateStatus("Enter your key to activate")
 end
@@ -568,6 +555,13 @@ end
 local function ValidateKey()
     local inputKey = keyBox.Text
     
+    -- If key is empty, use a default test key
+    if inputKey == "" or inputKey == nil then
+        inputKey = "SKELLY-TEST-0001"
+        keyBox.Text = inputKey
+    end
+    
+    -- Check if key matches format: SKELLY-XXXXXX-XXXXXX
     local function isValidFormat(key)
         local pattern = "^SKELLY%-%w+%-%w+$"
         return string.match(key, pattern) ~= nil
@@ -611,9 +605,10 @@ end)
 -- START
 -- ======================================================================
 
-print("[SkellyHub] Loader v5.0")
+print("[SkellyHub] Loader v5.1")
 print("[SkellyHub] Discord: https://discord.gg/XJtYWy9jgU")
 print("[SkellyHub] Key format: SKELLY-XXXXXX-XXXXXX")
+print("[SkellyHub] Default test key: SKELLY-TEST-0001")
 
 task.wait(0.5)
 StartLoading()
