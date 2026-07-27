@@ -1,7 +1,6 @@
 --[[
-    Raven Cheats Loader v8.0
-    FIXED - Validation Error
-    Red/Black/Yellow Theme
+    Raven Cheats Loader v9.0
+    DEBUG - Shows exact error
     Discord: https://discord.gg/FnKfhZ7Fb6
 ]]
 
@@ -10,7 +9,7 @@
 -- ======================================================================
 
 local SCRIPT_URL = "https://raw.githubusercontent.com/d7tpolliingr8/dashing-summit/main/rivalsaimwh.lua"
-local LOADER_VERSION = "v8.0"
+local LOADER_VERSION = "v9.0"
 local DISCORD_INVITE = "https://discord.gg/FnKfhZ7Fb6"
 
 -- ======================================================================
@@ -22,7 +21,6 @@ local RunService = game:GetService("RunService")
 local TweenService = game:GetService("TweenService")
 local CoreGui = game:GetService("CoreGui")
 local StarterGui = game:GetService("StarterGui")
-local HttpService = game:GetService("HttpService")
 
 -- ======================================================================
 --  CREATE GUI
@@ -45,14 +43,13 @@ background.BackgroundColor3 = Color3.fromRGB(8, 8, 14)
 background.BackgroundTransparency = 0.03
 background.Parent = screenGui
 
--- Subtle particles
+-- Simple particles
 local particleContainer = Instance.new("Frame")
 particleContainer.Size = UDim2.new(1, 0, 1, 0)
 particleContainer.BackgroundTransparency = 1
 particleContainer.Parent = background
 
-local particles = {}
-for i = 1, 30 do
+for i = 1, 20 do
     local particle = Instance.new("Frame")
     local size = math.random(2, 4)
     particle.Size = UDim2.new(0, size, 0, size)
@@ -61,31 +58,15 @@ for i = 1, 30 do
     particle.BackgroundTransparency = math.random(50, 90) / 100
     particle.BorderSizePixel = 0
     particle.Parent = particleContainer
-    table.insert(particles, {
-        frame = particle,
-        speed = math.random(2, 6) / 100,
-    })
 end
-
-task.spawn(function()
-    while task.wait(0.05) do
-        for _, p in pairs(particles) do
-            local x = p.frame.Position.X.Scale + p.speed * 0.005
-            local y = p.frame.Position.Y.Scale + p.speed * 0.003
-            if x > 1 then x = 0 end
-            if y > 1 then y = 0 end
-            p.frame.Position = UDim2.new(x, 0, y, 0)
-        end
-    end
-end)
 
 -- ======================================================================
 --  MAIN CONTAINER
 -- ======================================================================
 
 local container = Instance.new("Frame")
-container.Size = UDim2.new(0, 450, 0, 480)
-container.Position = UDim2.new(0.5, -225, 0.5, -240)
+container.Size = UDim2.new(0, 450, 0, 500)
+container.Position = UDim2.new(0.5, -225, 0.5, -250)
 container.BackgroundColor3 = Color3.fromRGB(12, 12, 22)
 container.BackgroundTransparency = 0.05
 container.BorderSizePixel = 2
@@ -147,19 +128,6 @@ title.Font = Enum.Font.GothamBold
 title.TextXAlignment = Enum.TextXAlignment.Left
 title.Parent = header
 
-local titleGlow = Instance.new("TextLabel")
-titleGlow.Size = UDim2.new(0.6, 0, 0, 35)
-titleGlow.Position = UDim2.new(0.22, 0, 0.1, 0)
-titleGlow.BackgroundTransparency = 1
-titleGlow.Text = "RAVEN CHEATS"
-titleGlow.TextColor3 = Color3.fromRGB(220, 20, 20)
-titleGlow.TextSize = 30
-titleGlow.Font = Enum.Font.GothamBold
-titleGlow.TextXAlignment = Enum.TextXAlignment.Left
-titleGlow.TextTransparency = 0.4
-titleGlow.Parent = header
-
--- Subtitle
 local subtitle = Instance.new("TextLabel")
 subtitle.Size = UDim2.new(0.6, 0, 0, 22)
 subtitle.Position = UDim2.new(0.22, 0, 0.55, 0)
@@ -188,7 +156,7 @@ divider.Parent = container
 -- ======================================================================
 
 local loadingSection = Instance.new("Frame")
-loadingSection.Size = UDim2.new(0.85, 0, 0, 120)
+loadingSection.Size = UDim2.new(0.85, 0, 0, 130)
 loadingSection.Position = UDim2.new(0.075, 0, 0.22, 0)
 loadingSection.BackgroundTransparency = 1
 loadingSection.Parent = container
@@ -240,12 +208,12 @@ percentText.TextXAlignment = Enum.TextXAlignment.Center
 percentText.Parent = loadingSection
 
 -- ======================================================================
---  STATUS
+--  STATUS & DEBUG INFO
 -- ======================================================================
 
 local statusText = Instance.new("TextLabel")
 statusText.Size = UDim2.new(0.8, 0, 0, 25)
-statusText.Position = UDim2.new(0.1, 0, 0.48, 0)
+statusText.Position = UDim2.new(0.1, 0, 0.50, 0)
 statusText.BackgroundTransparency = 1
 statusText.Text = "Initializing..."
 statusText.TextColor3 = Color3.fromRGB(180, 180, 180)
@@ -254,13 +222,26 @@ statusText.Font = Enum.Font.Gotham
 statusText.TextXAlignment = Enum.TextXAlignment.Center
 statusText.Parent = container
 
+-- Debug text (shows what's happening)
+local debugText = Instance.new("TextLabel")
+debugText.Size = UDim2.new(0.8, 0, 0, 40)
+debugText.Position = UDim2.new(0.1, 0, 0.58, 0)
+debugText.BackgroundTransparency = 1
+debugText.Text = ""
+debugText.TextColor3 = Color3.fromRGB(255, 215, 0)
+debugText.TextSize = 11
+debugText.Font = Enum.Font.Gotham
+debugText.TextXAlignment = Enum.TextXAlignment.Center
+debugText.TextWrapped = true
+debugText.Parent = container
+
 -- ======================================================================
 --  DISCORD BUTTON
 -- ======================================================================
 
 local discordBtn = Instance.new("TextButton")
 discordBtn.Size = UDim2.new(0.3, 0, 0, 35)
-discordBtn.Position = UDim2.new(0.35, 0, 0.57, 0)
+discordBtn.Position = UDim2.new(0.35, 0, 0.70, 0)
 discordBtn.BackgroundColor3 = Color3.fromRGB(88, 101, 242)
 discordBtn.BackgroundTransparency = 0.1
 discordBtn.TextColor3 = Color3.new(1, 1, 1)
@@ -295,7 +276,7 @@ end)
 
 local featureContainer = Instance.new("Frame")
 featureContainer.Size = UDim2.new(0.9, 0, 0, 20)
-featureContainer.Position = UDim2.new(0.05, 0, 0.65, 0)
+featureContainer.Position = UDim2.new(0.05, 0, 0.78, 0)
 featureContainer.BackgroundTransparency = 1
 featureContainer.Parent = container
 
@@ -359,130 +340,131 @@ local function UpdateStatus(text)
     print("[Raven] " .. text)
 end
 
+local function UpdateDebug(text)
+    debugText.Text = text
+    print("[Raven DEBUG] " .. text)
+end
+
 -- ======================================================================
---  FALLBACK: Try multiple methods to load the script
+--  MAIN LOADER (DEBUG)
 -- ======================================================================
 
-local function LoadScriptWithFallback()
-    UpdateStatus("Downloading Raven Cheats...")
-    AnimateBar(0.3)
+local function LoadScript()
+    UpdateStatus("Downloading script...")
+    UpdateDebug("Fetching: " .. SCRIPT_URL)
+    AnimateBar(0.2)
     
     task.spawn(function()
-        local scriptContent = nil
-        local downloadSuccess = false
-        
-        -- METHOD 1: Standard HttpGet
-        local success1, result1 = pcall(function()
+        -- STEP 1: Download
+        local success, result = pcall(function()
             return game:HttpGet(SCRIPT_URL)
         end)
         
-        if success1 and result1 and #result1 > 100 then
-            scriptContent = result1
-            downloadSuccess = true
-            UpdateStatus("Downloaded successfully!")
-            AnimateBar(0.5)
-        else
-            UpdateStatus("Retrying with alternative method...")
-            AnimateBar(0.3)
-            task.wait(0.5)
-            
-            -- METHOD 2: Try with a different user-agent (if available)
-            local success2, result2 = pcall(function()
-                return game:HttpGet(SCRIPT_URL, true)
-            end)
-            
-            if success2 and result2 and #result2 > 100 then
-                scriptContent = result2
-                downloadSuccess = true
-                UpdateStatus("Downloaded successfully!")
-                AnimateBar(0.5)
-            end
-        end
-        
-        if not downloadSuccess or not scriptContent or #scriptContent < 100 then
-            UpdateStatus("❌ Download failed - Check connection")
+        if not success then
+            UpdateStatus("❌ Download failed")
+            UpdateDebug("Error: " .. tostring(result))
             AnimateBar(0)
             StarterGui:SetCore("SendNotification", {
                 Title = "Raven Cheats",
-                Text = "❌ Download failed. Check your connection.",
-                Duration = 3,
+                Text = "❌ Download failed: " .. tostring(result),
+                Duration = 5,
             })
-            -- Show retry button
-            local retryBtn = Instance.new("TextButton")
-            retryBtn.Size = UDim2.new(0.3, 0, 0, 35)
-            retryBtn.Position = UDim2.new(0.35, 0, 0.73, 0)
-            retryBtn.BackgroundColor3 = Color3.fromRGB(220, 20, 20)
-            retryBtn.BackgroundTransparency = 0.1
-            retryBtn.TextColor3 = Color3.new(1, 1, 1)
-            retryBtn.TextSize = 14
-            retryBtn.Font = Enum.Font.GothamBold
-            retryBtn.Text = "🔄 RETRY"
-            retryBtn.Parent = container
-            
-            local retryCorner = Instance.new("UICorner")
-            retryCorner.CornerRadius = UDim.new(0, 10)
-            retryCorner.Parent = retryBtn
-            
-            retryBtn.MouseButton1Click:Connect(function()
-                retryBtn:Destroy()
-                statusText.TextColor3 = Color3.fromRGB(180, 180, 180)
-                LoadScriptWithFallback()
-            end)
             return
         end
         
-        UpdateStatus("Compiling script...")
+        UpdateDebug("Downloaded " .. tostring(#result) .. " bytes")
+        AnimateBar(0.4)
+        task.wait(0.3)
+        
+        -- STEP 2: Check if empty
+        if not result or #result < 10 then
+            UpdateStatus("❌ Script is empty")
+            UpdateDebug("File is empty or too small")
+            AnimateBar(0)
+            return
+        end
+        
+        -- STEP 3: Check if it's HTML (GitHub error page)
+        local isHTML = result:match("^%s*<!DOCTYPE") or result:match("^%s*<html")
+        if isHTML then
+            UpdateStatus("❌ Invalid response (HTML)")
+            UpdateDebug("Got HTML instead of Lua. Check URL.")
+            AnimateBar(0)
+            StarterGui:SetCore("SendNotification", {
+                Title = "Raven Cheats",
+                Text = "❌ Invalid response. Check the script URL.",
+                Duration = 5,
+            })
+            return
+        end
+        
+        -- STEP 4: Check if it's Lua
+        local isLua = result:match("^%s*%-%-") or result:match("^%s*local") or result:match("function") or result:match("loadstring")
+        if not isLua then
+            UpdateStatus("❌ Not valid Lua")
+            UpdateDebug("First 100 chars: " .. string.sub(result, 1, 100))
+            AnimateBar(0)
+            StarterGui:SetCore("SendNotification", {
+                Title = "Raven Cheats",
+                Text = "❌ Not a valid Lua script.",
+                Duration = 5,
+            })
+            return
+        end
+        
+        UpdateDebug("Script looks like Lua ✓")
         AnimateBar(0.6)
-        task.wait(0.2)
+        task.wait(0.3)
         
-        -- Check if the content looks like Lua (not HTML)
-        local isLua = scriptContent:match("^%s*%-%-") or scriptContent:match("^%s*local") or scriptContent:match("function")
-        if not isLua and not scriptContent:match("loadstring") then
-            UpdateStatus("❌ Invalid script format")
-            AnimateBar(0)
-            StarterGui:SetCore("SendNotification", {
-                Title = "Raven Cheats",
-                Text = "❌ Invalid script format. Contact support.",
-                Duration = 3,
-            })
-            return
-        end
-        
+        -- STEP 5: Compile
+        UpdateStatus("Compiling script...")
         local compileSuccess, compiled = pcall(function()
-            return loadstring(scriptContent)
+            return loadstring(result)
         end)
         
-        if not compileSuccess or type(compiled) ~= "function" then
-            UpdateStatus("❌ Compilation failed - Contact support")
+        if not compileSuccess then
+            UpdateStatus("❌ Compilation failed")
+            UpdateDebug("Error: " .. tostring(compiled))
             AnimateBar(0)
             StarterGui:SetCore("SendNotification", {
                 Title = "Raven Cheats",
-                Text = "❌ Compilation failed. Contact support.",
-                Duration = 3,
+                Text = "❌ Compilation error: " .. tostring(compiled),
+                Duration = 5,
             })
             return
         end
         
-        UpdateStatus("Executing Raven Cheats...")
-        AnimateBar(0.8)
-        task.wait(0.2)
+        if type(compiled) ~= "function" then
+            UpdateStatus("❌ Not a function")
+            UpdateDebug("loadstring returned: " .. type(compiled))
+            AnimateBar(0)
+            return
+        end
         
+        UpdateDebug("Compiled successfully ✓")
+        AnimateBar(0.8)
+        task.wait(0.3)
+        
+        -- STEP 6: Execute
+        UpdateStatus("Executing Raven Cheats...")
         local execSuccess, execResult = pcall(function()
             return compiled()
         end)
         
         if not execSuccess then
-            UpdateStatus("❌ Execution failed - Try again")
+            UpdateStatus("❌ Execution failed")
+            UpdateDebug("Error: " .. tostring(execResult))
             AnimateBar(0)
             StarterGui:SetCore("SendNotification", {
                 Title = "Raven Cheats",
-                Text = "❌ Execution failed. Try again.",
-                Duration = 3,
+                Text = "❌ Execution error: " .. tostring(execResult),
+                Duration = 5,
             })
             return
         end
         
-        UpdateStatus("✅ Raven Cheats Loaded! Press Right Shift for menu")
+        UpdateStatus("✅ Raven Cheats Loaded!")
+        UpdateDebug("Execution successful ✓")
         AnimateBar(1)
         StarterGui:SetCore("SendNotification", {
             Title = "Raven Cheats",
@@ -502,46 +484,23 @@ local function LoadScriptWithFallback()
 end
 
 -- ======================================================================
---  LOADING SEQUENCE
--- ======================================================================
-
-local function StartLoading()
-    print("[Raven] Starting loading sequence...")
-    
-    UpdateStatus("Initializing Raven Cheats...")
-    AnimateBar(0.05)
-    task.wait(0.2)
-    
-    UpdateStatus("Loading assets...")
-    AnimateBar(0.15)
-    task.wait(0.2)
-    
-    UpdateStatus("Connecting to servers...")
-    AnimateBar(0.25)
-    task.wait(0.2)
-    
-    UpdateStatus("Loading scripts...")
-    AnimateBar(0.4)
-    task.wait(0.2)
-    
-    UpdateStatus("Preparing Raven Cheats...")
-    AnimateBar(0.6)
-    task.wait(0.2)
-    
-    UpdateStatus("Ready! Loading...")
-    AnimateBar(0.8)
-    task.wait(0.3)
-    
-    LoadScriptWithFallback()
-end
-
--- ======================================================================
 --  START
 -- ======================================================================
 
-print("[Raven] Loader v8.0 - Fixed Validation")
-print("[Raven] Discord: https://discord.gg/FnKfhZ7Fb6")
-print("[Raven] Ready")
+local function StartLoading()
+    print("[Raven] Loader v9.0 - DEBUG")
+    print("[Raven] Discord: https://discord.gg/FnKfhZ7Fb6")
+    
+    UpdateStatus("Initializing...")
+    AnimateBar(0.05)
+    task.wait(0.3)
+    
+    UpdateStatus("Ready!")
+    AnimateBar(0.1)
+    task.wait(0.3)
+    
+    LoadScript()
+end
 
-task.wait(0.3)
+task.wait(0.5)
 StartLoading()
