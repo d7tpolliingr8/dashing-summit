@@ -1,5 +1,6 @@
--- // Raven Cheats | Solara Compatible (Target Select + Custom Offset Millisecond TP)
--- // Red/Black/Yellow Theme | Team Check in Utils Tab | Unlock All Button
+-- // Raven Cheats | Solara Compatible
+-- // Fixed Team Check - Only affects Aimbot & ESP
+-- // Red/Black/Yellow Theme | Unlock All Button
 
 -- ================================================
 --  STUBS
@@ -64,12 +65,11 @@ pcall(function()
 end)
 
 -- ================================================
---  RAVEN CHEATS THEME (Red/Black/Yellow)
+--  RAVEN CHEATS THEME
 -- ================================================
 local RED        = Color3.fromRGB(220, 20, 20)
 local RED_DARK   = Color3.fromRGB(120, 10, 10)
 local YELLOW     = Color3.fromRGB(255, 215, 0)
-local YELLOW_DIM = Color3.fromRGB(180, 150, 0)
 local WHITE      = Color3.fromRGB(255, 255, 255)
 local BLACK      = Color3.fromRGB(0, 0, 0)
 local GRAY       = Color3.fromRGB(180, 180, 180)
@@ -154,33 +154,37 @@ local Cfg = {
         StickyTP = false,
         SelectedTarget = "None",
         HeightOffset = 5,
-        TeamCheck = true,
+        TeamCheck = true, -- Team check toggle (only affects aimbot & ESP)
     }
 }
 
 -- ================================================
---  WORKING TEAM CHECK
+--  FIXED TEAM CHECK (Only affects Aimbot & ESP)
 -- ================================================
 
 local function IsTeammate(player)
     if not player or player == LP then return false end
     
+    -- If team check is disabled, return false (not a teammate)
     if not Cfg.TargetUtility.TeamCheck then
         return false
     end
     
+    -- Method 1: Check Team property
     if LP.Team and player.Team then
         if LP.Team == player.Team then
             return true
         end
     end
     
+    -- Method 2: Check TeamColor
     if LP.TeamColor and player.TeamColor then
         if LP.TeamColor == player.TeamColor then
             return true
         end
     end
     
+    -- Method 3: Check via Teams service
     if Teams then
         for _, team in pairs(Teams:GetTeams()) do
             if team:FindFirstChild(LP.Name) and team:FindFirstChild(player.Name) then
@@ -189,6 +193,7 @@ local function IsTeammate(player)
         end
     end
     
+    -- Method 4: Check via Character's BrickColor
     local lpChar = LP.Character
     local targetChar = player.Character
     if lpChar and targetChar then
@@ -203,6 +208,7 @@ local function IsTeammate(player)
         end
     end
     
+    -- Method 5: Check via Tags (CollectionService)
     if lpChar and targetChar then
         if CollectionService:HasTag(lpChar, "Team1") and CollectionService:HasTag(targetChar, "Team1") then
             return true
@@ -212,6 +218,7 @@ local function IsTeammate(player)
         end
     end
     
+    -- Method 6: Check via HumanoidRootPart BrickColor
     local lpRoot = lpChar and lpChar:FindFirstChild("HumanoidRootPart")
     local targetRoot = targetChar and targetChar:FindFirstChild("HumanoidRootPart")
     if lpRoot and targetRoot then
@@ -321,7 +328,7 @@ local SKEL_R6 = {
 }
 
 -- ================================================
---  ESP SYSTEM (WITH TEAM CHECK)
+--  ESP SYSTEM (WITH TEAM CHECK - SKIPS TEAMMATES)
 -- ================================================
 local ESPs = {}
 local OffscreenArrows = {}
@@ -443,6 +450,12 @@ end
 local function UpdateOffscreenArrows()
     for _, player in ipairs(Players:GetPlayers()) do
         if player == LP then continue end
+        
+        -- ❌ Skip teammates for offscreen arrows
+        if Cfg.TargetUtility.TeamCheck and IsTeammate(player) then
+            continue
+        end
+        
         local arrowGroup = OffscreenArrows[player]
         if not arrowGroup then continue end
         
@@ -510,6 +523,7 @@ local function UpdateESP()
     for _, player in ipairs(Players:GetPlayers()) do
         if player == LP then continue end
         
+        -- ❌ Skip teammates for ESP
         if Cfg.TargetUtility.TeamCheck and IsTeammate(player) then
             continue
         end
@@ -675,7 +689,7 @@ local function UpdateESP()
 end
 
 -- ================================================
---  TARGET LOCK (WITH TEAM CHECK)
+--  TARGET LOCK (WITH TEAM CHECK - SKIPS TEAMMATES)
 -- ================================================
 local FOVCIRC = C{ Color = WHITE, ZIndex = 10 }
 local CurrentTarget = nil
@@ -729,6 +743,7 @@ end
 local function IsValidTarget(player)
     if not player or player == LP then return false end
     
+    -- ❌ Skip teammates for aimbot
     if Cfg.TargetUtility.TeamCheck and IsTeammate(player) then
         return false
     end
@@ -841,7 +856,7 @@ local function DoAim()
 end
 
 -- ================================================
---  TARGET UTILITIES
+--  TARGET UTILITIES (NOT AFFECTED BY TEAM CHECK)
 -- ================================================
 local function GetPlayerNames()
     local names = {"None"}
@@ -865,6 +880,7 @@ RunService.RenderStepped:Connect(function()
         end
     end
 
+    -- Sticky TP (works on ANY player, including teammates if you want)
     if Cfg.TargetUtility.StickyTP and Cfg.TargetUtility.SelectedTarget ~= "None" then
         local targetPlayer = Players:FindFirstChild(Cfg.TargetUtility.SelectedTarget)
         if targetPlayer and targetPlayer.Character then
@@ -1212,9 +1228,7 @@ local function UnlockAllRivals()
     
     task.wait(1)
     
-    -- ============================================
-    --  METHOD 1: UNLOCK VIA REMOTES
-    -- ============================================
+    -- Method 1: Fire unlock remotes
     local function FireUnlockRemotes()
         local remotes = ReplicatedStorage:FindFirstChild("RemoteEvents") or ReplicatedStorage
         for _, remote in pairs(remotes:GetChildren()) do
@@ -1222,8 +1236,7 @@ local function UnlockAllRivals()
                 local name = remote.Name:lower()
                 if name:find("unlock") or name:find("purchase") or name:find("buy") or 
                    name:find("claim") or name:find("reward") or name:find("skin") or
-                   name:find("charm") or name:find("wrap") or name:find("finisher") or
-                   name:find("cosmetic") or name:find("item") or name:find("give") then
+                   name:find("charm") or name:find("wrap") or name:find("finisher") then
                     pcall(function()
                         remote:FireServer()
                         remote:FireServer(LP)
@@ -1237,9 +1250,7 @@ local function UnlockAllRivals()
     pcall(FireUnlockRemotes)
     task.wait(0.5)
     
-    -- ============================================
-    --  METHOD 2: UNLOCK VIA PLAYER DATA
-    -- ============================================
+    -- Method 2: Unlock via player data
     local function UnlockPlayerData()
         local dataStore = LP:FindFirstChild("DataStore") or LP:FindFirstChild("PlayerData") or LP:FindFirstChild("Data")
         if dataStore then
@@ -1263,9 +1274,7 @@ local function UnlockAllRivals()
     pcall(UnlockPlayerData)
     task.wait(0.5)
     
-    -- ============================================
-    --  METHOD 3: UNLOCK VIA INVENTORY
-    -- ============================================
+    -- Method 3: Unlock via inventory
     local function UnlockInventory()
         local inventory = LP:FindFirstChild("Inventory") or LP:FindFirstChild("Items")
         if inventory then
@@ -1284,9 +1293,7 @@ local function UnlockAllRivals()
     pcall(UnlockInventory)
     task.wait(0.5)
     
-    -- ============================================
-    --  METHOD 4: FIND AND CLICK SHOP BUTTONS
-    -- ============================================
+    -- Method 4: Click shop buttons
     local function ClickShopButtons()
         local playerGui = LP.PlayerGui
         if not playerGui then return end
@@ -1314,12 +1321,9 @@ local function UnlockAllRivals()
     pcall(ClickShopButtons)
     task.wait(1)
     
-    -- ============================================
-    --  METHOD 5: SPOOF UNLOCK VIA VALUES
-    -- ============================================
+    -- Method 5: Spoof unlock values
     local function SpoofUnlockValues()
-        local player = LP
-        for _, item in pairs(player:GetDescendants()) do
+        for _, item in pairs(LP:GetDescendants()) do
             if item:IsA("BoolValue") then
                 local name = item.Name:lower()
                 if name:find("skin") or name:find("charm") or name:find("wrap") or 
@@ -1330,8 +1334,7 @@ local function UnlockAllRivals()
                 end
             elseif item:IsA("NumberValue") or item:IsA("IntValue") then
                 local name = item.Name:lower()
-                if name:find("coin") or name:find("cash") or name:find("currency") or 
-                   name:find("token") or name:find("gem") or name:find("points") then
+                if name:find("coin") or name:find("cash") or name:find("currency") then
                     item.Value = 999999999
                     print("[Raven] Set max: " .. item.Name)
                 end
@@ -1342,9 +1345,7 @@ local function UnlockAllRivals()
     pcall(SpoofUnlockValues)
     task.wait(0.5)
     
-    -- ============================================
-    --  METHOD 6: CHECK AND CLAIM REWARDS
-    -- ============================================
+    -- Method 6: Claim rewards
     local function ClaimRewards()
         local playerGui = LP.PlayerGui
         if not playerGui then return end
@@ -1354,8 +1355,7 @@ local function UnlockAllRivals()
                 for _, child in pairs(gui:GetDescendants()) do
                     if child:IsA("TextButton") or child:IsA("ImageButton") then
                         local name = child.Name:lower()
-                        if name:find("claim") or name:find("collect") or name:find("reward") or 
-                           name:find("gift") or name:find("accept") or name:find("get") then
+                        if name:find("claim") or name:find("collect") or name:find("reward") then
                             pcall(function()
                                 child:Activate()
                                 child:Click()
@@ -1370,49 +1370,7 @@ local function UnlockAllRivals()
     end
     
     pcall(ClaimRewards)
-    task.wait(1)
     
-    -- ============================================
-    --  METHOD 7: UNLOCK VIA MODULES
-    -- ============================================
-    local function UnlockModules()
-        local function scan(container)
-            if not container then return end
-            for _, module in pairs(container:GetDescendants()) do
-                if module:IsA("ModuleScript") then
-                    local name = module.Name:lower()
-                    if name:find("unlock") or name:find("shop") or name:find("store") or 
-                       name:find("cosmetic") or name:find("skin") or name:find("inventory") then
-                        pcall(function()
-                            local success, result = pcall(function()
-                                return require(module)
-                            end)
-                            if success and result and type(result) == "table" then
-                                for key, value in pairs(result) do
-                                    if type(key) == "string" and 
-                                       (key:lower():find("unlock") or key:lower():find("give")) then
-                                        if type(value) == "function" then
-                                            pcall(function()
-                                                value(LP)
-                                                print("[Raven] Called: " .. key)
-                                            end)
-                                        end
-                                    end
-                                end
-                            end
-                        end)
-                    end
-                end
-            end
-        end
-        
-        scan(ReplicatedStorage)
-        scan(ServerScriptService)
-    end
-    
-    pcall(UnlockModules)
-    
-    -- Final notification
     task.wait(1)
     StarterGui:SetCore("SendNotification", {
         Title = "Raven Cheats",
@@ -1598,7 +1556,7 @@ AimGroup:AddSlider("AimPred", { Text = "Prediction", Default = Cfg.Aim.Predictio
 Options.AimPred:OnChanged(function(v) Cfg.Aim.Prediction = v end)
 
 -- =============================================
--- UTILS TAB (Team Check + Unlock All)
+-- UTILS TAB
 -- =============================================
 local UtilGroup = Tabs.Util:AddLeftGroupbox("Target Teleportation")
 
@@ -1628,7 +1586,7 @@ local TeamGroup = Tabs.Util:AddRightGroupbox("Team Settings")
 TeamGroup:AddToggle("TeamCheckToggle", { 
     Text = "Enable Team Check", 
     Default = Cfg.TargetUtility.TeamCheck,
-    Tooltip = "Prevents aiming at and ESP on teammates"
+    Tooltip = "Prevents aiming at and ESP on teammates (does NOT affect other features)"
 })
 Toggles.TeamCheckToggle:OnChanged(function(v)
     Cfg.TargetUtility.TeamCheck = v
@@ -1640,7 +1598,7 @@ Toggles.TeamCheckToggle:OnChanged(function(v)
 end)
 
 -- =============================================
--- UNLOCK ALL BUTTON IN UTILS TAB
+-- UNLOCK ALL BUTTON
 -- =============================================
 local UnlockGroup = Tabs.Util:AddRightGroupbox("Unlock All")
 
@@ -1726,4 +1684,4 @@ SaveManager:LoadAutoloadConfig()
 -- =============================================
 print("[Raven Cheats] Loaded successfully!")
 print("[Raven Cheats] Press Right Shift to toggle menu.")
-print("[Raven Cheats] Click 'UNLOCK ALL' in the Utils tab to unlock everything!")
+print("[Raven Cheats] Team check only affects Aimbot & ESP - other features work normally!")
