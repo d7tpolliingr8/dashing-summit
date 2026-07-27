@@ -1,6 +1,6 @@
 --[[
-    Raven Cheats Loader v7.0
-    FIXED - No 100% Hang
+    Raven Cheats Loader v8.0
+    FIXED - Validation Error
     Red/Black/Yellow Theme
     Discord: https://discord.gg/FnKfhZ7Fb6
 ]]
@@ -10,7 +10,7 @@
 -- ======================================================================
 
 local SCRIPT_URL = "https://raw.githubusercontent.com/d7tpolliingr8/dashing-summit/main/rivalsaimwh.lua"
-local LOADER_VERSION = "v7.0"
+local LOADER_VERSION = "v8.0"
 local DISCORD_INVITE = "https://discord.gg/FnKfhZ7Fb6"
 
 -- ======================================================================
@@ -360,20 +360,46 @@ local function UpdateStatus(text)
 end
 
 -- ======================================================================
---  MAIN LOADER (FIXED - No Hang)
+--  FALLBACK: Try multiple methods to load the script
 -- ======================================================================
 
-local function LoadScript()
+local function LoadScriptWithFallback()
     UpdateStatus("Downloading Raven Cheats...")
     AnimateBar(0.3)
     
-    -- Use spawn to prevent blocking
     task.spawn(function()
-        local success, scriptContent = pcall(function()
+        local scriptContent = nil
+        local downloadSuccess = false
+        
+        -- METHOD 1: Standard HttpGet
+        local success1, result1 = pcall(function()
             return game:HttpGet(SCRIPT_URL)
         end)
         
-        if not success then
+        if success1 and result1 and #result1 > 100 then
+            scriptContent = result1
+            downloadSuccess = true
+            UpdateStatus("Downloaded successfully!")
+            AnimateBar(0.5)
+        else
+            UpdateStatus("Retrying with alternative method...")
+            AnimateBar(0.3)
+            task.wait(0.5)
+            
+            -- METHOD 2: Try with a different user-agent (if available)
+            local success2, result2 = pcall(function()
+                return game:HttpGet(SCRIPT_URL, true)
+            end)
+            
+            if success2 and result2 and #result2 > 100 then
+                scriptContent = result2
+                downloadSuccess = true
+                UpdateStatus("Downloaded successfully!")
+                AnimateBar(0.5)
+            end
+        end
+        
+        if not downloadSuccess or not scriptContent or #scriptContent < 100 then
             UpdateStatus("❌ Download failed - Check connection")
             AnimateBar(0)
             StarterGui:SetCore("SendNotification", {
@@ -381,17 +407,27 @@ local function LoadScript()
                 Text = "❌ Download failed. Check your connection.",
                 Duration = 3,
             })
-            return
-        end
-        
-        if not scriptContent or #scriptContent < 10 then
-            UpdateStatus("❌ Script corrupted - Contact support")
-            AnimateBar(0)
-            StarterGui:SetCore("SendNotification", {
-                Title = "Raven Cheats",
-                Text = "❌ Script corrupted. Contact support.",
-                Duration = 3,
-            })
+            -- Show retry button
+            local retryBtn = Instance.new("TextButton")
+            retryBtn.Size = UDim2.new(0.3, 0, 0, 35)
+            retryBtn.Position = UDim2.new(0.35, 0, 0.73, 0)
+            retryBtn.BackgroundColor3 = Color3.fromRGB(220, 20, 20)
+            retryBtn.BackgroundTransparency = 0.1
+            retryBtn.TextColor3 = Color3.new(1, 1, 1)
+            retryBtn.TextSize = 14
+            retryBtn.Font = Enum.Font.GothamBold
+            retryBtn.Text = "🔄 RETRY"
+            retryBtn.Parent = container
+            
+            local retryCorner = Instance.new("UICorner")
+            retryCorner.CornerRadius = UDim.new(0, 10)
+            retryCorner.Parent = retryBtn
+            
+            retryBtn.MouseButton1Click:Connect(function()
+                retryBtn:Destroy()
+                statusText.TextColor3 = Color3.fromRGB(180, 180, 180)
+                LoadScriptWithFallback()
+            end)
             return
         end
         
@@ -399,16 +435,29 @@ local function LoadScript()
         AnimateBar(0.6)
         task.wait(0.2)
         
+        -- Check if the content looks like Lua (not HTML)
+        local isLua = scriptContent:match("^%s*%-%-") or scriptContent:match("^%s*local") or scriptContent:match("function")
+        if not isLua and not scriptContent:match("loadstring") then
+            UpdateStatus("❌ Invalid script format")
+            AnimateBar(0)
+            StarterGui:SetCore("SendNotification", {
+                Title = "Raven Cheats",
+                Text = "❌ Invalid script format. Contact support.",
+                Duration = 3,
+            })
+            return
+        end
+        
         local compileSuccess, compiled = pcall(function()
             return loadstring(scriptContent)
         end)
         
         if not compileSuccess or type(compiled) ~= "function" then
-            UpdateStatus("❌ Validation failed - Contact support")
+            UpdateStatus("❌ Compilation failed - Contact support")
             AnimateBar(0)
             StarterGui:SetCore("SendNotification", {
                 Title = "Raven Cheats",
-                Text = "❌ Validation failed. Contact support.",
+                Text = "❌ Compilation failed. Contact support.",
                 Duration = 3,
             })
             return
@@ -483,14 +532,14 @@ local function StartLoading()
     AnimateBar(0.8)
     task.wait(0.3)
     
-    LoadScript()
+    LoadScriptWithFallback()
 end
 
 -- ======================================================================
 --  START
 -- ======================================================================
 
-print("[Raven] Loader v7.0 - Fixed")
+print("[Raven] Loader v8.0 - Fixed Validation")
 print("[Raven] Discord: https://discord.gg/FnKfhZ7Fb6")
 print("[Raven] Ready")
 
