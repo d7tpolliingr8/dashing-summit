@@ -1,0 +1,494 @@
+--[[
+    Your Custom Rivals Script
+    Based on working script structure
+    Press INSERT to open menu
+]]
+
+-- ==================== CONFIGURATION ====================
+local Config = {
+    -- Aimbot Settings
+    Aimbot = {
+        Enabled = false,
+        FOV = 120,
+        Smoothness = 0.3,
+        AimPart = "Head",
+        MaxDistance = 500,
+        TeamCheck = true,
+    },
+    
+    -- ESP Settings
+    ESP = {
+        Enabled = false,
+        ShowBoxes = true,
+        ShowNames = true,
+        ShowHealth = true,
+        ShowDistance = true,
+        MaxDistance = 1000,
+        TeamCheck = true,
+    },
+    
+    -- Player Mods
+    Player = {
+        InfiniteJump = false,
+        Fly = false,
+        FlySpeed = 50,
+        WalkSpeed = 16,
+        GodMode = false,
+        FullBright = false,
+    },
+    
+    -- Menu
+    Menu = {
+        Key = Enum.KeyCode.Insert,
+        Color = {0.1, 0.1, 0.2, 0.9},
+    }
+}
+
+-- ==================== SERVICES ====================
+local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
+local UserInputService = game:GetService("UserInputService")
+local LocalPlayer = Players.LocalPlayer
+local Camera = workspace.CurrentCamera
+local CoreGui = game:GetService("CoreGui")
+
+-- ==================== UTILITY ====================
+local function IsAlive(player)
+    if not player or not player.Character then return false end
+    local humanoid = player.Character:FindFirstChild("Humanoid")
+    return humanoid and humanoid.Health > 0
+end
+
+local function GetRootPart(character)
+    if not character then return nil end
+    return character:FindFirstChild("HumanoidRootPart") or 
+           character:FindFirstChild("Torso") or 
+           character:FindFirstChild("UpperTorso")
+end
+
+local function GetAimPart(character, partName)
+    if not character then return nil end
+    return character:FindFirstChild(partName) or GetRootPart(character)
+end
+
+local function IsTeammate(player)
+    if not LocalPlayer or not player then return false end
+    if LocalPlayer.Team and player.Team then
+        return LocalPlayer.Team == player.Team
+    end
+    return false
+end
+
+-- ==================== AIMBOT ====================
+local aimbotActive = false
+
+local function GetBestTarget()
+    local bestTarget = nil
+    local bestScore = math.huge
+    local fov = Config.Aimbot.FOV
+    local maxDist = Config.Aimbot.MaxDistance
+    local camPos = Camera.CFrame.Position
+    local centerX = Camera.ViewportSize.X / 2
+    local centerY = Camera.ViewportSize.Y / 2
+    
+    for _, player in pairs(Players:GetPlayers()) do
+        if player ~= LocalPlayer and IsAlive(player) then
+            if Config.Aimbot.TeamCheck and IsTeammate(player) then continue end
+            
+            local aimPart = GetAimPart(player.Character, Config.Aimbot.AimPart)
+            if not aimPart then continue end
+            
+            local screenPos, onScreen = Camera:WorldToScreenPoint(aimPart.Position)
+            if not onScreen then continue end
+            
+            local distance = math.sqrt((screenPos.X - centerX)^2 + (screenPos.Y - centerY)^2)
+            if distance > fov then continue end
+            
+            local worldDist = (camPos - aimPart.Position).Magnitude
+            if worldDist > maxDist then continue end
+            
+            if distance < bestScore then
+                bestScore = distance
+                bestTarget = {
+                    Player = player,
+                    AimPart = aimPart,
+                    Distance = worldDist,
+                }
+            end
+        end
+    end
+    
+    return bestTarget
+end
+
+local function DoAimbot()
+    if not aimbotActive or not Config.Aimbot.Enabled then return end
+    
+    local target = GetBestTarget()
+    if not target then return end
+    
+    local targetPos = target.AimPart.Position
+    local camPos = Camera.CFrame.Position
+    
+    -- Smooth aim
+    local direction = (targetPos - camPos).Unit
+    local smoothness = Config.Aimbot.Smoothness
+    
+    if smoothness > 0 then
+        local currentLook = Camera.CFrame.LookVector
+        local newLook = currentLook + (direction - currentLook) * (1 - smoothness)
+        if newLook.Magnitude > 0 then
+            direction = newLook.Unit
+        end
+    end
+    
+    Camera.CFrame = CFrame.lookAt(camPos, camPos + direction)
+end
+
+-- ==================== ESP ====================
+local espActive = false
+local espDrawings = {}
+local espObjects = {}
+
+local function CreateDrawing(drawType, properties)
+    local drawing = Drawing.new(drawType)
+    for key, value in pairs(properties or {}) do
+        drawing[key] = value
+    end
+    table.insert(espDrawings, drawing)
+    return drawing
+end
+
+local function ClearESP()
+    for _, drawing in pairs(espDrawings) do
+        drawing:Remove()
+    end
+    espDrawings = {}
+    espObjects = {}
+end
+
+local function DrawESP(player)
+    if not player or player == LocalPlayer then return end
+    if Config.ESP.TeamCheck and IsTeammate(player) then return end
+    
+    local character = player.Character
+    if not character then return end
+    
+    local humanoid = character:FindFirstChild("Humanoid")
+    if not humanoid or humanoid.Health <= 0 then return end
+    
+    local rootPart = GetRootPart(character)
+    if not rootPart then return end
+    
+    local rootPos = rootPart.Position
+    local screenPos, onScreen = Camera:WorldToScreenPoint(rootPos)
+    if not onScreen then return end
+    
+    local distance = (Camera.CFrame.Position - rootPos).Magnitude
+    if distance > Config.ESP.MaxDistance then return end
+    
+    local playerId = player.UserId
+    if not espObjects[playerId] then
+        espObjects[playerId] = {}
+    end
+    
+    local esp = espObjects[playerId]
+    
+    -- Calculate size based on character
+    local head = character:FindFirstChild("Head")
+    local size = 3
+    if head then
+        local headScreen = Camera:WorldToScreenPoint(head.Position)
+        size = math.abs(screenPos.Y - headScreen.Y) * 2 or 3
+    end
+    
+    -- Box
+    if Config.ESP.ShowBoxes then
+        if not esp.Box then
+            esp.Box = CreateDrawing("Square", {
+                Color = Color3.new(1, 0, 0),
+                Thickness = 2,
+                Filled = false,
+                Transparency = 1,
+            })
+        end
+        esp.Box.Position = Vector2.new(screenPos.X - size * 0.3, screenPos.Y - size * 0.5)
+        esp.Box.Size = Vector2.new(size * 0.6, size)
+        esp.Box.Visible = true
+    end
+    
+    -- Name
+    if Config.ESP.ShowNames then
+        if not esp.Name then
+            esp.Name = CreateDrawing("Text", {
+                Color = Color3.new(1, 1, 1),
+                Size = 14,
+                Center = true,
+                Outline = true,
+                OutlineColor = Color3.new(0, 0, 0),
+                Font = Drawing.Fonts.UI,
+            })
+        end
+        esp.Name.Text = player.DisplayName or player.Name
+        esp.Name.Position = Vector2.new(screenPos.X, screenPos.Y - size * 0.55 - 20)
+        esp.Name.Visible = true
+    end
+    
+    -- Health Bar
+    if Config.ESP.ShowHealth then
+        if not esp.Health then
+            esp.Health = CreateDrawing("Square", {
+                Color = Color3.new(0, 1, 0),
+                Thickness = 2,
+                Filled = true,
+            })
+        end
+        local healthPercent = humanoid.Health / humanoid.MaxHealth
+        local barHeight = size * 0.8
+        esp.Health.Position = Vector2.new(screenPos.X + size * 0.35, screenPos.Y - size * 0.5 + (size - barHeight * healthPercent))
+        esp.Health.Size = Vector2.new(4, barHeight * healthPercent)
+        esp.Health.Visible = true
+        
+        -- Color based on health
+        if healthPercent < 0.3 then
+            esp.Health.Color = Color3.new(1, 0, 0)
+        elseif healthPercent < 0.6 then
+            esp.Health.Color = Color3.new(1, 1, 0)
+        else
+            esp.Health.Color = Color3.new(0, 1, 0)
+        end
+    end
+    
+    -- Distance
+    if Config.ESP.ShowDistance then
+        if not esp.Distance then
+            esp.Distance = CreateDrawing("Text", {
+                Color = Color3.new(0.5, 0.5, 1),
+                Size = 12,
+                Center = true,
+                Outline = true,
+                OutlineColor = Color3.new(0, 0, 0),
+                Font = Drawing.Fonts.UI,
+            })
+        end
+        esp.Distance.Text = string.format("%.0fm", distance / 3)
+        esp.Distance.Position = Vector2.new(screenPos.X, screenPos.Y + size * 0.55 + 5)
+        esp.Distance.Visible = true
+    end
+end
+
+local function UpdateESP()
+    if not espActive or not Config.ESP.Enabled then
+        ClearESP()
+        return
+    end
+    
+    ClearESP()
+    espObjects = {}
+    
+    for _, player in pairs(Players:GetPlayers()) do
+        DrawESP(player)
+    end
+end
+
+-- ==================== PLAYER MODS ====================
+-- Infinite Jump
+UserInputService.JumpRequest:Connect(function()
+    if Config.Player.InfiniteJump and LocalPlayer.Character then
+        local humanoid = LocalPlayer.Character:FindFirstChild("Humanoid")
+        if humanoid then
+            humanoid:ChangeState(Enum.HumanoidStateType.Jumping)
+        end
+    end
+end)
+
+-- Fly
+local flying = false
+local flyVelocity, flyGyro
+
+RunService.Heartbeat:Connect(function()
+    local character = LocalPlayer.Character
+    if not character then return end
+    
+    if Config.Player.Fly then
+        local rootPart = GetRootPart(character)
+        if rootPart then
+            if not flying then
+                flying = true
+                flyVelocity = Instance.new("BodyVelocity")
+                flyVelocity.MaxForce = Vector3.new(1, 1, 1) * 100000
+                flyVelocity.Parent = rootPart
+                
+                flyGyro = Instance.new("BodyGyro")
+                flyGyro.MaxTorque = Vector3.new(1, 1, 1) * 100000
+                flyGyro.Parent = rootPart
+                
+                local humanoid = character:FindFirstChild("Humanoid")
+                if humanoid then
+                    humanoid.PlatformStand = true
+                end
+            end
+            
+            if flyVelocity then
+                flyVelocity.Velocity = Camera.CFrame.LookVector * Config.Player.FlySpeed
+                flyGyro.CFrame = Camera.CFrame
+            end
+        end
+    elseif flying then
+        flying = false
+        if flyVelocity then flyVelocity:Destroy() end
+        if flyGyro then flyGyro:Destroy() end
+        
+        local humanoid = character:FindFirstChild("Humanoid")
+        if humanoid then
+            humanoid.PlatformStand = false
+        end
+    end
+end)
+
+-- God Mode
+RunService.Heartbeat:Connect(function()
+    local character = LocalPlayer.Character
+    if not character then return end
+    
+    if Config.Player.GodMode then
+        local humanoid = character:FindFirstChild("Humanoid")
+        if humanoid then
+            humanoid.Health = humanoid.MaxHealth
+            humanoid.BreakJointsOnDeath = false
+        end
+    end
+end)
+
+-- Full Bright
+RunService.Heartbeat:Connect(function()
+    if Config.Player.FullBright then
+        game.Lighting.Brightness = 2
+        game.Lighting.Ambient = Color3.new(1, 1, 1)
+        game.Lighting.OutdoorAmbient = Color3.new(1, 1, 1)
+    end
+end)
+
+-- WalkSpeed
+RunService.Heartbeat:Connect(function()
+    local character = LocalPlayer.Character
+    if not character then return end
+    
+    local humanoid = character:FindFirstChild("Humanoid")
+    if humanoid and Config.Player.WalkSpeed ~= 16 then
+        humanoid.WalkSpeed = Config.Player.WalkSpeed
+    end
+end)
+
+-- ==================== MENU ====================
+local menuVisible = false
+local screenGui = nil
+
+local function CreateMenu()
+    -- Create GUI
+    screenGui = Instance.new("ScreenGui")
+    screenGui.Name = "CustomRivalsMenu"
+    screenGui.Parent = CoreGui
+    screenGui.ResetOnSpawn = false
+    
+    local mainFrame = Instance.new("Frame")
+    mainFrame.Size = UDim2.new(0, 400, 0, 400)
+    mainFrame.Position = UDim2.new(0.5, -200, 0.5, -200)
+    mainFrame.BackgroundColor3 = Color3.fromRGB(25, 25, 50)
+    mainFrame.BackgroundTransparency = 0.1
+    mainFrame.BorderSizePixel = 2
+    mainFrame.BorderColor3 = Color3.fromRGB(50, 150, 255)
+    mainFrame.Parent = screenGui
+    
+    -- Title
+    local title = Instance.new("TextLabel")
+    title.Size = UDim2.new(1, 0, 0, 40)
+    title.Position = UDim2.new(0, 0, 0, 0)
+    title.BackgroundColor3 = Color3.fromRGB(50, 150, 255)
+    title.BackgroundTransparency = 0.2
+    title.Text = "Your Rivals Script v1.0"
+    title.TextColor3 = Color3.new(1, 1, 1)
+    title.TextSize = 20
+    title.Font = Enum.Font.GothamBold
+    title.Parent = mainFrame
+    
+    -- Simple toggle functions (you can expand this)
+    local function AddButton(parent, text, yPos, toggleVar, toggleFunc)
+        local btn = Instance.new("TextButton")
+        btn.Size = UDim2.new(0.8, 0, 0, 35)
+        btn.Position = UDim2.new(0.1, 0, 0, yPos)
+        btn.BackgroundColor3 = Color3.fromRGB(40, 40, 70)
+        btn.TextColor3 = Color3.new(1, 1, 1)
+        btn.TextSize = 16
+        btn.Font = Enum.Font.Gotham
+        btn.Text = text .. " (OFF)"
+        btn.Parent = parent
+        
+        btn.MouseButton1Click:Connect(function()
+            toggleVar = not toggleVar
+            btn.Text = text .. (toggleVar and " (ON)" or " (OFF)")
+            if toggleFunc then toggleFunc(toggleVar) end
+        end)
+        
+        return btn
+    end
+    
+    -- Example buttons
+    AddButton(mainFrame, "Aimbot", 50, Config.Aimbot.Enabled, function(s)
+        Config.Aimbot.Enabled = s
+        aimbotActive = s
+    end)
+    
+    AddButton(mainFrame, "ESP", 95, Config.ESP.Enabled, function(s)
+        Config.ESP.Enabled = s
+        espActive = s
+    end)
+    
+    AddButton(mainFrame, "Infinite Jump", 140, Config.Player.InfiniteJump)
+    AddButton(mainFrame, "Fly", 185, Config.Player.Fly)
+    AddButton(mainFrame, "God Mode", 230, Config.Player.GodMode)
+    AddButton(mainFrame, "Full Bright", 275, Config.Player.FullBright)
+    
+    -- Close button
+    local closeBtn = Instance.new("TextButton")
+    closeBtn.Size = UDim2.new(0.4, 0, 0, 35)
+    closeBtn.Position = UDim2.new(0.3, 0, 0, 340)
+    closeBtn.BackgroundColor3 = Color3.fromRGB(80, 20, 20)
+    closeBtn.TextColor3 = Color3.new(1, 1, 1)
+    closeBtn.TextSize = 16
+    closeBtn.Font = Enum.Font.GothamBold
+    closeBtn.Text = "Close Menu"
+    closeBtn.Parent = mainFrame
+    closeBtn.MouseButton1Click:Connect(function()
+        menuVisible = false
+        if screenGui then screenGui.Enabled = false end
+    end)
+end
+
+local function ToggleMenu()
+    menuVisible = not menuVisible
+    
+    if menuVisible then
+        CreateMenu()
+        if screenGui then screenGui.Enabled = true end
+    else
+        if screenGui then screenGui.Enabled = false end
+    end
+end
+
+-- ==================== INITIALIZATION ====================
+print("[Your Script] Loading...")
+
+-- Keybind: INSERT
+UserInputService.InputBegan:Connect(function(input, gameProcessed)
+    if gameProcessed then return end
+    if input.KeyCode == Enum.KeyCode.Insert then
+        ToggleMenu()
+    end
+end)
+
+-- Start core loops
+RunService.RenderStepped:Connect(DoAimbot)
+RunService.RenderStepped:Connect(UpdateESP)
+
+print("[Your Script] Loaded! Press INSERT for menu.")
