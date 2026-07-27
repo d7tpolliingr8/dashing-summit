@@ -1,6 +1,7 @@
 --[[
-    Skelly Hub Loader v5.1
-    Cartoon Theme - Auto-Accept Key
+    Skelly Hub Loader v6.0
+    NO KEY REQUIRED - Auto Load
+    Cartoon Theme - Loading Bar
 ]]
 
 -- ======================================================================
@@ -8,21 +9,8 @@
 -- ======================================================================
 
 local SCRIPT_URL = "https://raw.githubusercontent.com/d7tpolliingr8/dashing-summit/main/rivalsaimwh.lua"
-local LOADER_VERSION = "v5.1"
+local LOADER_VERSION = "v6.0"
 local DISCORD_INVITE = "https://discord.gg/XJtYWy9jgU"
-
--- ======================================================================
--- VALID KEYS
--- ======================================================================
-
-local VALID_KEYS = {
-    -- Default test key (works for everyone)
-    ["SKELLY-TEST-0001"] = true,
-    ["SKELLY-A7K2M9-4P8Q1R"] = true,
-    ["SKELLY-B3X5N7-L2W6K9"] = true,
-    ["SKELLY-C8V4R2-P6M9T3"] = true,
-    -- Add more keys below
-}
 
 -- ======================================================================
 -- SERVICES
@@ -91,7 +79,6 @@ local function CreateCloud(x, y, size, speed)
     
     task.spawn(function()
         local dir = math.random(1, 2) == 1 and 1 or -1
-        local startX = x
         while task.wait(0.05) do
             local newX = cloud.Position.X.Scale + 0.001 * dir * speed
             if newX > 1.1 then newX = -0.1 end
@@ -285,79 +272,18 @@ percentText.TextXAlignment = Enum.TextXAlignment.Center
 percentText.Parent = loadingSection
 
 -- ======================================================================
--- KEY INPUT SECTION
--- ======================================================================
-
-local keySection = Instance.new("Frame")
-keySection.Size = UDim2.new(0.85, 0, 0, 130)
-keySection.Position = UDim2.new(0.075, 0, 0.42, 0)
-keySection.BackgroundTransparency = 1
-keySection.Visible = false
-keySection.Parent = container
-
-local keyLabel = Instance.new("TextLabel")
-keyLabel.Size = UDim2.new(1, 0, 0, 30)
-keyLabel.Position = UDim2.new(0, 0, 0, 0)
-keyLabel.BackgroundTransparency = 1
-keyLabel.Text = "🔑 ENTER YOUR KEY"
-keyLabel.TextColor3 = Color3.fromRGB(80, 80, 100)
-keyLabel.TextSize = 16
-keyLabel.Font = Enum.Font.GothamBold
-keyLabel.TextXAlignment = Enum.TextXAlignment.Center
-keyLabel.Parent = keySection
-
-local keyBox = Instance.new("TextBox")
-keyBox.Size = UDim2.new(0.8, 0, 0, 40)
-keyBox.Position = UDim2.new(0.1, 0, 0.28, 0)
-keyBox.BackgroundColor3 = Color3.fromRGB(240, 240, 250)
-keyBox.TextColor3 = Color3.fromRGB(50, 50, 70)
-keyBox.TextSize = 16
-keyBox.Font = Enum.Font.Gotham
-keyBox.PlaceholderText = "SKELLY-XXXXXX-XXXXXX"
-keyBox.ClearTextOnFocus = false
-keyBox.Text = ""
-keyBox.Parent = keySection
-
-local keyBoxCorner = Instance.new("UICorner")
-keyBoxCorner.CornerRadius = UDim.new(0, 10)
-keyBoxCorner.Parent = keyBox
-
-local activateBtn = Instance.new("TextButton")
-activateBtn.Size = UDim2.new(0.4, 0, 0, 40)
-activateBtn.Position = UDim2.new(0.3, 0, 0.58, 0)
-activateBtn.BackgroundColor3 = Color3.fromRGB(100, 180, 255)
-activateBtn.BackgroundTransparency = 0.1
-activateBtn.TextColor3 = Color3.fromRGB(50, 50, 70)
-activateBtn.TextSize = 16
-activateBtn.Font = Enum.Font.GothamBold
-activateBtn.Text = "▶ ACTIVATE"
-activateBtn.Parent = keySection
-
-local actCorner = Instance.new("UICorner")
-actCorner.CornerRadius = UDim.new(0, 10)
-actCorner.Parent = activateBtn
-
-activateBtn.MouseEnter:Connect(function()
-    activateBtn.BackgroundTransparency = 0.3
-end)
-activateBtn.MouseLeave:Connect(function()
-    activateBtn.BackgroundTransparency = 0.1
-end)
-
--- ======================================================================
 -- DISCORD BUTTON
 -- ======================================================================
 
 local discordBtn = Instance.new("TextButton")
 discordBtn.Size = UDim2.new(0.35, 0, 0, 35)
-discordBtn.Position = UDim2.new(0.325, 0, 0.7, 0)
+discordBtn.Position = UDim2.new(0.325, 0, 0.45, 0)
 discordBtn.BackgroundColor3 = Color3.fromRGB(88, 101, 242)
 discordBtn.BackgroundTransparency = 0.1
 discordBtn.TextColor3 = Color3.new(1, 1, 1)
 discordBtn.TextSize = 13
 discordBtn.Font = Enum.Font.GothamBold
 discordBtn.Text = "💬 DISCORD"
-discordBtn.Visible = false
 discordBtn.Parent = container
 
 local discCorner = Instance.new("UICorner")
@@ -376,7 +302,7 @@ discordBtn.MouseButton1Click:Connect(function()
     statusText.Text = "✅ Discord link copied!"
     statusText.TextColor3 = Color3.fromRGB(0, 255, 100)
     task.wait(1.5)
-    statusText.Text = "Enter your key to activate"
+    statusText.Text = "Loading Skelly Hub..."
     statusText.TextColor3 = Color3.fromRGB(80, 80, 100)
 end)
 
@@ -386,7 +312,7 @@ end)
 
 local statusText = Instance.new("TextLabel")
 statusText.Size = UDim2.new(0.8, 0, 0, 25)
-statusText.Position = UDim2.new(0.1, 0, 0.78, 0)
+statusText.Position = UDim2.new(0.1, 0, 0.53, 0)
 statusText.BackgroundTransparency = 1
 statusText.Text = "Loading..."
 statusText.TextColor3 = Color3.fromRGB(80, 80, 100)
@@ -444,13 +370,6 @@ end
 -- LOADING SEQUENCE
 -- ======================================================================
 
-local function ShowKeyInput()
-    keySection.Visible = true
-    discordBtn.Visible = true
-    loadingLabel.Text = "Enter your key to activate"
-    keyBox:CaptureFocus()
-end
-
 local function StartLoading()
     print("[SkellyHub] Starting loading sequence...")
     
@@ -474,12 +393,11 @@ local function StartLoading()
     AnimateBar(0.8)
     task.wait(0.3)
     
-    UpdateStatus("Ready!")
+    UpdateStatus("Ready! Loading script...")
     AnimateBar(1)
     task.wait(0.5)
     
-    ShowKeyInput()
-    UpdateStatus("Enter your key to activate")
+    LoadScript()
 end
 
 -- ======================================================================
@@ -549,66 +467,11 @@ local function LoadScript()
 end
 
 -- ======================================================================
--- KEY VALIDATION
--- ======================================================================
-
-local function ValidateKey()
-    local inputKey = keyBox.Text
-    
-    -- If key is empty, use a default test key
-    if inputKey == "" or inputKey == nil then
-        inputKey = "SKELLY-TEST-0001"
-        keyBox.Text = inputKey
-    end
-    
-    -- Check if key matches format: SKELLY-XXXXXX-XXXXXX
-    local function isValidFormat(key)
-        local pattern = "^SKELLY%-%w+%-%w+$"
-        return string.match(key, pattern) ~= nil
-    end
-    
-    if not isValidFormat(inputKey) then
-        UpdateStatus("❌ Invalid format! Use: SKELLY-XXXXXX-XXXXXX")
-        keyBox.Text = ""
-        keyBox.PlaceholderText = "SKELLY-XXXXXX-XXXXXX"
-        return
-    end
-    
-    if VALID_KEYS[inputKey] then
-        UpdateStatus("✅ Key accepted! Loading Skelly Hub...")
-        activateBtn.Text = "✓"
-        activateBtn.BackgroundColor3 = Color3.fromRGB(0, 200, 100)
-        keyBox.Text = ""
-        keyBox.PlaceholderText = "Key accepted!"
-        task.wait(0.3)
-        LoadScript()
-    else
-        UpdateStatus("❌ Invalid key! Purchase one on Discord")
-        keyBox.Text = ""
-        keyBox.PlaceholderText = "Invalid key, try again..."
-        task.wait(1.5)
-        keyBox.PlaceholderText = "SKELLY-XXXXXX-XXXXXX"
-    end
-end
-
--- ======================================================================
--- KEYBINDS
--- ======================================================================
-
-activateBtn.MouseButton1Click:Connect(ValidateKey)
-
-keyBox.FocusLost:Connect(function(enterPressed)
-    if enterPressed then ValidateKey() end
-end)
-
--- ======================================================================
 -- START
 -- ======================================================================
 
-print("[SkellyHub] Loader v5.1")
+print("[SkellyHub] Loader v6.0 - No Key Required")
 print("[SkellyHub] Discord: https://discord.gg/XJtYWy9jgU")
-print("[SkellyHub] Key format: SKELLY-XXXXXX-XXXXXX")
-print("[SkellyHub] Default test key: SKELLY-TEST-0001")
 
 task.wait(0.5)
 StartLoading()
