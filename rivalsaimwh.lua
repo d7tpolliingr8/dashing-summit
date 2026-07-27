@@ -20,6 +20,7 @@ local Lighting         = game:GetService("Lighting")
 local StarterGui       = game:GetService("StarterGui")
 local CoreGui          = game:GetService("CoreGui")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local VirtualUser      = game:GetService("VirtualUser")
 
 local Camera           = Workspace.CurrentCamera
 local LP               = Players.LocalPlayer
@@ -156,6 +157,13 @@ local Cfg = {
         FlyKeybind = Enum.KeyCode.F,
         SpeedHack = false,
         SpeedValue = 24,
+        InfiniteJump = false,
+    },
+    Player = {
+        GodMode = false,
+        NoFallDamage = false,
+        WalkSpeed = 16,
+        JumpPower = 50,
     },
     TargetUtility = {
         StickyTP = false,
@@ -876,6 +884,7 @@ end)
 -- ================================================
 --  PLAYER MODS
 -- ================================================
+
 -- Infinite Jump
 UserInputService.JumpRequest:Connect(function()
     if Cfg.Movement.InfiniteJump and LP.Character then
@@ -1052,17 +1061,44 @@ RunService.RenderStepped:Connect(function()
     end
 end)
 
+-- WalkSpeed
+RunService.Heartbeat:Connect(function()
+    local character = LP.Character
+    if not character then return end
+    local h = character:FindFirstChild("Humanoid")
+    if h and Cfg.Player.WalkSpeed ~= 16 then
+        h.WalkSpeed = Cfg.Player.WalkSpeed
+    end
+end)
+
+-- JumpPower
+RunService.Heartbeat:Connect(function()
+    local character = LP.Character
+    if not character then return end
+    local h = character:FindFirstChild("Humanoid")
+    if h and Cfg.Player.JumpPower ~= 50 then
+        h.JumpPower = Cfg.Player.JumpPower
+    end
+end)
+
 -- God Mode & No Fall Damage
 RunService.Heartbeat:Connect(function()
     local character = LP.Character
     if not character then return end
-    if Cfg.Player and Cfg.Player.GodMode then
+    
+    if Cfg.Player.GodMode then
         local h = character:FindFirstChild("Humanoid")
-        if h then h.Health = h.MaxHealth; h.BreakJointsOnDeath = false end
+        if h then 
+            h.Health = h.MaxHealth
+            h.BreakJointsOnDeath = false
+        end
     end
-    if Cfg.Player and Cfg.Player.NoFallDamage then
+    
+    if Cfg.Player.NoFallDamage then
         local h = character:FindFirstChild("Humanoid")
-        if h then h:SetStateEnabled(Enum.HumanoidStateType.FallingDown, false) end
+        if h then
+            h:SetStateEnabled(Enum.HumanoidStateType.FallingDown, false)
+        end
     end
 end)
 
@@ -1075,15 +1111,24 @@ RunService.Heartbeat:Connect(function()
     end
 end)
 
--- WalkSpeed
+-- No Fog
 RunService.Heartbeat:Connect(function()
-    if Cfg.Player and Cfg.Player.WalkSpeed then
-        local character = LP.Character
-        if not character then return end
-        local h = character:FindFirstChild("Humanoid")
-        if h and Cfg.Player.WalkSpeed ~= 16 then
-            h.WalkSpeed = Cfg.Player.WalkSpeed
-        end
+    if Cfg.Visuals.NoFog then
+        Lighting.FogEnd = 100000
+        Lighting.FogStart = 0
+    end
+end)
+
+-- Anti AFK
+local function AntiAFK()
+    local vu = VirtualUser
+    vu:CaptureController()
+    vu:ClickButton2(Vector2.new())
+end
+
+RunService.Heartbeat:Connect(function()
+    if Cfg.Movement.AntiAFK then
+        AntiAFK()
     end
 end)
 
@@ -1161,6 +1206,49 @@ local function UpdateCrosshair()
         CenterDot.Visible = true
     end
 end
+
+-- ================================================
+--  TARGET UTILITIES
+-- ================================================
+local function GetPlayerNames()
+    local names = {"None"}
+    for _, player in ipairs(Players:GetPlayers()) do
+        if player ~= LP then
+            table.insert(names, player.Name)
+        end
+    end
+    return names
+end
+
+RunService.RenderStepped:Connect(function()
+    if Cfg.TargetUtility.StickyTP and Cfg.TargetUtility.SelectedTarget ~= "None" then
+        local targetPlayer = Players:FindFirstChild(Cfg.TargetUtility.SelectedTarget)
+        if targetPlayer and targetPlayer.Character then
+            local enemyRoot = targetPlayer.Character:FindFirstChild("HumanoidRootPart")
+            local myChar = LP.Character
+            local myRoot = myChar and myChar:FindFirstChild("HumanoidRootPart")
+            if enemyRoot and myRoot then
+                local offsetPos = enemyRoot.CFrame + Vector3.new(0, Cfg.TargetUtility.HeightOffset, 0)
+                myRoot.CFrame = offsetPos
+                myRoot.AssemblyLinearVelocity = Vector3.new(0, 0, 0)
+            end
+        end
+    end
+end)
+
+RunService.Heartbeat:Connect(function()
+    if Cfg.TargetUtility.StickyTP and Cfg.TargetUtility.SelectedTarget ~= "None" then
+        local targetPlayer = Players:FindFirstChild(Cfg.TargetUtility.SelectedTarget)
+        if targetPlayer and targetPlayer.Character then
+            local enemyRoot = targetPlayer.Character:FindFirstChild("HumanoidRootPart")
+            local myChar = LP.Character
+            local myRoot = myChar and myChar:FindFirstChild("HumanoidRootPart")
+            if enemyRoot and myRoot then
+                myRoot.CFrame = enemyRoot.CFrame + Vector3.new(0, Cfg.TargetUtility.HeightOffset, 0)
+            end
+        end
+    end
+end)
 
 -- ================================================
 --  UNLOCK ALL
@@ -1636,7 +1724,7 @@ UnlockGroup:AddButton("🦅 UNLOCK ALL", function()
 end)
 
 -- =============================================
--- MOVE TAB
+-- MOVE TAB (FULLY POPULATED)
 -- =============================================
 local MoveGroup = Tabs.Move:AddLeftGroupbox("Locomotion Controls")
 
@@ -1661,8 +1749,38 @@ Options.SpeedVal:OnChanged(function(v) Cfg.Movement.SpeedValue = v end)
 
 MoveGroup:AddToggle("NoclipToggle", { Text = "Noclip", Default = Cfg.Movement.Noclip })
 Toggles.NoclipToggle:OnChanged(function(v)
-    Cfg.Movement.Noclip = v
-    if v then ToggleNoclip() else ToggleNoclip() end
+    Cfg.Movement.Noclip = v    if v then ToggleNoclip() else ToggleNoclip() end
+end)
+
+MoveGroup:AddToggle("InfiniteJump", { Text = "Infinite Jump", Default = Cfg.Movement.InfiniteJump })
+Toggles.InfiniteJump:OnChanged(function(v)
+    Cfg.Movement.InfiniteJump = v
+end)
+
+-- =============================================
+-- PLAYER TAB (NEW - WITH GOD MODE ETC)
+-- =============================================
+local PlayerTab = Window:AddTab("🛡️ Player")
+local PlayerGroup = PlayerTab:AddLeftGroupbox("Player Mods")
+
+PlayerGroup:AddToggle("GodMode", { Text = "God Mode", Default = Cfg.Player.GodMode })
+Toggles.GodMode:OnChanged(function(v)
+    Cfg.Player.GodMode = v
+end)
+
+PlayerGroup:AddToggle("NoFallDamage", { Text = "No Fall Damage", Default = Cfg.Player.NoFallDamage })
+Toggles.NoFallDamage:OnChanged(function(v)
+    Cfg.Player.NoFallDamage = v
+end)
+
+PlayerGroup:AddSlider("WalkSpeed", { Text = "Walk Speed", Default = Cfg.Player.WalkSpeed, Min = 10, Max = 100, Rounding = 1 })
+Options.WalkSpeed:OnChanged(function(v)
+    Cfg.Player.WalkSpeed = v
+end)
+
+PlayerGroup:AddSlider("JumpPower", { Text = "Jump Power", Default = Cfg.Player.JumpPower, Min = 10, Max = 200, Rounding = 1 })
+Options.JumpPower:OnChanged(function(v)
+    Cfg.Player.JumpPower = v
 end)
 
 -- =============================================
