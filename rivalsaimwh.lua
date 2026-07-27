@@ -1,5 +1,5 @@
 -- // Raven Cheats | Solara Compatible (Target Select + Custom Offset Millisecond TP)
--- // Red/Black/Yellow Theme | Team Check in Utils Tab
+-- // Red/Black/Yellow Theme | Team Check in Utils Tab | Unlock All Button
 
 -- ================================================
 --  STUBS
@@ -20,6 +20,8 @@ local StarterGui       = game:GetService("StarterGui")
 local CoreGui          = game:GetService("CoreGui")
 local Teams            = game:GetService("Teams")
 local CollectionService = game:GetService("CollectionService")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local ServerScriptService = game:GetService("ServerScriptService")
 
 local Camera           = Workspace.CurrentCamera
 local LP               = Players.LocalPlayer
@@ -71,7 +73,6 @@ local YELLOW_DIM = Color3.fromRGB(180, 150, 0)
 local WHITE      = Color3.fromRGB(255, 255, 255)
 local BLACK      = Color3.fromRGB(0, 0, 0)
 local GRAY       = Color3.fromRGB(180, 180, 180)
-local DARK_GRAY  = Color3.fromRGB(40, 40, 45)
 local GREEN      = Color3.fromRGB(75, 195, 95)
 
 local function ApplyRavenTheme()
@@ -164,26 +165,22 @@ local Cfg = {
 local function IsTeammate(player)
     if not player or player == LP then return false end
     
-    -- If team check is disabled, return false
     if not Cfg.TargetUtility.TeamCheck then
         return false
     end
     
-    -- Method 1: Check Team property
     if LP.Team and player.Team then
         if LP.Team == player.Team then
             return true
         end
     end
     
-    -- Method 2: Check TeamColor
     if LP.TeamColor and player.TeamColor then
         if LP.TeamColor == player.TeamColor then
             return true
         end
     end
     
-    -- Method 3: Check via Teams service
     if Teams then
         for _, team in pairs(Teams:GetTeams()) do
             if team:FindFirstChild(LP.Name) and team:FindFirstChild(player.Name) then
@@ -192,7 +189,6 @@ local function IsTeammate(player)
         end
     end
     
-    -- Method 4: Check via Character's BrickColor
     local lpChar = LP.Character
     local targetChar = player.Character
     if lpChar and targetChar then
@@ -207,7 +203,6 @@ local function IsTeammate(player)
         end
     end
     
-    -- Method 5: Check via Tags (CollectionService)
     if lpChar and targetChar then
         if CollectionService:HasTag(lpChar, "Team1") and CollectionService:HasTag(targetChar, "Team1") then
             return true
@@ -217,7 +212,6 @@ local function IsTeammate(player)
         end
     end
     
-    -- Method 6: Check via HumanoidRootPart BrickColor
     local lpRoot = lpChar and lpChar:FindFirstChild("HumanoidRootPart")
     local targetRoot = targetChar and targetChar:FindFirstChild("HumanoidRootPart")
     if lpRoot and targetRoot then
@@ -516,7 +510,6 @@ local function UpdateESP()
     for _, player in ipairs(Players:GetPlayers()) do
         if player == LP then continue end
         
-        -- Skip teammates if TeamCheck is enabled
         if Cfg.TargetUtility.TeamCheck and IsTeammate(player) then
             continue
         end
@@ -736,7 +729,6 @@ end
 local function IsValidTarget(player)
     if not player or player == LP then return false end
     
-    -- Skip teammates if TeamCheck is enabled
     if Cfg.TargetUtility.TeamCheck and IsTeammate(player) then
         return false
     end
@@ -1206,6 +1198,232 @@ RunService:BindToRenderStep("RavenAim", Enum.RenderPriority.Last.Value, function
 end)
 
 -- ================================================
+--  UNLOCK ALL - RIVALS SPECIFIC
+-- ================================================
+
+local function UnlockAllRivals()
+    print("[Raven] 🦅 Starting Unlock All for Rivals...")
+    
+    StarterGui:SetCore("SendNotification", {
+        Title = "Raven Cheats",
+        Text = "🦅 Unlocking all items...",
+        Duration = 2,
+    })
+    
+    task.wait(1)
+    
+    -- ============================================
+    --  METHOD 1: UNLOCK VIA REMOTES
+    -- ============================================
+    local function FireUnlockRemotes()
+        local remotes = ReplicatedStorage:FindFirstChild("RemoteEvents") or ReplicatedStorage
+        for _, remote in pairs(remotes:GetChildren()) do
+            if remote:IsA("RemoteEvent") then
+                local name = remote.Name:lower()
+                if name:find("unlock") or name:find("purchase") or name:find("buy") or 
+                   name:find("claim") or name:find("reward") or name:find("skin") or
+                   name:find("charm") or name:find("wrap") or name:find("finisher") or
+                   name:find("cosmetic") or name:find("item") or name:find("give") then
+                    pcall(function()
+                        remote:FireServer()
+                        remote:FireServer(LP)
+                        print("[Raven] Fired remote: " .. remote.Name)
+                    end)
+                end
+            end
+        end
+    end
+    
+    pcall(FireUnlockRemotes)
+    task.wait(0.5)
+    
+    -- ============================================
+    --  METHOD 2: UNLOCK VIA PLAYER DATA
+    -- ============================================
+    local function UnlockPlayerData()
+        local dataStore = LP:FindFirstChild("DataStore") or LP:FindFirstChild("PlayerData") or LP:FindFirstChild("Data")
+        if dataStore then
+            for _, item in pairs(dataStore:GetChildren()) do
+                local name = item.Name:lower()
+                if name:find("skin") or name:find("charm") or name:find("wrap") or 
+                   name:find("finisher") or name:find("emote") or name:find("badge") or
+                   name:find("cosmetic") or name:find("owned") or name:find("unlock") then
+                    if item:IsA("BoolValue") then
+                        item.Value = true
+                        print("[Raven] Unlocked: " .. item.Name)
+                    elseif item:IsA("NumberValue") or item:IsA("IntValue") then
+                        item.Value = 999999999
+                        print("[Raven] Set max: " .. item.Name)
+                    end
+                end
+            end
+        end
+    end
+    
+    pcall(UnlockPlayerData)
+    task.wait(0.5)
+    
+    -- ============================================
+    --  METHOD 3: UNLOCK VIA INVENTORY
+    -- ============================================
+    local function UnlockInventory()
+        local inventory = LP:FindFirstChild("Inventory") or LP:FindFirstChild("Items")
+        if inventory then
+            for _, item in pairs(inventory:GetChildren()) do
+                if item:IsA("BoolValue") then
+                    item.Value = true
+                    print("[Raven] Unlocked inventory: " .. item.Name)
+                elseif item:IsA("NumberValue") or item:IsA("IntValue") then
+                    item.Value = 999999999
+                    print("[Raven] Set inventory max: " .. item.Name)
+                end
+            end
+        end
+    end
+    
+    pcall(UnlockInventory)
+    task.wait(0.5)
+    
+    -- ============================================
+    --  METHOD 4: FIND AND CLICK SHOP BUTTONS
+    -- ============================================
+    local function ClickShopButtons()
+        local playerGui = LP.PlayerGui
+        if not playerGui then return end
+        
+        for _, gui in pairs(playerGui:GetChildren()) do
+            if gui:IsA("ScreenGui") then
+                for _, btn in pairs(gui:GetDescendants()) do
+                    if btn:IsA("TextButton") or btn:IsA("ImageButton") then
+                        local name = btn.Name:lower()
+                        if name:find("buy") or name:find("purchase") or name:find("unlock") or 
+                           name:find("claim") or name:find("collect") or name:find("reward") then
+                            pcall(function()
+                                btn:Activate()
+                                btn:Click()
+                                btn.MouseButton1Click:Fire()
+                                print("[Raven] Clicked: " .. btn.Name)
+                            end)
+                        end
+                    end
+                end
+            end
+        end
+    end
+    
+    pcall(ClickShopButtons)
+    task.wait(1)
+    
+    -- ============================================
+    --  METHOD 5: SPOOF UNLOCK VIA VALUES
+    -- ============================================
+    local function SpoofUnlockValues()
+        local player = LP
+        for _, item in pairs(player:GetDescendants()) do
+            if item:IsA("BoolValue") then
+                local name = item.Name:lower()
+                if name:find("skin") or name:find("charm") or name:find("wrap") or 
+                   name:find("finisher") or name:find("emote") or name:find("badge") or
+                   name:find("cosmetic") or name:find("owned") or name:find("unlock") then
+                    item.Value = true
+                    print("[Raven] Spoofed: " .. item.Name)
+                end
+            elseif item:IsA("NumberValue") or item:IsA("IntValue") then
+                local name = item.Name:lower()
+                if name:find("coin") or name:find("cash") or name:find("currency") or 
+                   name:find("token") or name:find("gem") or name:find("points") then
+                    item.Value = 999999999
+                    print("[Raven] Set max: " .. item.Name)
+                end
+            end
+        end
+    end
+    
+    pcall(SpoofUnlockValues)
+    task.wait(0.5)
+    
+    -- ============================================
+    --  METHOD 6: CHECK AND CLAIM REWARDS
+    -- ============================================
+    local function ClaimRewards()
+        local playerGui = LP.PlayerGui
+        if not playerGui then return end
+        
+        for _, gui in pairs(playerGui:GetChildren()) do
+            if gui:IsA("ScreenGui") then
+                for _, child in pairs(gui:GetDescendants()) do
+                    if child:IsA("TextButton") or child:IsA("ImageButton") then
+                        local name = child.Name:lower()
+                        if name:find("claim") or name:find("collect") or name:find("reward") or 
+                           name:find("gift") or name:find("accept") or name:find("get") then
+                            pcall(function()
+                                child:Activate()
+                                child:Click()
+                                child.MouseButton1Click:Fire()
+                                print("[Raven] Claimed: " .. child.Name)
+                            end)
+                        end
+                    end
+                end
+            end
+        end
+    end
+    
+    pcall(ClaimRewards)
+    task.wait(1)
+    
+    -- ============================================
+    --  METHOD 7: UNLOCK VIA MODULES
+    -- ============================================
+    local function UnlockModules()
+        local function scan(container)
+            if not container then return end
+            for _, module in pairs(container:GetDescendants()) do
+                if module:IsA("ModuleScript") then
+                    local name = module.Name:lower()
+                    if name:find("unlock") or name:find("shop") or name:find("store") or 
+                       name:find("cosmetic") or name:find("skin") or name:find("inventory") then
+                        pcall(function()
+                            local success, result = pcall(function()
+                                return require(module)
+                            end)
+                            if success and result and type(result) == "table" then
+                                for key, value in pairs(result) do
+                                    if type(key) == "string" and 
+                                       (key:lower():find("unlock") or key:lower():find("give")) then
+                                        if type(value) == "function" then
+                                            pcall(function()
+                                                value(LP)
+                                                print("[Raven] Called: " .. key)
+                                            end)
+                                        end
+                                    end
+                                end
+                            end
+                        end)
+                    end
+                end
+            end
+        end
+        
+        scan(ReplicatedStorage)
+        scan(ServerScriptService)
+    end
+    
+    pcall(UnlockModules)
+    
+    -- Final notification
+    task.wait(1)
+    StarterGui:SetCore("SendNotification", {
+        Title = "Raven Cheats",
+        Text = "🦅 Unlock All completed! Check your inventory.",
+        Duration = 3,
+    })
+    
+    print("[Raven] 🦅 Unlock All completed!")
+end
+
+-- ================================================
 --  USER INTERFACE
 -- ================================================
 local Window = Library:CreateWindow({
@@ -1380,7 +1598,7 @@ AimGroup:AddSlider("AimPred", { Text = "Prediction", Default = Cfg.Aim.Predictio
 Options.AimPred:OnChanged(function(v) Cfg.Aim.Prediction = v end)
 
 -- =============================================
--- UTILS TAB (Team Check Here)
+-- UTILS TAB (Team Check + Unlock All)
 -- =============================================
 local UtilGroup = Tabs.Util:AddLeftGroupbox("Target Teleportation")
 
@@ -1419,6 +1637,22 @@ Toggles.TeamCheckToggle:OnChanged(function(v)
         Text = v and "🦅 Team Check ENABLED" or "🦅 Team Check DISABLED",
         Duration = 1.5,
     })
+end)
+
+-- =============================================
+-- UNLOCK ALL BUTTON IN UTILS TAB
+-- =============================================
+local UnlockGroup = Tabs.Util:AddRightGroupbox("Unlock All")
+
+UnlockGroup:AddButton("🦅 UNLOCK ALL", function()
+    StarterGui:SetCore("SendNotification", {
+        Title = "Raven Cheats",
+        Text = "🦅 Starting Unlock All... Please wait.",
+        Duration = 2,
+    })
+    task.spawn(function()
+        UnlockAllRivals()
+    end)
 end)
 
 -- =============================================
@@ -1492,3 +1726,4 @@ SaveManager:LoadAutoloadConfig()
 -- =============================================
 print("[Raven Cheats] Loaded successfully!")
 print("[Raven Cheats] Press Right Shift to toggle menu.")
+print("[Raven Cheats] Click 'UNLOCK ALL' in the Utils tab to unlock everything!")
