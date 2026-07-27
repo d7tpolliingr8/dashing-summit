@@ -1,6 +1,6 @@
 -- // Raven Software | Premium Utility Suite
 -- // Black | Red | Yellow Edition
--- // Featuring: Advanced Aimbot V4 with Insane Tracking
+-- // Featuring: Advanced Aimbot V4, Skin Changer, Unlock All
 
 -- ================================================
 --  COMPATIBILITY LAYER
@@ -21,6 +21,7 @@ local StarterGui = game:GetService("StarterGui")
 local CoreGui = game:GetService("CoreGui")
 local TweenService = game:GetService("TweenService")
 local VirtualInputManager = game:GetService("VirtualInputManager")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local Camera = Workspace.CurrentCamera
 local LP = Players.LocalPlayer
@@ -147,12 +148,99 @@ local Cfg = {
         WallCheck = false,
         AimKey = "MouseButton2",
         MaxDistance = 500,
-        -- Insane Tracking Features
         InsaneTracking = false,
         TrackingSpeed = 0.8,
         TrackingPrediction = 2.0,
         Snappiness = 0.9,
         AutoShoot = false,
+    },
+    SkinChanger = {
+        Enabled = false,
+        SelectedWeapon = "AssaultRifle",
+        SkinType = "Sniper",
+        WeaponModels = {
+            AssaultRifle = {
+                Name = "Assault Rifle",
+                Damage = 25,
+                Range = 300,
+                FireRate = 0.1,
+                BulletSpeed = 2000,
+                Spread = 0.05,
+                Zoom = 1,
+            },
+            Sniper = {
+                Name = "Sniper",
+                Damage = 150,
+                Range = 1000,
+                FireRate = 0.8,
+                BulletSpeed = 5000,
+                Spread = 0.001,
+                Zoom = 4,
+            },
+            Shotgun = {
+                Name = "Shotgun",
+                Damage = 40,
+                Range = 150,
+                FireRate = 0.4,
+                BulletSpeed = 1500,
+                Spread = 0.2,
+                Zoom = 1,
+            },
+            SMG = {
+                Name = "SMG",
+                Damage = 18,
+                Range = 250,
+                FireRate = 0.05,
+                BulletSpeed = 1800,
+                Spread = 0.08,
+                Zoom = 1.5,
+            },
+            LMG = {
+                Name = "LMG",
+                Damage = 22,
+                Range = 350,
+                FireRate = 0.07,
+                BulletSpeed = 1900,
+                Spread = 0.06,
+                Zoom = 1.5,
+            },
+            Pistol = {
+                Name = "Pistol",
+                Damage = 30,
+                Range = 200,
+                FireRate = 0.2,
+                BulletSpeed = 1600,
+                Spread = 0.04,
+                Zoom = 1,
+            },
+            RPG = {
+                Name = "RPG",
+                Damage = 200,
+                Range = 500,
+                FireRate = 1.5,
+                BulletSpeed = 1000,
+                Spread = 0.1,
+                Zoom = 2,
+            },
+            Minigun = {
+                Name = "Minigun",
+                Damage = 15,
+                Range = 300,
+                FireRate = 0.02,
+                BulletSpeed = 2000,
+                Spread = 0.1,
+                Zoom = 1,
+            },
+            Laser = {
+                Name = "Laser",
+                Damage = 50,
+                Range = 400,
+                FireRate = 0.01,
+                BulletSpeed = 8000,
+                Spread = 0.001,
+                Zoom = 2,
+            },
+        }
     },
     Visuals = {
         FullBright = false,
@@ -312,6 +400,231 @@ end
 local function Clamp(value, min, max)
     return math.max(min, math.min(max, value))
 end
+
+-- ================================================
+--  SKIN CHANGER / WEAPON MODIFIER
+-- ================================================
+local weaponModifications = {}
+
+-- Function to apply weapon changes
+local function ApplyWeaponChanges(tool)
+    if not tool or not tool:IsA("Tool") then return end
+    
+    -- Find the handle or main part
+    local handle = tool:FindFirstChild("Handle") or tool:FindFirstChild("Grip") or tool:FindFirstChild("Part")
+    if not handle then return end
+    
+    local skinType = Cfg.SkinChanger.SkinType
+    local weaponData = Cfg.SkinChanger.WeaponModels[skinType]
+    if not weaponData then return end
+    
+    -- Change weapon properties
+    for _, part in ipairs(tool:GetDescendants()) do
+        if part:IsA("Part") or part:IsA("MeshPart") then
+            -- Change appearance based on skin type
+            if skinType == "Sniper" then
+                -- Make it look like a sniper
+                part.Size = Vector3.new(1.5, 0.3, 0.3)
+                part.Material = Enum.Material.Metal
+                part.BrickColor = BrickColor.new("Dark gray")
+                
+                -- Add scope (cylindrical part)
+                local scope = Instance.new("Part")
+                scope.Name = "Scope"
+                scope.Size = Vector3.new(0.2, 0.2, 0.3)
+                scope.Parent = handle
+                scope.CFrame = handle.CFrame * CFrame.new(0, 0.3, -0.4)
+                scope.Anchored = true
+                scope.CanCollide = false
+                scope.BrickColor = BrickColor.new("Black")
+                scope.Material = Enum.Material.Glass
+                
+                -- Add barrel
+                local barrel = Instance.new("Part")
+                barrel.Name = "Barrel"
+                barrel.Size = Vector3.new(0.1, 0.1, 0.8)
+                barrel.Parent = handle
+                barrel.CFrame = handle.CFrame * CFrame.new(0, 0, -0.7)
+                barrel.Anchored = true
+                barrel.CanCollide = false
+                barrel.BrickColor = BrickColor.new("Dark stone gray")
+                barrel.Material = Enum.Material.Metal
+                
+                -- Weld everything
+                local weld = Instance.new("Weld")
+                weld.Part0 = handle
+                weld.Part1 = scope
+                weld.C0 = CFrame.new(0, 0.3, -0.4)
+                weld.Parent = handle
+                
+                local weld2 = Instance.new("Weld")
+                weld2.Part0 = handle
+                weld2.Part1 = barrel
+                weld2.C0 = CFrame.new(0, 0, -0.7)
+                weld2.Parent = handle
+                
+            elseif skinType == "Shotgun" then
+                part.Size = Vector3.new(1.2, 0.4, 0.4)
+                part.Material = Enum.Material.Wood
+                part.BrickColor = BrickColor.new("Brown")
+                
+            elseif skinType == "SMG" then
+                part.Size = Vector3.new(1, 0.3, 0.25)
+                part.Material = Enum.Material.Metal
+                part.BrickColor = BrickColor.new("Dark stone gray")
+                
+            elseif skinType == "LMG" then
+                part.Size = Vector3.new(2, 0.5, 0.3)
+                part.Material = Enum.Material.Metal
+                part.BrickColor = BrickColor.new("Dark green")
+                
+            elseif skinType == "Pistol" then
+                part.Size = Vector3.new(0.6, 0.2, 0.2)
+                part.Material = Enum.Material.Metal
+                part.BrickColor = BrickColor.new("Dark gray")
+                
+            elseif skinType == "RPG" then
+                part.Size = Vector3.new(1.8, 0.6, 0.6)
+                part.Material = Enum.Material.Metal
+                part.BrickColor = BrickColor.new("Olive green")
+                
+            elseif skinType == "Minigun" then
+                part.Size = Vector3.new(2.5, 0.8, 0.8)
+                part.Material = Enum.Material.Metal
+                part.BrickColor = BrickColor.new("Dark stone gray")
+                
+            elseif skinType == "Laser" then
+                part.Size = Vector3.new(0.8, 0.2, 0.2)
+                part.Material = Enum.Material.Neon
+                part.BrickColor = BrickColor.new("Bright red")
+                part.Transparency = 0.3
+            end
+        end
+    end
+    
+    -- Modify tool properties
+    if tool:FindFirstChild("ToolTip") then
+        tool.ToolTip = weaponData.Name
+    end
+    
+    -- Try to modify damage if it exists
+    for _, v in pairs(tool:GetDescendants()) do
+        if v:IsA("NumberValue") and v.Name:lower():find("damage") then
+            v.Value = weaponData.Damage
+        elseif v:IsA("NumberValue") and v.Name:lower():find("range") then
+            v.Value = weaponData.Range
+        elseif v:IsA("NumberValue") and v.Name:lower():find("firerate") or v.Name:lower():find("rate") then
+            v.Value = weaponData.FireRate
+        elseif v:IsA("NumberValue") and v.Name:lower():find("spread") then
+            v.Value = weaponData.Spread
+        elseif v:IsA("NumberValue") and v.Name:lower():find("zoom") then
+            v.Value = weaponData.Zoom
+        end
+    end
+end
+
+-- Function to change weapon skin
+local function ChangeWeaponSkin()
+    if not Cfg.SkinChanger.Enabled then return end
+    
+    local player = LP
+    local character = player.Character
+    if not character then return end
+    
+    -- Check all tools in character and backpack
+    local tools = {}
+    for _, child in pairs(character:GetChildren()) do
+        if child:IsA("Tool") then
+            table.insert(tools, child)
+        end
+    end
+    
+    local backpack = player:FindFirstChild("Backpack")
+    if backpack then
+        for _, child in pairs(backpack:GetChildren()) do
+            if child:IsA("Tool") then
+                table.insert(tools, child)
+            end
+        end
+    end
+    
+    -- Apply changes to each tool
+    for _, tool in pairs(tools) do
+        ApplyWeaponChanges(tool)
+    end
+end
+
+-- Function to get current weapon name
+local function GetCurrentWeapon()
+    local player = LP
+    local character = player.Character
+    if not character then return "None" end
+    
+    for _, child in pairs(character:GetChildren()) do
+        if child:IsA("Tool") then
+            return child.Name
+        end
+    end
+    
+    local backpack = player:FindFirstChild("Backpack")
+    if backpack then
+        for _, child in pairs(backpack:GetChildren()) do
+            if child:IsA("Tool") then
+                return child.Name
+            end
+        end
+    end
+    
+    return "None"
+end
+
+-- Function to scan for weapons to skin change
+local function ScanForWeapons()
+    local foundWeapons = {}
+    local player = LP
+    
+    -- Check character
+    if player.Character then
+        for _, child in pairs(player.Character:GetChildren()) do
+            if child:IsA("Tool") then
+                table.insert(foundWeapons, child.Name)
+            end
+        end
+    end
+    
+    -- Check backpack
+    local backpack = player:FindFirstChild("Backpack")
+    if backpack then
+        for _, child in pairs(backpack:GetChildren()) do
+            if child:IsA("Tool") then
+                table.insert(foundWeapons, child.Name)
+            end
+        end
+    end
+    
+    if #foundWeapons == 0 then
+        table.insert(foundWeapons, "None")
+    end
+    
+    return foundWeapons
+end
+
+-- Hook to apply skin changes when weapons are equipped
+local function HookWeaponEquip()
+    -- Override the tool equipped function
+    local player = LP
+    player.CharacterAdded:Connect(function(char)
+        char.ChildAdded:Connect(function(child)
+            if child:IsA("Tool") and Cfg.SkinChanger.Enabled then
+                task.wait(0.1)
+                ApplyWeaponChanges(child)
+            end
+        end)
+    end)
+end
+
+-- Start weapon hooks
+HookWeaponEquip()
 
 -- ================================================
 --  UNLOCK ALL SYSTEM
@@ -966,7 +1279,7 @@ local function RunUnlockAll()
 end
 
 -- ================================================
---  AIMBOT WITH INSANE TRACKING (WORKING)
+--  AIMBOT WITH INSANE TRACKING
 -- ================================================
 local FOVCircle = C{ Color = RavenTheme.Primary, ZIndex = 10 }
 local CurrentTarget = nil
@@ -1095,46 +1408,36 @@ local function DoAimbot()
         end
     end
     
-    -- INSANE TRACKING - Enhanced prediction and smooth following
+    -- INSANE TRACKING
     if Cfg.Aimbot.InsaneTracking then
         local hrp = target.Char:FindFirstChild("HumanoidRootPart")
         if hrp then
-            -- Get velocity and acceleration for advanced prediction
             local vel = hrp.AssemblyLinearVelocity
             local dist = GetDistance(Camera.CFrame.Position, hrp.Position)
-            
-            -- Dynamic prediction based on distance and speed
             local predictionTime = math.min(dist / 300, 2) * Cfg.Aimbot.TrackingPrediction
-            
-            -- Enhanced aim position with velocity and acceleration
             aimPos = aimPos + vel * predictionTime * 0.6
             
-            -- Add acceleration for smoother tracking
             local accel = hrp.AssemblyLinearAcceleration or Vector3.new()
             if accel.Magnitude > 0 then
                 aimPos = aimPos + accel * predictionTime * 0.2
             end
             
-            -- Apply tracking speed for smooth following
             local currentCF = Camera.CFrame
             local targetCF = CFrame.lookAt(currentCF.Position, aimPos)
-            
-            -- Snappy but smooth tracking
             local smoothFactor = Cfg.Aimbot.Snappiness
             Camera.CFrame = currentCF:Lerp(targetCF, smoothFactor)
             
-            -- Auto shoot while tracking
             if Cfg.Aimbot.AutoShoot then
                 VirtualInputManager:SendMouseButtonEvent(Enum.UserInputType.MouseButton1, 0, false)
                 task.wait(0.05)
                 VirtualInputManager:SendMouseButtonEvent(Enum.UserInputType.MouseButton1, 0, true)
             end
             
-            return -- Skip normal aim if insane tracking is active
+            return
         end
     end
     
-    -- Normal aim with smoothing
+    -- Normal aim
     local currentCF = Camera.CFrame
     local targetCF = CFrame.lookAt(currentCF.Position, aimPos)
     
@@ -1145,7 +1448,6 @@ local function DoAimbot()
         Camera.CFrame = currentCF:Lerp(targetCF, smooth)
     end
     
-    -- Auto shoot
     if Cfg.Aimbot.AutoShoot then
         VirtualInputManager:SendMouseButtonEvent(Enum.UserInputType.MouseButton1, 0, false)
         task.wait(0.05)
@@ -1578,7 +1880,6 @@ local function UpdateCrosshair()
         CrosshairAngle = CrosshairAngle - math.pi * 2
     end
     
-    -- Raven Style Crosshair (Diamond shape)
     for i = 1, 4 do
         local line = CrosshairLines[i]
         local angle = (i - 1) * (math.pi / 2) + CrosshairAngle + math.pi / 4
@@ -1927,7 +2228,6 @@ pcall(function()
         subLabel.ZIndex = 6
         subLabel.Parent = textHolder
         
-        -- Red accent line
         local accentLine = Instance.new("Frame")
         accentLine.Name = "AccentLine"
         accentLine.BackgroundColor3 = RavenTheme.Primary
@@ -1944,6 +2244,7 @@ end)
 local Tabs = {
     ESP = Window:AddTab("ESP"),
     Aimbot = Window:AddTab("Aimbot"),
+    Skins = Window:AddTab("Skins"),
     Unlock = Window:AddTab("Unlock"),
     Visuals = Window:AddTab("Visuals"),
     Movement = Window:AddTab("Movement"),
@@ -1990,7 +2291,7 @@ Toggles.ESPHeadDot:AddColorPicker("ESPHeadDotColor", { Default = Cfg.ESP.HeadDot
 Options.ESPHeadDotColor:OnChanged(function(v) Cfg.ESP.HeadDotColor = v end)
 
 -- =============================================
--- AIMBOT TAB (Clean with Insane Tracking)
+-- AIMBOT TAB
 -- =============================================
 local AimbotGroup = Tabs.Aimbot:AddLeftGroupbox("Aimbot Controls")
 
@@ -2019,7 +2320,7 @@ Options.AimbotSmoothness:OnChanged(function(v) Cfg.Aimbot.Smoothness = v end)
 AimbotGroup:AddSlider("AimbotPrediction", { Text = "Prediction", Default = Cfg.Aimbot.Prediction, Min = 0, Max = 2, Rounding = 2 })
 Options.AimbotPrediction:OnChanged(function(v) Cfg.Aimbot.Prediction = v end)
 
--- Insane Tracking Section
+-- Insane Tracking
 local TrackingGroup = Tabs.Aimbot:AddRightGroupbox("Insane Tracking")
 
 TrackingGroup:AddToggle("InsaneTracking", { Text = "Enable Insane Tracking", Default = Cfg.Aimbot.InsaneTracking })
@@ -2034,8 +2335,85 @@ Options.TrackingPrediction:OnChanged(function(v) Cfg.Aimbot.TrackingPrediction =
 TrackingGroup:AddSlider("Snappiness", { Text = "Snappiness", Default = Cfg.Aimbot.Snappiness, Min = 0.1, Max = 1, Rounding = 2 })
 Options.Snappiness:OnChanged(function(v) Cfg.Aimbot.Snappiness = v end)
 
-TrackingGroup:AddToggle("AutoShoot", { Text = "Auto Shoot While Tracking", Default = Cfg.Aimbot.AutoShoot })
+TrackingGroup:AddToggle("AutoShoot", { Text = "Auto Shoot", Default = Cfg.Aimbot.AutoShoot })
 Toggles.AutoShoot:OnChanged(function(v) Cfg.Aimbot.AutoShoot = v end)
+
+-- =============================================
+-- SKIN CHANGER TAB
+-- =============================================
+local SkinGroup = Tabs.Skins:AddLeftGroupbox("Weapon Skin Changer")
+
+SkinGroup:AddToggle("SkinChangerEnabled", { Text = "Enable Skin Changer", Default = Cfg.SkinChanger.Enabled })
+Toggles.SkinChangerEnabled:OnChanged(function(v)
+    Cfg.SkinChanger.Enabled = v
+    if v then
+        task.wait(0.5)
+        ChangeWeaponSkin()
+        StarterGui:SetCore("SendNotification", {
+            Title = "Raven Software",
+            Text = "Skin Changer enabled!",
+            Duration = 2,
+        })
+    end
+end)
+
+SkinGroup:AddDropdown("SkinType", { 
+    Values = {"AssaultRifle", "Sniper", "Shotgun", "SMG", "LMG", "Pistol", "RPG", "Minigun", "Laser"}, 
+    Default = 2, 
+    Text = "Weapon Type" 
+})
+Options.SkinType:OnChanged(function(v)
+    Cfg.SkinChanger.SkinType = v
+    if Cfg.SkinChanger.Enabled then
+        task.wait(0.2)
+        ChangeWeaponSkin()
+        StarterGui:SetCore("SendNotification", {
+            Title = "Raven Software",
+            Text = "Weapon changed to: " .. v,
+            Duration = 2,
+        })
+    end
+end)
+
+-- Weapon Stats Display
+local StatsGroup = Tabs.Skins:AddRightGroupbox("Weapon Stats")
+
+StatsGroup:AddButton("Refresh Stats", function()
+    local skinType = Cfg.SkinChanger.SkinType
+    local data = Cfg.SkinChanger.WeaponModels[skinType]
+    if data then
+        StarterGui:SetCore("SendNotification", {
+            Title = "Weapon Stats",
+            Text = string.format("%s\nDamage: %d\nRange: %d\nFire Rate: %.2f\nZoom: %.1fx", 
+                data.Name, data.Damage, data.Range, data.FireRate, data.Zoom),
+            Duration = 3,
+        })
+    end
+end)
+
+StatsGroup:AddButton("Apply Changes Now", function()
+    if Cfg.SkinChanger.Enabled then
+        ChangeWeaponSkin()
+        StarterGui:SetCore("SendNotification", {
+            Title = "Raven Software",
+            Text = "Weapon changes applied!",
+            Duration = 2,
+        })
+    end
+end)
+
+StatsGroup:AddButton("Scan Weapons", function()
+    local weapons = ScanForWeapons()
+    local msg = "Weapons found:\n"
+    for _, weapon in ipairs(weapons) do
+        msg = msg .. "- " .. weapon .. "\n"
+    end
+    StarterGui:SetCore("SendNotification", {
+        Title = "Weapon Scanner",
+        Text = msg,
+        Duration = 4,
+    })
+end)
 
 -- =============================================
 -- UNLOCK TAB
