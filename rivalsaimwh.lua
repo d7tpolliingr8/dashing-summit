@@ -1,10 +1,13 @@
 --[[
-    Skelly Hub Rivals Script v1.0
-    Skeleton Theme Menu
+    Skelly Hub Rivals Script v4.0
+    Skeleton Theme - Expanded Menu
     Press Right Shift to toggle
 ]]
 
--- ==================== SERVICES ====================
+-- ======================================================================
+-- SERVICES
+-- ======================================================================
+
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 local UserInputService = game:GetService("UserInputService")
@@ -13,31 +16,105 @@ local Camera = workspace.CurrentCamera
 local CoreGui = game:GetService("CoreGui")
 local Lighting = game:GetService("Lighting")
 local VirtualUser = game:GetService("VirtualUser")
+local Workspace = game:GetService("Workspace")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
--- ==================== CONFIG ====================
+-- ======================================================================
+-- CONFIGURATION
+-- ======================================================================
+
 local Config = {
+    -- Aimbot Settings
     Aimbot = {
         Enabled = false,
+        Silent = false,
         AimKey = Enum.UserInputType.MouseButton2,
         FOV = 120,
         Smoothness = 0.3,
         AimPart = "Head",
         MaxDistance = 500,
         TeamCheck = true,
+        VisibleCheck = false,
         ShowFOVCircle = true,
+        -- Advanced
+        Prediction = false,
+        PredictionAmount = 0.2,
+        HitChance = 100,
+        RaycastCheck = false,
     },
-    ESP = {Enabled = false, ShowBoxes = true, ShowNames = true, ShowHealth = true, ShowDistance = true, TeamCheck = true, MaxDistance = 1000},
-    Player = {InfiniteJump = false, Fly = false, FlySpeed = 50, WalkSpeed = 16, JumpPower = 50, GodMode = false, NoFallDamage = false, FullBright = false, AntiAFK = false},
-    Menu = {Key = Enum.KeyCode.RightShift}
+    
+    -- ESP Settings
+    ESP = {
+        Enabled = false,
+        ShowBoxes = true,
+        BoxColor = {100, 100, 140},
+        ShowNames = true,
+        NameColor = {255, 255, 255},
+        ShowHealth = true,
+        HealthColor = {0, 200, 0},
+        ShowDistance = true,
+        DistanceColor = {100, 100, 140},
+        ShowTracers = false,
+        TracerColor = {100, 100, 140},
+        TeamCheck = true,
+        MaxDistance = 1000,
+        ShowSkeletons = false,
+        ShowChams = false,
+    },
+    
+    -- Player Mods
+    Player = {
+        InfiniteJump = false,
+        Fly = false,
+        FlySpeed = 50,
+        WalkSpeed = 16,
+        JumpPower = 50,
+        GodMode = false,
+        NoFallDamage = false,
+        FullBright = false,
+        AntiAFK = false,
+        AutoFarm = false,
+        NoClip = false,
+        Teleport = false,
+        -- Combat Mods
+        InstantKill = false,
+        AutoBlock = false,
+        AutoParry = false,
+    },
+    
+    -- Visual Settings
+    Visual = {
+        MenuKey = Enum.KeyCode.RightShift,
+        Watermark = "💀 skelly-hub.lol",
+        ShowWatermark = true,
+        Theme = "Dark",
+    },
+    
+    -- Misc Settings
+    Misc = {
+        AutoCollect = false,
+        AutoQuest = false,
+        AutoAccept = false,
+    }
 }
 
--- Aim key state
+-- ======================================================================
+-- STATE VARIABLES
+-- ======================================================================
+
 local aimKeyHeld = false
-
--- FOV Circle
 local fovCircle = nil
+local menuOpen = false
+local menuGui = nil
+local currentTab = "Aimbot"
+local espActive = false
+local aimbotActive = false
+local silentAimActive = false
 
--- ==================== UTILITY ====================
+-- ======================================================================
+-- UTILITY FUNCTIONS
+-- ======================================================================
+
 local function IsAlive(player)
     if not player or not player.Character then return false end
     local h = player.Character:FindFirstChild("Humanoid")
@@ -46,23 +123,53 @@ end
 
 local function GetRootPart(character)
     if not character then return nil end
-    return character:FindFirstChild("HumanoidRootPart") or character:FindFirstChild("Torso") or character:FindFirstChild("UpperTorso")
+    return character:FindFirstChild("HumanoidRootPart") or 
+           character:FindFirstChild("Torso") or 
+           character:FindFirstChild("UpperTorso")
 end
 
 local function GetAimPart(character, partName)
     if not character then return nil end
     if partName == "Head" then return character:FindFirstChild("Head") end
     if partName == "Body" then return character:FindFirstChild("UpperTorso") or character:FindFirstChild("Torso") end
+    if partName == "HumanoidRootPart" then return GetRootPart(character) end
     return character:FindFirstChild(partName) or GetRootPart(character)
 end
 
 local function IsTeammate(player)
     if not LocalPlayer or not player then return false end
     if LocalPlayer.Team and player.Team then return LocalPlayer.Team == player.Team end
+    if LocalPlayer.TeamColor and player.TeamColor then return LocalPlayer.TeamColor == player.TeamColor end
     return false
 end
 
--- ==================== FOV CIRCLE ====================
+local function GetClosestPlayer()
+    local best = nil
+    local bestDist = math.huge
+    local char = LocalPlayer.Character
+    if not char then return nil end
+    local root = GetRootPart(char)
+    if not root then return nil end
+    
+    for _, player in pairs(Players:GetPlayers()) do
+        if player ~= LocalPlayer and IsAlive(player) then
+            local pRoot = GetRootPart(player.Character)
+            if pRoot then
+                local dist = (root.Position - pRoot.Position).Magnitude
+                if dist < bestDist then
+                    bestDist = dist
+                    best = player
+                end
+            end
+        end
+    end
+    return best
+end
+
+-- ======================================================================
+-- FOV CIRCLE
+-- ======================================================================
+
 local function UpdateFOVCircle()
     if Config.Aimbot.ShowFOVCircle and Config.Aimbot.Enabled then
         if not fovCircle then
@@ -74,7 +181,6 @@ local function UpdateFOVCircle()
             fovCircle.Visible = true
             fovCircle.Filled = false
         end
-        
         local viewport = Camera.ViewportSize
         local center = Vector2.new(viewport.X / 2, viewport.Y / 2)
         fovCircle.Position = center
@@ -87,9 +193,9 @@ local function UpdateFOVCircle()
     end
 end
 
--- ==================== AIMBOT ====================
-local aimbotActive = false
-local silentAimActive = false
+-- ======================================================================
+-- AIMBOT CORE
+-- ======================================================================
 
 local function GetBestTarget()
     local best = nil
@@ -106,6 +212,13 @@ local function GetBestTarget()
             local aimPart = GetAimPart(player.Character, Config.Aimbot.AimPart)
             if not aimPart then continue end
             
+            -- Visible Check
+            if Config.Aimbot.VisibleCheck then
+                local ray = Ray.new(camPos, (aimPart.Position - camPos).Unit * maxDist)
+                local hit = Workspace:FindPartOnRay(ray, LocalPlayer.Character)
+                if hit and hit.Parent ~= player.Character then continue end
+            end
+            
             local sp, onScreen = Camera:WorldToScreenPoint(aimPart.Position)
             if not onScreen then continue end
             
@@ -114,6 +227,12 @@ local function GetBestTarget()
             
             local wd = (camPos - aimPart.Position).Magnitude
             if wd > maxDist then continue end
+            
+            -- Hit Chance (Random miss)
+            if Config.Aimbot.HitChance < 100 then
+                local chance = math.random(1, 100)
+                if chance > Config.Aimbot.HitChance then continue end
+            end
             
             if d < bestScore then
                 bestScore = d
@@ -131,6 +250,15 @@ local function DoAimbot()
     if not target then return end
     
     local targetPos = target.AimPart.Position
+    
+    -- Prediction
+    if Config.Aimbot.Prediction then
+        local velocity = target.AimPart.Velocity
+        if velocity then
+            targetPos = targetPos + (velocity * Config.Aimbot.PredictionAmount)
+        end
+    end
+    
     local camPos = Camera.CFrame.Position
     local dir = (targetPos - camPos).Unit
     
@@ -152,7 +280,10 @@ local function DoSilentAim()
     if mouse then mouse.Hit = CFrame.new(target.AimPart.Position) end
 end
 
--- ==================== INPUT HANDLING ====================
+-- ======================================================================
+-- INPUT HANDLING
+-- ======================================================================
+
 UserInputService.InputBegan:Connect(function(input, gameProcessed)
     if gameProcessed then return end
     
@@ -160,7 +291,7 @@ UserInputService.InputBegan:Connect(function(input, gameProcessed)
         aimKeyHeld = true
     end
     
-    if input.KeyCode == Config.Menu.Key then
+    if input.KeyCode == Config.Visual.MenuKey then
         ToggleMenu()
     end
 end)
@@ -172,8 +303,10 @@ UserInputService.InputEnded:Connect(function(input, gameProcessed)
     end
 end)
 
--- ==================== ESP ====================
-local espActive = false
+-- ======================================================================
+-- ESP
+-- ======================================================================
+
 local espDrawings = {}
 local espObjects = {}
 local drawingAvailable = pcall(function() return Drawing.new("Square") end)
@@ -225,9 +358,15 @@ local function DrawESPPlayer(player)
         size = math.abs(sp.Y - hp.Y) * 2 or 3
     end
     
+    -- Box
     if Config.ESP.ShowBoxes then
         if not esp.Box then
-            esp.Box = CreateESPDrawing("Square", {Color = Color3.fromRGB(100, 100, 140), Thickness = 2, Filled = false, Transparency = 1})
+            esp.Box = CreateESPDrawing("Square", {
+                Color = Color3.fromRGB(Config.ESP.BoxColor[1] or 100, Config.ESP.BoxColor[2] or 100, Config.ESP.BoxColor[3] or 140),
+                Thickness = 2,
+                Filled = false,
+                Transparency = 1
+            })
         end
         if esp.Box then
             esp.Box.Position = Vector2.new(sp.X - size*0.3, sp.Y - size*0.5)
@@ -236,9 +375,17 @@ local function DrawESPPlayer(player)
         end
     end
     
+    -- Name
     if Config.ESP.ShowNames then
         if not esp.Name then
-            esp.Name = CreateESPDrawing("Text", {Color = Color3.new(1,1,1), Size = 14, Center = true, Outline = true, OutlineColor = Color3.new(0,0,0), Font = Drawing.Fonts.UI})
+            esp.Name = CreateESPDrawing("Text", {
+                Color = Color3.fromRGB(Config.ESP.NameColor[1] or 255, Config.ESP.NameColor[2] or 255, Config.ESP.NameColor[3] or 255),
+                Size = 14,
+                Center = true,
+                Outline = true,
+                OutlineColor = Color3.new(0,0,0),
+                Font = Drawing.Fonts.UI
+            })
         end
         if esp.Name then
             esp.Name.Text = player.DisplayName or player.Name
@@ -247,9 +394,14 @@ local function DrawESPPlayer(player)
         end
     end
     
+    -- Health
     if Config.ESP.ShowHealth then
         if not esp.Health then
-            esp.Health = CreateESPDrawing("Square", {Color = Color3.fromRGB(0, 200, 0), Thickness = 2, Filled = true})
+            esp.Health = CreateESPDrawing("Square", {
+                Color = Color3.fromRGB(Config.ESP.HealthColor[1] or 0, Config.ESP.HealthColor[2] or 200, Config.ESP.HealthColor[3] or 0),
+                Thickness = 2,
+                Filled = true
+            })
         end
         if esp.Health then
             local hp = humanoid.Health / humanoid.MaxHealth
@@ -259,18 +411,42 @@ local function DrawESPPlayer(player)
             esp.Health.Visible = true
             if hp < 0.3 then esp.Health.Color = Color3.new(1,0,0)
             elseif hp < 0.6 then esp.Health.Color = Color3.new(1,1,0)
-            else esp.Health.Color = Color3.fromRGB(0, 200, 0) end
+            else esp.Health.Color = Color3.fromRGB(Config.ESP.HealthColor[1] or 0, Config.ESP.HealthColor[2] or 200, Config.ESP.HealthColor[3] or 0) end
         end
     end
     
+    -- Distance
     if Config.ESP.ShowDistance then
         if not esp.Dist then
-            esp.Dist = CreateESPDrawing("Text", {Color = Color3.fromRGB(100, 100, 140), Size = 12, Center = true, Outline = true, OutlineColor = Color3.new(0,0,0), Font = Drawing.Fonts.UI})
+            esp.Dist = CreateESPDrawing("Text", {
+                Color = Color3.fromRGB(Config.ESP.DistanceColor[1] or 100, Config.ESP.DistanceColor[2] or 100, Config.ESP.DistanceColor[3] or 140),
+                Size = 12,
+                Center = true,
+                Outline = true,
+                OutlineColor = Color3.new(0,0,0),
+                Font = Drawing.Fonts.UI
+            })
         end
         if esp.Dist then
             esp.Dist.Text = string.format("%.0fm", distance / 3)
             esp.Dist.Position = Vector2.new(sp.X, sp.Y + size*0.55 + 5)
             esp.Dist.Visible = true
+        end
+    end
+    
+    -- Tracers
+    if Config.ESP.ShowTracers then
+        if not esp.Tracer then
+            esp.Tracer = CreateESPDrawing("Line", {
+                Color = Color3.fromRGB(Config.ESP.TracerColor[1] or 100, Config.ESP.TracerColor[2] or 100, Config.ESP.TracerColor[3] or 140),
+                Thickness = 1
+            })
+        end
+        if esp.Tracer then
+            local center = Vector2.new(Camera.ViewportSize.X / 2, Camera.ViewportSize.Y / 2)
+            esp.Tracer.From = center
+            esp.Tracer.To = Vector2.new(sp.X, sp.Y)
+            esp.Tracer.Visible = true
         end
     end
 end
@@ -282,7 +458,11 @@ local function UpdateESP()
     for _, player in pairs(Players:GetPlayers()) do DrawESPPlayer(player) end
 end
 
--- ==================== PLAYER MODS ====================
+-- ======================================================================
+-- PLAYER MODS
+-- ======================================================================
+
+-- Infinite Jump
 UserInputService.JumpRequest:Connect(function()
     if Config.Player.InfiniteJump and LocalPlayer.Character then
         local h = LocalPlayer.Character:FindFirstChild("Humanoid")
@@ -290,13 +470,13 @@ UserInputService.JumpRequest:Connect(function()
     end
 end)
 
+-- Fly
 local flying = false
 local flyVelocity, flyGyro
 
 RunService.Heartbeat:Connect(function()
     local character = LocalPlayer.Character
     if not character then return end
-    
     if Config.Player.Fly then
         local root = GetRootPart(character)
         if root then
@@ -325,6 +505,7 @@ RunService.Heartbeat:Connect(function()
     end
 end)
 
+-- God Mode & No Fall Damage
 RunService.Heartbeat:Connect(function()
     local character = LocalPlayer.Character
     if not character then return end
@@ -348,6 +529,7 @@ RunService.Heartbeat:Connect(function()
     end
 end)
 
+-- Anti AFK
 local function AntiAFK()
     if Config.Player.AntiAFK then
         local vu = VirtualUser
@@ -357,114 +539,42 @@ local function AntiAFK()
 end
 RunService.Heartbeat:Connect(AntiAFK)
 
--- ==================== MENU ====================
-local menuOpen = false
-local menuGui = nil
-local currentTab = "Aimbot"
-
--- ==================== MENU UI HELPERS ====================
-local function CreateToggleButton(parent, text, callback)
-    local btn = Instance.new("TextButton")
-    btn.Size = UDim2.new(0.9, 0, 0, 35)
-    btn.Position = UDim2.new(0.05, 0, 0, 0)
-    btn.BackgroundColor3 = Color3.fromRGB(30, 30, 50)
-    btn.TextColor3 = Color3.new(1, 1, 1)
-    btn.TextSize = 14
-    btn.Font = Enum.Font.Gotham
-    btn.Text = text .. " [OFF]"
-    btn.Parent = parent
-    
-    local state = false
-    btn.MouseButton1Click:Connect(function()
-        state = not state
-        btn.Text = text .. (state and " [ON]" or " [OFF]")
-        btn.BackgroundColor3 = state and Color3.fromRGB(0, 100, 0) or Color3.fromRGB(30, 30, 50)
-        if callback then callback(state) end
-    end)
-    return btn
-end
-
-local function CreateLabel(parent, text, color, size)
-    local label = Instance.new("TextLabel")
-    label.Size = UDim2.new(0.9, 0, 0, 25)
-    label.Position = UDim2.new(0.05, 0, 0, 0)
-    label.BackgroundTransparency = 1
-    label.Text = text
-    label.TextColor3 = color or Color3.fromRGB(180, 180, 200)
-    label.TextSize = size or 14
-    label.Font = Enum.Font.GothamBold
-    label.TextXAlignment = Enum.TextXAlignment.Left
-    label.Parent = parent
-    return label
-end
-
--- ==================== AIM KEY SELECTOR ====================
-local aimKeyOptions = {
-    {name = "Left Click", value = Enum.UserInputType.MouseButton1},
-    {name = "Right Click", value = Enum.UserInputType.MouseButton2},
-    {name = "Middle Click", value = Enum.UserInputType.MouseButton3},
-}
-
-local function CreateAimKeySelector(parent)
-    local container = Instance.new("Frame")
-    container.Size = UDim2.new(1, 0, 0, 60)
-    container.BackgroundTransparency = 1
-    container.Parent = parent
-    
-    local label = Instance.new("TextLabel")
-    label.Size = UDim2.new(1, -10, 0, 25)
-    label.Position = UDim2.new(0.05, 0, 0, 0)
-    label.BackgroundTransparency = 1
-    label.Text = "💀 Aim Key: " .. getAimKeyName(Config.Aimbot.AimKey)
-    label.TextColor3 = Color3.fromRGB(180, 180, 200)
-    label.TextSize = 14
-    label.Font = Enum.Font.GothamBold
-    label.TextXAlignment = Enum.TextXAlignment.Left
-    label.Parent = container
-    
-    local btnContainer = Instance.new("Frame")
-    btnContainer.Size = UDim2.new(1, 0, 0, 30)
-    btnContainer.Position = UDim2.new(0, 0, 0, 28)
-    btnContainer.BackgroundTransparency = 1
-    btnContainer.Parent = container
-    
-    for i, option in ipairs(aimKeyOptions) do
-        local btn = Instance.new("TextButton")
-        btn.Size = UDim2.new(0.3, 0, 1, 0)
-        btn.Position = UDim2.new((i - 1) * 0.33, 0, 0, 0)
-        btn.BackgroundColor3 = (Config.Aimbot.AimKey == option.value) and Color3.fromRGB(0, 100, 0) or Color3.fromRGB(30, 30, 50)
-        btn.TextColor3 = Color3.new(1, 1, 1)
-        btn.TextSize = 12
-        btn.Font = Enum.Font.Gotham
-        btn.Text = option.name
-        btn.Parent = btnContainer
-        
-        btn.MouseButton1Click:Connect(function()
-            Config.Aimbot.AimKey = option.value
-            label.Text = "💀 Aim Key: " .. option.name
-            for _, child in pairs(btnContainer:GetChildren()) do
-                if child:IsA("TextButton") then
-                    child.BackgroundColor3 = Color3.fromRGB(30, 30, 50)
+-- Auto Farm
+local function AutoFarm()
+    if not Config.Player.AutoFarm then return end
+    for _, item in pairs(Workspace:GetDescendants()) do
+        if item:IsA("Part") and (item.Name:lower():find("collect") or item.Name:lower():find("coin") or item.Name:lower():find("resource")) then
+            local char = LocalPlayer.Character
+            if char and char:FindFirstChild("HumanoidRootPart") then
+                local root = char.HumanoidRootPart
+                local distance = (root.Position - item.Position).Magnitude
+                if distance < 20 then
+                    root.CFrame = CFrame.new(item.Position + Vector3.new(0, 3, 0))
                 end
             end
-            btn.BackgroundColor3 = Color3.fromRGB(0, 100, 0)
-            print("[SkellyHub] Aim key set to: " .. option.name)
-        end)
-    end
-    
-    return container
-end
-
-local function getAimKeyName(key)
-    for _, option in ipairs(aimKeyOptions) do
-        if option.value == key then
-            return option.name
         end
     end
-    return "Right Click"
 end
+RunService.Heartbeat:Connect(AutoFarm)
 
--- ==================== CREATE MENU ====================
+-- No Clip
+RunService.Heartbeat:Connect(function()
+    if Config.Player.NoClip then
+        local char = LocalPlayer.Character
+        if char then
+            for _, part in pairs(char:GetDescendants()) do
+                if part:IsA("BasePart") then
+                    part.CanCollide = false
+                end
+            end
+        end
+    end
+end)
+
+-- ======================================================================
+-- MENU - SIMPLE WORKING VERSION
+-- ======================================================================
+
 local function CreateMenu()
     if menuGui then
         pcall(function() menuGui:Destroy() end)
@@ -482,8 +592,8 @@ local function CreateMenu()
     
     -- Main Frame
     local main = Instance.new("Frame")
-    main.Size = UDim2.new(0, 480, 0, 480)
-    main.Position = UDim2.new(0.5, -240, 0.5, -240)
+    main.Size = UDim2.new(0, 450, 0, 480)
+    main.Position = UDim2.new(0.5, -225, 0.5, -240)
     main.BackgroundColor3 = Color3.fromRGB(10, 10, 20)
     main.BackgroundTransparency = 0.05
     main.BorderSizePixel = 1
@@ -491,58 +601,46 @@ local function CreateMenu()
     main.Parent = menuGui
     
     local mainCorner = Instance.new("UICorner")
-    mainCorner.CornerRadius = UDim.new(0, 14)
+    mainCorner.CornerRadius = UDim.new(0, 12)
     mainCorner.Parent = main
     
-    -- Title Bar
+    -- Title
     local titleBar = Instance.new("Frame")
-    titleBar.Size = UDim2.new(1, 0, 0, 50)
+    titleBar.Size = UDim2.new(1, 0, 0, 45)
     titleBar.BackgroundColor3 = Color3.fromRGB(15, 15, 28)
     titleBar.BackgroundTransparency = 0.3
     titleBar.BorderSizePixel = 0
     titleBar.Parent = main
     
     local titleCorner = Instance.new("UICorner")
-    titleCorner.CornerRadius = UDim.new(0, 14)
+    titleCorner.CornerRadius = UDim.new(0, 12)
     titleCorner.Parent = titleBar
     
-    -- Skeleton Icon in Title
-    local titleIcon = Instance.new("TextLabel")
-    titleIcon.Size = UDim2.new(0, 35, 0, 35)
-    titleIcon.Position = UDim2.new(0.02, 0, 0.08, 0)
-    titleIcon.BackgroundTransparency = 1
-    titleIcon.Text = "💀"
-    titleIcon.TextColor3 = Color3.fromRGB(200, 200, 200)
-    titleIcon.TextSize = 28
-    titleIcon.Font = Enum.Font.Gotham
-    titleIcon.Parent = titleBar
-    
     local title = Instance.new("TextLabel")
-    title.Size = UDim2.new(0.6, 0, 1, 0)
-    title.Position = UDim2.new(0.1, 0, 0, 0)
+    title.Size = UDim2.new(1, 0, 1, 0)
     title.BackgroundTransparency = 1
-    title.Text = "SKELLY HUB"
+    title.Text = "💀 SKELLY HUB"
     title.TextColor3 = Color3.new(1, 1, 1)
     title.TextSize = 22
     title.Font = Enum.Font.GothamBold
-    title.TextXAlignment = Enum.TextXAlignment.Left
     title.Parent = titleBar
     
-    local subTitle = Instance.new("TextLabel")
-    subTitle.Size = UDim2.new(0.3, 0, 1, 0)
-    subTitle.Position = UDim2.new(0.7, 0, 0, 0)
-    subTitle.BackgroundTransparency = 1
-    subTitle.Text = "RIVALS v1.0"
-    subTitle.TextColor3 = Color3.fromRGB(100, 100, 120)
-    subTitle.TextSize = 12
-    subTitle.Font = Enum.Font.Gotham
-    subTitle.TextXAlignment = Enum.TextXAlignment.Right
-    subTitle.Parent = titleBar
+    -- Version
+    local versionLabel = Instance.new("TextLabel")
+    versionLabel.Size = UDim2.new(0.3, 0, 1, 0)
+    versionLabel.Position = UDim2.new(0.7, 0, 0, 0)
+    versionLabel.BackgroundTransparency = 1
+    versionLabel.Text = "v4.0"
+    versionLabel.TextColor3 = Color3.fromRGB(100, 100, 120)
+    versionLabel.TextSize = 12
+    versionLabel.Font = Enum.Font.Gotham
+    versionLabel.TextXAlignment = Enum.TextXAlignment.Right
+    versionLabel.Parent = titleBar
     
-    -- Tab Bar
+    -- Tabs
     local tabBar = Instance.new("Frame")
-    tabBar.Size = UDim2.new(1, 0, 0, 35)
-    tabBar.Position = UDim2.new(0, 0, 0, 50)
+    tabBar.Size = UDim2.new(1, 0, 0, 30)
+    tabBar.Position = UDim2.new(0, 0, 0, 45)
     tabBar.BackgroundColor3 = Color3.fromRGB(15, 15, 28)
     tabBar.BackgroundTransparency = 0.3
     tabBar.BorderSizePixel = 0
@@ -558,7 +656,7 @@ local function CreateMenu()
         btn.BackgroundColor3 = (currentTab == tabName) and Color3.fromRGB(40, 40, 60) or Color3.fromRGB(20, 20, 35)
         btn.BackgroundTransparency = (currentTab == tabName) and 0.3 or 0.6
         btn.TextColor3 = Color3.new(1, 1, 1)
-        btn.TextSize = 13
+        btn.TextSize = 12
         btn.Font = Enum.Font.GothamBold
         btn.Text = tabName
         btn.Parent = tabBar
@@ -582,8 +680,8 @@ local function CreateMenu()
     
     -- Content Container
     local contentContainer = Instance.new("ScrollingFrame")
-    contentContainer.Size = UDim2.new(1, -20, 1, -115)
-    contentContainer.Position = UDim2.new(0, 10, 0, 90)
+    contentContainer.Size = UDim2.new(1, -20, 1, -105)
+    contentContainer.Position = UDim2.new(0, 10, 0, 80)
     contentContainer.BackgroundTransparency = 1
     contentContainer.CanvasSize = UDim2.new(0, 0, 0, 0)
     contentContainer.ScrollBarThickness = 6
@@ -598,12 +696,12 @@ local function CreateMenu()
     
     -- Close Button
     local closeBtn = Instance.new("TextButton")
-    closeBtn.Size = UDim2.new(0.2, 0, 0, 35)
-    closeBtn.Position = UDim2.new(0.4, 0, 1, -42)
+    closeBtn.Size = UDim2.new(0.2, 0, 0, 32)
+    closeBtn.Position = UDim2.new(0.4, 0, 1, -38)
     closeBtn.BackgroundColor3 = Color3.fromRGB(30, 30, 50)
     closeBtn.BackgroundTransparency = 0.3
     closeBtn.TextColor3 = Color3.new(1, 1, 1)
-    closeBtn.TextSize = 14
+    closeBtn.TextSize = 13
     closeBtn.Font = Enum.Font.GothamBold
     closeBtn.Text = "CLOSE"
     closeBtn.Parent = main
@@ -617,7 +715,119 @@ local function CreateMenu()
         if menuGui then menuGui.Enabled = false end
     end)
     
-    -- ==================== REFRESH CONTENT ====================
+    -- ======================================================================
+    -- CONTENT HELPERS
+    -- ======================================================================
+    
+    local function AddSectionLabel(text)
+        local label = Instance.new("TextLabel")
+        label.Size = UDim2.new(1, -10, 0, 25)
+        label.BackgroundTransparency = 1
+        label.Text = "💀 " .. text
+        label.TextColor3 = Color3.fromRGB(150, 150, 170)
+        label.TextSize = 13
+        label.Font = Enum.Font.GothamBold
+        label.TextXAlignment = Enum.TextXAlignment.Left
+        label.Parent = contentContainer
+        return label
+    end
+    
+    local function AddToggle(text, callback)
+        local btn = Instance.new("TextButton")
+        btn.Size = UDim2.new(1, -10, 0, 32)
+        btn.BackgroundColor3 = Color3.fromRGB(30, 30, 50)
+        btn.TextColor3 = Color3.new(1, 1, 1)
+        btn.TextSize = 13
+        btn.Font = Enum.Font.Gotham
+        btn.Text = text .. " [OFF]"
+        btn.Parent = contentContainer
+        
+        local state = false
+        btn.MouseButton1Click:Connect(function()
+            state = not state
+            btn.Text = text .. (state and " [ON]" or " [OFF]")
+            btn.BackgroundColor3 = state and Color3.fromRGB(0, 100, 0) or Color3.fromRGB(30, 30, 50)
+            if callback then callback(state) end
+        end)
+        return btn
+    end
+    
+    local function AddLabel(text, color)
+        local label = Instance.new("TextLabel")
+        label.Size = UDim2.new(1, -10, 0, 22)
+        label.BackgroundTransparency = 1
+        label.Text = text
+        label.TextColor3 = color or Color3.fromRGB(180, 180, 200)
+        label.TextSize = 12
+        label.Font = Enum.Font.Gotham
+        label.TextXAlignment = Enum.TextXAlignment.Left
+        label.Parent = contentContainer
+        return label
+    end
+    
+    local function AddSlider(labelText, value, min, max, step, callback)
+        local container = Instance.new("Frame")
+        container.Size = UDim2.new(1, -10, 0, 55)
+        container.BackgroundTransparency = 1
+        container.Parent = contentContainer
+        
+        local label = Instance.new("TextLabel")
+        label.Size = UDim2.new(1, 0, 0, 22)
+        label.BackgroundTransparency = 1
+        label.Text = labelText .. ": " .. tostring(value)
+        label.TextColor3 = Color3.fromRGB(180, 180, 200)
+        label.TextSize = 13
+        label.Font = Enum.Font.Gotham
+        label.TextXAlignment = Enum.TextXAlignment.Left
+        label.Parent = container
+        
+        local btnContainer = Instance.new("Frame")
+        btnContainer.Size = UDim2.new(1, 0, 0, 28)
+        btnContainer.Position = UDim2.new(0, 0, 0, 24)
+        btnContainer.BackgroundTransparency = 1
+        btnContainer.Parent = container
+        
+        local downBtn = Instance.new("TextButton")
+        downBtn.Size = UDim2.new(0.08, 0, 1, 0)
+        downBtn.Position = UDim2.new(0, 0, 0, 0)
+        downBtn.BackgroundColor3 = Color3.fromRGB(30, 30, 50)
+        downBtn.TextColor3 = Color3.new(1, 1, 1)
+        downBtn.TextSize = 16
+        downBtn.Font = Enum.Font.GothamBold
+        downBtn.Text = "-"
+        downBtn.Parent = btnContainer
+        
+        downBtn.MouseButton1Click:Connect(function()
+            local newVal = math.max(min, value - step)
+            value = math.floor(newVal / step) * step
+            label.Text = labelText .. ": " .. tostring(value)
+            if callback then callback(value) end
+        end)
+        
+        local upBtn = Instance.new("TextButton")
+        upBtn.Size = UDim2.new(0.08, 0, 1, 0)
+        upBtn.Position = UDim2.new(0.12, 0, 0, 0)
+        upBtn.BackgroundColor3 = Color3.fromRGB(30, 30, 50)
+        upBtn.TextColor3 = Color3.new(1, 1, 1)
+        upBtn.TextSize = 16
+        upBtn.Font = Enum.Font.GothamBold
+        upBtn.Text = "+"
+        upBtn.Parent = btnContainer
+        
+        upBtn.MouseButton1Click:Connect(function()
+            local newVal = math.min(max, value + step)
+            value = math.floor(newVal / step) * step
+            label.Text = labelText .. ": " .. tostring(value)
+            if callback then callback(value) end
+        end)
+        
+        return {label = label, value = value}
+    end
+    
+    -- ======================================================================
+    -- TAB CONTENT
+    -- ======================================================================
+    
     function RefreshContent()
         print("[SkellyHub] Refreshing content for tab: " .. currentTab)
         
@@ -628,16 +838,13 @@ local function CreateMenu()
         end
         
         if currentTab == "Aimbot" then
-            print("[SkellyHub] Loading Aimbot content")
+            AddSectionLabel("AIMBOT SETTINGS")
             
-            -- Aim Key Selector
-            CreateAimKeySelector(contentContainer)
-            
-            -- Head/Body selector
-            local selectorLabel = CreateLabel(contentContainer, "💀 Aim Part: " .. Config.Aimbot.AimPart)
+            -- Head/Body
+            local selectorLabel = AddLabel("Aim Part: " .. Config.Aimbot.AimPart)
             
             local btnContainer = Instance.new("Frame")
-            btnContainer.Size = UDim2.new(1, 0, 0, 35)
+            btnContainer.Size = UDim2.new(1, -10, 0, 30)
             btnContainer.BackgroundTransparency = 1
             btnContainer.Parent = contentContainer
             
@@ -646,14 +853,14 @@ local function CreateMenu()
             headBtn.Position = UDim2.new(0.02, 0, 0, 0)
             headBtn.BackgroundColor3 = Config.Aimbot.AimPart == "Head" and Color3.fromRGB(0, 100, 0) or Color3.fromRGB(30, 30, 50)
             headBtn.TextColor3 = Color3.new(1, 1, 1)
-            headBtn.TextSize = 14
+            headBtn.TextSize = 13
             headBtn.Font = Enum.Font.Gotham
             headBtn.Text = "Head"
             headBtn.Parent = btnContainer
             
             headBtn.MouseButton1Click:Connect(function()
                 Config.Aimbot.AimPart = "Head"
-                selectorLabel.Text = "💀 Aim Part: Head"
+                selectorLabel.Text = "Aim Part: Head"
                 headBtn.BackgroundColor3 = Color3.fromRGB(0, 100, 0)
                 bodyBtn.BackgroundColor3 = Color3.fromRGB(30, 30, 50)
                 UpdateFOVCircle()
@@ -664,180 +871,156 @@ local function CreateMenu()
             bodyBtn.Position = UDim2.new(0.53, 0, 0, 0)
             bodyBtn.BackgroundColor3 = Config.Aimbot.AimPart == "Body" and Color3.fromRGB(0, 100, 0) or Color3.fromRGB(30, 30, 50)
             bodyBtn.TextColor3 = Color3.new(1, 1, 1)
-            bodyBtn.TextSize = 14
+            bodyBtn.TextSize = 13
             bodyBtn.Font = Enum.Font.Gotham
             bodyBtn.Text = "Body"
             bodyBtn.Parent = btnContainer
             
             bodyBtn.MouseButton1Click:Connect(function()
                 Config.Aimbot.AimPart = "Body"
-                selectorLabel.Text = "💀 Aim Part: Body"
+                selectorLabel.Text = "Aim Part: Body"
                 bodyBtn.BackgroundColor3 = Color3.fromRGB(0, 100, 0)
                 headBtn.BackgroundColor3 = Color3.fromRGB(30, 30, 50)
                 UpdateFOVCircle()
             end)
             
-            -- FOV
-            local fovLabel = CreateLabel(contentContainer, "💀 Aim FOV: " .. Config.Aimbot.FOV)
-            
-            local fovContainer = Instance.new("Frame")
-            fovContainer.Size = UDim2.new(1, 0, 0, 30)
-            fovContainer.BackgroundTransparency = 1
-            fovContainer.Parent = contentContainer
-            
-            local fovDown = Instance.new("TextButton")
-            fovDown.Size = UDim2.new(0.1, 0, 1, 0)
-            fovDown.Position = UDim2.new(0.05, 0, 0, 0)
-            fovDown.BackgroundColor3 = Color3.fromRGB(30, 30, 50)
-            fovDown.TextColor3 = Color3.new(1, 1, 1)
-            fovDown.TextSize = 18
-            fovDown.Font = Enum.Font.GothamBold
-            fovDown.Text = "-"
-            fovDown.Parent = fovContainer
-            
-            fovDown.MouseButton1Click:Connect(function()
-                Config.Aimbot.FOV = math.max(10, Config.Aimbot.FOV - 5)
-                fovLabel.Text = "💀 Aim FOV: " .. Config.Aimbot.FOV
+            -- FOV Slider
+            AddSlider("FOV", Config.Aimbot.FOV, 10, 360, 5, function(val)
+                Config.Aimbot.FOV = val
                 UpdateFOVCircle()
             end)
             
-            local fovUp = Instance.new("TextButton")
-            fovUp.Size = UDim2.new(0.1, 0, 1, 0)
-            fovUp.Position = UDim2.new(0.2, 0, 0, 0)
-            fovUp.BackgroundColor3 = Color3.fromRGB(30, 30, 50)
-            fovUp.TextColor3 = Color3.new(1, 1, 1)
-            fovUp.TextSize = 18
-            fovUp.Font = Enum.Font.GothamBold
-            fovUp.Text = "+"
-            fovUp.Parent = fovContainer
-            
-            fovUp.MouseButton1Click:Connect(function()
-                Config.Aimbot.FOV = math.min(360, Config.Aimbot.FOV + 5)
-                fovLabel.Text = "💀 Aim FOV: " .. Config.Aimbot.FOV
-                UpdateFOVCircle()
+            -- Smoothness Slider
+            AddSlider("Smoothness", Config.Aimbot.Smoothness, 0, 1, 0.05, function(val)
+                Config.Aimbot.Smoothness = val
             end)
             
-            -- Smoothness
-            local smoothLabel = CreateLabel(contentContainer, "💀 Smoothness: " .. string.format("%.1f", Config.Aimbot.Smoothness))
-            
-            local smoothContainer = Instance.new("Frame")
-            smoothContainer.Size = UDim2.new(1, 0, 0, 30)
-            smoothContainer.BackgroundTransparency = 1
-            smoothContainer.Parent = contentContainer
-            
-            local smoothDown = Instance.new("TextButton")
-            smoothDown.Size = UDim2.new(0.1, 0, 1, 0)
-            smoothDown.Position = UDim2.new(0.05, 0, 0, 0)
-            smoothDown.BackgroundColor3 = Color3.fromRGB(30, 30, 50)
-            smoothDown.TextColor3 = Color3.new(1, 1, 1)
-            smoothDown.TextSize = 18
-            smoothDown.Font = Enum.Font.GothamBold
-            smoothDown.Text = "-"
-            smoothDown.Parent = smoothContainer
-            
-            smoothDown.MouseButton1Click:Connect(function()
-                Config.Aimbot.Smoothness = math.max(0, Config.Aimbot.Smoothness - 0.05)
-                smoothLabel.Text = "💀 Smoothness: " .. string.format("%.1f", Config.Aimbot.Smoothness)
-            end)
-            
-            local smoothUp = Instance.new("TextButton")
-            smoothUp.Size = UDim2.new(0.1, 0, 1, 0)
-            smoothUp.Position = UDim2.new(0.2, 0, 0, 0)
-            smoothUp.BackgroundColor3 = Color3.fromRGB(30, 30, 50)
-            smoothUp.TextColor3 = Color3.new(1, 1, 1)
-            smoothUp.TextSize = 18
-            smoothUp.Font = Enum.Font.GothamBold
-            smoothUp.Text = "+"
-            smoothUp.Parent = smoothContainer
-            
-            smoothUp.MouseButton1Click:Connect(function()
-                Config.Aimbot.Smoothness = math.min(1, Config.Aimbot.Smoothness + 0.05)
-                smoothLabel.Text = "💀 Smoothness: " .. string.format("%.1f", Config.Aimbot.Smoothness)
+            -- Max Distance Slider
+            AddSlider("Max Distance", Config.Aimbot.MaxDistance, 100, 1000, 50, function(val)
+                Config.Aimbot.MaxDistance = val
             end)
             
             -- Toggles
-            CreateToggleButton(contentContainer, "Show FOV Circle", function(s)
+            AddToggle("Show FOV Circle", function(s)
                 Config.Aimbot.ShowFOVCircle = s
                 UpdateFOVCircle()
             end)
             
-            CreateToggleButton(contentContainer, "Aimbot", function(s)
+            AddToggle("Aimbot", function(s)
                 Config.Aimbot.Enabled = s
                 aimbotActive = s
                 UpdateFOVCircle()
             end)
             
-            CreateToggleButton(contentContainer, "Silent Aim", function(s)
+            AddToggle("Silent Aim", function(s)
                 Config.Aimbot.Silent = s
                 silentAimActive = s
             end)
             
-            CreateToggleButton(contentContainer, "Team Check", function(s)
+            AddToggle("Team Check", function(s)
                 Config.Aimbot.TeamCheck = s
             end)
             
-        elseif currentTab == "ESP" then
-            print("[SkellyHub] Loading ESP content")
+            AddToggle("Visible Check", function(s)
+                Config.Aimbot.VisibleCheck = s
+            end)
             
-            CreateToggleButton(contentContainer, "ESP Enabled", function(s)
+            AddToggle("Prediction", function(s)
+                Config.Aimbot.Prediction = s
+            end)
+            
+        elseif currentTab == "ESP" then
+            AddSectionLabel("ESP SETTINGS")
+            
+            AddToggle("ESP Enabled", function(s)
                 Config.ESP.Enabled = s
                 espActive = s
             end)
             
-            CreateToggleButton(contentContainer, "Boxes", function(s)
+            AddToggle("Boxes", function(s)
                 Config.ESP.ShowBoxes = s
             end)
             
-            CreateToggleButton(contentContainer, "Names", function(s)
+            AddToggle("Names", function(s)
                 Config.ESP.ShowNames = s
             end)
             
-            CreateToggleButton(contentContainer, "Health Bars", function(s)
+            AddToggle("Health Bars", function(s)
                 Config.ESP.ShowHealth = s
             end)
             
-            CreateToggleButton(contentContainer, "Distance", function(s)
+            AddToggle("Distance", function(s)
                 Config.ESP.ShowDistance = s
             end)
             
-            CreateToggleButton(contentContainer, "Team Check", function(s)
+            AddToggle("Tracers", function(s)
+                Config.ESP.ShowTracers = s
+            end)
+            
+            AddToggle("Team Check", function(s)
                 Config.ESP.TeamCheck = s
             end)
             
-        elseif currentTab == "Player" then
-            print("[SkellyHub] Loading Player content")
+            AddSlider("Max Distance", Config.ESP.MaxDistance, 100, 2000, 50, function(val)
+                Config.ESP.MaxDistance = val
+            end)
             
-            CreateToggleButton(contentContainer, "Infinite Jump", function(s)
+        elseif currentTab == "Player" then
+            AddSectionLabel("PLAYER MODS")
+            
+            AddToggle("Infinite Jump", function(s)
                 Config.Player.InfiniteJump = s
             end)
             
-            CreateToggleButton(contentContainer, "Fly", function(s)
+            AddToggle("Fly", function(s)
                 Config.Player.Fly = s
             end)
             
-            CreateToggleButton(contentContainer, "God Mode", function(s)
+            AddSlider("Fly Speed", Config.Player.FlySpeed, 10, 200, 5, function(val)
+                Config.Player.FlySpeed = val
+            end)
+            
+            AddToggle("God Mode", function(s)
                 Config.Player.GodMode = s
             end)
             
-            CreateToggleButton(contentContainer, "No Fall Damage", function(s)
+            AddToggle("No Fall Damage", function(s)
                 Config.Player.NoFallDamage = s
             end)
             
-            CreateToggleButton(contentContainer, "Full Bright", function(s)
+            AddToggle("Full Bright", function(s)
                 Config.Player.FullBright = s
             end)
             
-        elseif currentTab == "Misc" then
-            print("[SkellyHub] Loading Misc content")
+            AddToggle("No Clip", function(s)
+                Config.Player.NoClip = s
+            end)
             
-            CreateToggleButton(contentContainer, "Anti AFK", function(s)
+            AddSlider("Walk Speed", Config.Player.WalkSpeed, 10, 100, 1, function(val)
+                Config.Player.WalkSpeed = val
+            end)
+            
+            AddSlider("Jump Power", Config.Player.JumpPower, 10, 200, 5, function(val)
+                Config.Player.JumpPower = val
+            end)
+            
+        elseif currentTab == "Misc" then
+            AddSectionLabel("MISC SETTINGS")
+            
+            AddToggle("Anti AFK", function(s)
                 Config.Player.AntiAFK = s
             end)
             
-            CreateLabel(contentContainer, "💀 Developed by Skelly Hub", Color3.fromRGB(150, 150, 170), 14)
-            CreateLabel(contentContainer, "skelly-hub.lol", Color3.fromRGB(80, 80, 100), 12)
+            AddToggle("Auto Farm", function(s)
+                Config.Player.AutoFarm = s
+            end)
+            
+            AddLabel("")
+            AddLabel("💀 Skelly Hub v4.0", Color3.fromRGB(150, 150, 170))
+            AddLabel("dark-side.lol", Color3.fromRGB(80, 80, 100))
         end
         
+        -- Update canvas
         task.wait(0.05)
         local totalH = 0
         for _, child in pairs(contentContainer:GetChildren()) do
@@ -850,38 +1033,35 @@ local function CreateMenu()
     end
     
     RefreshContent()
-    print("[SkellyHub] Menu created successfully!")
+    print("[SkellyHub] Menu created!")
 end
+
+-- ======================================================================
+-- MENU TOGGLE
+-- ======================================================================
 
 local function ToggleMenu()
     menuOpen = not menuOpen
-    print("[SkellyHub] ToggleMenu called. menuOpen = " .. tostring(menuOpen))
+    print("[SkellyHub] Menu: " .. tostring(menuOpen))
     
     if menuOpen then
         CreateMenu()
-        if menuGui then
-            menuGui.Enabled = true
-            print("[SkellyHub] Menu should be visible now.")
-        end
+        if menuGui then menuGui.Enabled = true end
     else
-        if menuGui then
-            menuGui.Enabled = false
-            print("[SkellyHub] Menu hidden.")
-        end
+        if menuGui then menuGui.Enabled = false end
     end
 end
 
--- ==================== START ====================
-print("[SkellyHub] Rivals Script v1.0 Loading...")
+-- ======================================================================
+-- START
+-- ======================================================================
+
+print("[SkellyHub] Rivals Script v4.0 Loading...")
 print("[SkellyHub] Press Right Shift to open menu.")
-print("[SkellyHub] Hold Right Click (RMB) to aim.")
 
-RunService.RenderStepped:Connect(function()
-    UpdateFOVCircle()
-end)
-
+RunService.RenderStepped:Connect(UpdateFOVCircle)
 RunService.RenderStepped:Connect(DoAimbot)
 RunService.RenderStepped:Connect(DoSilentAim)
 RunService.RenderStepped:Connect(UpdateESP)
 
-print("[SkellyHub] Rivals Script Loaded!")
+print("[SkellyHub] Loaded!")
