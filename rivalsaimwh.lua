@@ -1,8 +1,43 @@
 --[[
-    Skelly Hub Rivals Script v8.0
-    COMPLETE WORKING MENU
+    Skelly Hub Rivals Script
+    Using LinoriaLib UI Library
     Press Right Shift to toggle
 ]]
+
+-- ======================================================================
+-- LOAD LINORIALIB
+-- ======================================================================
+
+local Library = nil
+local libraryLoadSuccess = false
+
+-- Try loading from first URL
+local success1, lib1 = pcall(function()
+    return loadstring(game:HttpGet("https://raw.githubusercontent.com/violin-suzutsuki/LinoriaLib/main/Library.lua"))()
+end)
+
+if success1 and lib1 then
+    Library = lib1
+    libraryLoadSuccess = true
+    print("[SkellyHub] Loaded LinoriaLib from violin-suzutsuki")
+end
+
+-- If first fails, try second
+if not libraryLoadSuccess then
+    local success2, lib2 = pcall(function()
+        return loadstring(game:HttpGet("https://raw.githubusercontent.com/caIIed/Linoria-Rewrite/main/Library.lua"))()
+    end)
+    
+    if success2 and lib2 then
+        Library = lib2
+        libraryLoadSuccess = true
+        print("[SkellyHub] Loaded LinoriaLib from caIIed")
+    end
+end
+
+if not libraryLoadSuccess then
+    error("[SkellyHub] Failed to load LinoriaLib! Check your internet connection.")
+end
 
 -- ======================================================================
 -- SERVICES
@@ -13,11 +48,9 @@ local RunService = game:GetService("RunService")
 local UserInputService = game:GetService("UserInputService")
 local LocalPlayer = Players.LocalPlayer
 local Camera = workspace.CurrentCamera
-local CoreGui = game:GetService("CoreGui")
 local Lighting = game:GetService("Lighting")
 local VirtualUser = game:GetService("VirtualUser")
 local Workspace = game:GetService("Workspace")
-local TweenService = game:GetService("TweenService")
 
 -- ======================================================================
 -- CONFIGURATION
@@ -59,10 +92,6 @@ local Config = {
         AutoFarm = false,
         NoClip = false,
     },
-    Visual = {
-        MenuKey = Enum.KeyCode.RightShift,
-        Watermark = "💀 skelly-hub.lol",
-    }
 }
 
 -- ======================================================================
@@ -71,14 +100,10 @@ local Config = {
 
 local aimKeyHeld = false
 local fovCircle = nil
-local menuOpen = false
-local menuGui = nil
 local espActive = false
 local aimbotActive = false
 local silentAimActive = false
-local currentTab = 1
-local tabs = {"Aimbot", "ESP", "Player", "Misc"}
-local menuLoaded = false
+local menuOpen = false
 
 -- ======================================================================
 -- UTILITY FUNCTIONS
@@ -219,8 +244,13 @@ UserInputService.InputBegan:Connect(function(input, gameProcessed)
         aimKeyHeld = true
     end
     
-    if input.KeyCode == Config.Visual.MenuKey then
-        ToggleMenu()
+    if input.KeyCode == Enum.KeyCode.RightShift then
+        menuOpen = not menuOpen
+        if menuOpen then
+            Library:Open()
+        else
+            Library:Close()
+        end
     end
 end)
 
@@ -465,504 +495,355 @@ end
 RunService.Heartbeat:Connect(NoClip)
 
 -- ======================================================================
--- COMPLETE WORKING MENU
+-- BUILD LINORIALIB UI
 -- ======================================================================
 
-local function CreateMenu()
-    if menuGui then
-        pcall(function() menuGui:Destroy() end)
-        menuGui = nil
-    end
-    
-    print("[SkellyHub] Creating menu...")
-    
-    menuGui = Instance.new("ScreenGui")
-    menuGui.Name = "SkellyHubMenu"
-    menuGui.Parent = CoreGui
-    menuGui.ResetOnSpawn = false
-    menuGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
-    menuGui.DisplayOrder = 999
-    
-    -- Main Frame
-    local main = Instance.new("Frame")
-    main.Size = UDim2.new(0, 450, 0, 480)
-    main.Position = UDim2.new(0.5, -225, 0.5, -240)
-    main.BackgroundColor3 = Color3.fromRGB(10, 10, 20)
-    main.BackgroundTransparency = 0.05
-    main.BorderSizePixel = 1
-    main.BorderColor3 = Color3.fromRGB(40, 40, 60)
-    main.Parent = menuGui
-    
-    local mainCorner = Instance.new("UICorner")
-    mainCorner.CornerRadius = UDim.new(0, 12)
-    mainCorner.Parent = main
-    
-    -- Title
-    local titleBar = Instance.new("Frame")
-    titleBar.Size = UDim2.new(1, 0, 0, 45)
-    titleBar.BackgroundColor3 = Color3.fromRGB(15, 15, 28)
-    titleBar.BackgroundTransparency = 0.3
-    titleBar.BorderSizePixel = 0
-    titleBar.Parent = main
-    
-    local titleCorner = Instance.new("UICorner")
-    titleCorner.CornerRadius = UDim.new(0, 12)
-    titleCorner.Parent = titleBar
-    
-    local title = Instance.new("TextLabel")
-    title.Size = UDim2.new(1, 0, 1, 0)
-    title.BackgroundTransparency = 1
-    title.Text = "💀 SKELLY HUB"
-    title.TextColor3 = Color3.new(1, 1, 1)
-    title.TextSize = 22
-    title.Font = Enum.Font.GothamBold
-    title.Parent = titleBar
-    
-    -- Tabs
-    local tabBar = Instance.new("Frame")
-    tabBar.Size = UDim2.new(1, 0, 0, 30)
-    tabBar.Position = UDim2.new(0, 0, 0, 45)
-    tabBar.BackgroundColor3 = Color3.fromRGB(15, 15, 28)
-    tabBar.BackgroundTransparency = 0.3
-    tabBar.BorderSizePixel = 0
-    tabBar.Parent = main
-    
-    local tabButtons = {}
-    
-    for i, tabName in ipairs(tabs) do
-        local btn = Instance.new("TextButton")
-        btn.Size = UDim2.new(0.25, 0, 1, 0)
-        btn.Position = UDim2.new((i - 1) * 0.25, 0, 0, 0)
-        btn.BackgroundColor3 = (currentTab == i) and Color3.fromRGB(40, 40, 60) or Color3.fromRGB(20, 20, 35)
-        btn.BackgroundTransparency = (currentTab == i) and 0.3 or 0.6
-        btn.TextColor3 = Color3.new(1, 1, 1)
-        btn.TextSize = 12
-        btn.Font = Enum.Font.GothamBold
-        btn.Text = tabName
-        btn.Parent = tabBar
-        
-        tabButtons[i] = btn
-        
-        btn.MouseButton1Click:Connect(function()
-            currentTab = i
-            for j, button in pairs(tabButtons) do
-                if j == i then
-                    button.BackgroundColor3 = Color3.fromRGB(40, 40, 60)
-                    button.BackgroundTransparency = 0.3
-                else
-                    button.BackgroundColor3 = Color3.fromRGB(20, 20, 35)
-                    button.BackgroundTransparency = 0.6
-                end
-            end
-            RefreshContent()
-        end)
-    end
-    
-    -- Content Container
-    local contentContainer = Instance.new("ScrollingFrame")
-    contentContainer.Size = UDim2.new(1, -20, 1, -105)
-    contentContainer.Position = UDim2.new(0, 10, 0, 80)
-    contentContainer.BackgroundTransparency = 1
-    contentContainer.CanvasSize = UDim2.new(0, 0, 0, 0)
-    contentContainer.ScrollBarThickness = 6
-    contentContainer.ScrollBarImageColor3 = Color3.fromRGB(60, 60, 80)
-    contentContainer.Parent = main
-    
-    local layout = Instance.new("UIListLayout")
-    layout.Parent = contentContainer
-    layout.Spacing = 6
-    layout.Padding = UDim.new(0, 10)
-    layout.SortOrder = Enum.SortOrder.LayoutOrder
-    
-    -- Close Button
-    local closeBtn = Instance.new("TextButton")
-    closeBtn.Size = UDim2.new(0.2, 0, 0, 32)
-    closeBtn.Position = UDim2.new(0.4, 0, 1, -38)
-    closeBtn.BackgroundColor3 = Color3.fromRGB(30, 30, 50)
-    closeBtn.BackgroundTransparency = 0.3
-    closeBtn.TextColor3 = Color3.new(1, 1, 1)
-    closeBtn.TextSize = 13
-    closeBtn.Font = Enum.Font.GothamBold
-    closeBtn.Text = "CLOSE"
-    closeBtn.Parent = main
-    
-    local closeCorner = Instance.new("UICorner")
-    closeCorner.CornerRadius = UDim.new(0, 6)
-    closeCorner.Parent = closeBtn
-    
-    closeBtn.MouseButton1Click:Connect(function()
-        menuOpen = false
-        if menuGui then menuGui.Enabled = false end
-    end)
-    
-    -- ======================================================================
-    -- CONTENT HELPERS
-    -- ======================================================================
-    
-    local function AddToggle(text, callback)
-        local btn = Instance.new("TextButton")
-        btn.Size = UDim2.new(1, -10, 0, 32)
-        btn.BackgroundColor3 = Color3.fromRGB(30, 30, 50)
-        btn.TextColor3 = Color3.new(1, 1, 1)
-        btn.TextSize = 13
-        btn.Font = Enum.Font.Gotham
-        btn.Text = text .. " [OFF]"
-        btn.Parent = contentContainer
-        
-        local state = false
-        btn.MouseButton1Click:Connect(function()
-            state = not state
-            btn.Text = text .. (state and " [ON]" or " [OFF]")
-            btn.BackgroundColor3 = state and Color3.fromRGB(0, 100, 0) or Color3.fromRGB(30, 30, 50)
-            if callback then callback(state) end
-        end)
-        return btn
-    end
-    
-    local function AddLabel(text, color)
-        local label = Instance.new("TextLabel")
-        label.Size = UDim2.new(1, -10, 0, 22)
-        label.BackgroundTransparency = 1
-        label.Text = text
-        label.TextColor3 = color or Color3.fromRGB(180, 180, 200)
-        label.TextSize = 12
-        label.Font = Enum.Font.Gotham
-        label.TextXAlignment = Enum.TextXAlignment.Left
-        label.Parent = contentContainer
-        return label
-    end
-    
-    local function AddSlider(labelText, value, min, max, step, callback)
-        local container = Instance.new("Frame")
-        container.Size = UDim2.new(1, -10, 0, 55)
-        container.BackgroundTransparency = 1
-        container.Parent = contentContainer
-        
-        local label = Instance.new("TextLabel")
-        label.Size = UDim2.new(1, 0, 0, 22)
-        label.BackgroundTransparency = 1
-        label.Text = labelText .. ": " .. tostring(value)
-        label.TextColor3 = Color3.fromRGB(180, 180, 200)
-        label.TextSize = 13
-        label.Font = Enum.Font.Gotham
-        label.TextXAlignment = Enum.TextXAlignment.Left
-        label.Parent = container
-        
-        local btnContainer = Instance.new("Frame")
-        btnContainer.Size = UDim2.new(1, 0, 0, 28)
-        btnContainer.Position = UDim2.new(0, 0, 0, 24)
-        btnContainer.BackgroundTransparency = 1
-        btnContainer.Parent = container
-        
-        local downBtn = Instance.new("TextButton")
-        downBtn.Size = UDim2.new(0.08, 0, 1, 0)
-        downBtn.Position = UDim2.new(0, 0, 0, 0)
-        downBtn.BackgroundColor3 = Color3.fromRGB(30, 30, 50)
-        downBtn.TextColor3 = Color3.new(1, 1, 1)
-        downBtn.TextSize = 16
-        downBtn.Font = Enum.Font.GothamBold
-        downBtn.Text = "-"
-        downBtn.Parent = btnContainer
-        
-        downBtn.MouseButton1Click:Connect(function()
-            local newVal = math.max(min, value - step)
-            value = math.floor(newVal / step) * step
-            label.Text = labelText .. ": " .. tostring(value)
-            if callback then callback(value) end
-        end)
-        
-        local upBtn = Instance.new("TextButton")
-        upBtn.Size = UDim2.new(0.08, 0, 1, 0)
-        upBtn.Position = UDim2.new(0.12, 0, 0, 0)
-        upBtn.BackgroundColor3 = Color3.fromRGB(30, 30, 50)
-        upBtn.TextColor3 = Color3.new(1, 1, 1)
-        upBtn.TextSize = 16
-        upBtn.Font = Enum.Font.GothamBold
-        upBtn.Text = "+"
-        upBtn.Parent = btnContainer
-        
-        upBtn.MouseButton1Click:Connect(function()
-            local newVal = math.min(max, value + step)
-            value = math.floor(newVal / step) * step
-            label.Text = labelText .. ": " .. tostring(value)
-            if callback then callback(value) end
-        end)
-    end
-    
-    -- ======================================================================
-    -- REFRESH CONTENT
-    -- ======================================================================
-    
-    function RefreshContent()
-        print("[SkellyHub] Refreshing content for tab: " .. tabs[currentTab])
-        
-        -- Clear existing content
-        for _, child in pairs(contentContainer:GetChildren()) do
-            if child:IsA("TextButton") or child:IsA("TextLabel") or child:IsA("Frame") then
-                child:Destroy()
-            end
-        end
-        
-        if currentTab == 1 then -- Aimbot
-            AddLabel("💀 AIMBOT SETTINGS")
-            
-            -- Head/Body
-            local selectorLabel = AddLabel("Aim Part: " .. Config.Aimbot.AimPart)
-            
-            local btnContainer = Instance.new("Frame")
-            btnContainer.Size = UDim2.new(1, -10, 0, 30)
-            btnContainer.BackgroundTransparency = 1
-            btnContainer.Parent = contentContainer
-            
-            local headBtn = Instance.new("TextButton")
-            headBtn.Size = UDim2.new(0.45, 0, 1, 0)
-            headBtn.Position = UDim2.new(0.02, 0, 0, 0)
-            headBtn.BackgroundColor3 = Config.Aimbot.AimPart == "Head" and Color3.fromRGB(0, 100, 0) or Color3.fromRGB(30, 30, 50)
-            headBtn.TextColor3 = Color3.new(1, 1, 1)
-            headBtn.TextSize = 13
-            headBtn.Font = Enum.Font.Gotham
-            headBtn.Text = "Head"
-            headBtn.Parent = btnContainer
-            
-            headBtn.MouseButton1Click:Connect(function()
-                Config.Aimbot.AimPart = "Head"
-                selectorLabel.Text = "Aim Part: Head"
-                headBtn.BackgroundColor3 = Color3.fromRGB(0, 100, 0)
-                bodyBtn.BackgroundColor3 = Color3.fromRGB(30, 30, 50)
-                UpdateFOVCircle()
-                RefreshContent()
-            end)
-            
-            local bodyBtn = Instance.new("TextButton")
-            bodyBtn.Size = UDim2.new(0.45, 0, 1, 0)
-            bodyBtn.Position = UDim2.new(0.53, 0, 0, 0)
-            bodyBtn.BackgroundColor3 = Config.Aimbot.AimPart == "Body" and Color3.fromRGB(0, 100, 0) or Color3.fromRGB(30, 30, 50)
-            bodyBtn.TextColor3 = Color3.new(1, 1, 1)
-            bodyBtn.TextSize = 13
-            bodyBtn.Font = Enum.Font.Gotham
-            bodyBtn.Text = "Body"
-            bodyBtn.Parent = btnContainer
-            
-            bodyBtn.MouseButton1Click:Connect(function()
-                Config.Aimbot.AimPart = "Body"
-                selectorLabel.Text = "Aim Part: Body"
-                bodyBtn.BackgroundColor3 = Color3.fromRGB(0, 100, 0)
-                headBtn.BackgroundColor3 = Color3.fromRGB(30, 30, 50)
-                UpdateFOVCircle()
-                RefreshContent()
-            end)
-            
-            -- FOV Slider
-            AddSlider("FOV", Config.Aimbot.FOV, 10, 360, 5, function(val)
-                Config.Aimbot.FOV = val
-                UpdateFOVCircle()
-            end)
-            
-            -- Smoothness Slider
-            AddSlider("Smoothness", Config.Aimbot.Smoothness, 0, 1, 0.05, function(val)
-                Config.Aimbot.Smoothness = val
-            end)
-            
-            -- Max Distance Slider
-            AddSlider("Max Distance", Config.Aimbot.MaxDistance, 100, 1000, 50, function(val)
-                Config.Aimbot.MaxDistance = val
-            end)
-            
-            -- Toggles
-            AddToggle("Show FOV Circle", function(s)
-                Config.Aimbot.ShowFOVCircle = s
-                UpdateFOVCircle()
-            end)
-            
-            AddToggle("Aimbot", function(s)
-                Config.Aimbot.Enabled = s
-                aimbotActive = s
-                UpdateFOVCircle()
-            end)
-            
-            AddToggle("Silent Aim", function(s)
-                Config.Aimbot.Silent = s
-                silentAimActive = s
-            end)
-            
-            AddToggle("Team Check", function(s)
-                Config.Aimbot.TeamCheck = s
-            end)
-            
-            AddToggle("Visible Check", function(s)
-                Config.Aimbot.VisibleCheck = s
-            end)
-            
-        elseif currentTab == 2 then -- ESP
-            AddLabel("💀 ESP SETTINGS")
-            
-            AddToggle("ESP Enabled", function(s)
-                Config.ESP.Enabled = s
-                espActive = s
-            end)
-            
-            AddToggle("Boxes", function(s)
-                Config.ESP.ShowBoxes = s
-            end)
-            
-            AddToggle("Names", function(s)
-                Config.ESP.ShowNames = s
-            end)
-            
-            AddToggle("Health Bars", function(s)
-                Config.ESP.ShowHealth = s
-            end)
-            
-            AddToggle("Distance", function(s)
-                Config.ESP.ShowDistance = s
-            end)
-            
-            AddToggle("Tracers", function(s)
-                Config.ESP.ShowTracers = s
-            end)
-            
-            AddToggle("Team Check", function(s)
-                Config.ESP.TeamCheck = s
-            end)
-            
-            AddSlider("Max Distance", Config.ESP.MaxDistance, 100, 2000, 50, function(val)
-                Config.ESP.MaxDistance = val
-            end)
-            
-        elseif currentTab == 3 then -- Player
-            AddLabel("💀 PLAYER MODS")
-            
-            AddToggle("Infinite Jump", function(s)
-                Config.Player.InfiniteJump = s
-            end)
-            
-            AddToggle("Fly", function(s)
-                Config.Player.Fly = s
-            end)
-            
-            AddSlider("Fly Speed", Config.Player.FlySpeed, 10, 200, 5, function(val)
-                Config.Player.FlySpeed = val
-            end)
-            
-            AddToggle("God Mode", function(s)
-                Config.Player.GodMode = s
-            end)
-            
-            AddToggle("No Fall Damage", function(s)
-                Config.Player.NoFallDamage = s
-            end)
-            
-            AddToggle("Full Bright", function(s)
-                Config.Player.FullBright = s
-            end)
-            
-            AddToggle("No Clip", function(s)
-                Config.Player.NoClip = s
-            end)
-            
-            AddSlider("Walk Speed", Config.Player.WalkSpeed, 10, 100, 1, function(val)
-                Config.Player.WalkSpeed = val
-            end)
-            
-            AddSlider("Jump Power", Config.Player.JumpPower, 10, 200, 5, function(val)
-                Config.Player.JumpPower = val
-            end)
-            
-            AddToggle("Anti AFK", function(s)
-                Config.Player.AntiAFK = s
-            end)
-            
-            AddToggle("Auto Farm", function(s)
-                Config.Player.AutoFarm = s
-            end)
-            
-        elseif currentTab == 4 then -- Misc
-            AddLabel("💀 MISC SETTINGS")
-            
-            -- Credits
-            AddLabel("", Color3.fromRGB(80, 80, 100))
-            AddLabel("💀 Skelly Hub v8.0", Color3.fromRGB(150, 150, 170))
-            AddLabel("Developed by Skelly Hub Team", Color3.fromRGB(120, 120, 140))
-            AddLabel("", Color3.fromRGB(80, 80, 100))
-            AddLabel("⚙️ Features:", Color3.fromRGB(180, 180, 200))
-            AddLabel("  • Aimbot with FOV & Smoothness", Color3.fromRGB(150, 150, 170))
-            AddLabel("  • ESP (Boxes, Names, Health, Distance)", Color3.fromRGB(150, 150, 170))
-            AddLabel("  • Player Mods (Fly, God Mode, etc.)", Color3.fromRGB(150, 150, 170))
-            AddLabel("  • Auto Farm & Anti AFK", Color3.fromRGB(150, 150, 170))
-            AddLabel("", Color3.fromRGB(80, 80, 100))
-            AddLabel("📱 Support:", Color3.fromRGB(180, 180, 200))
-            AddLabel("  • Discord: https://discord.gg/XJtYWy9jgU", Color3.fromRGB(150, 150, 170))
-            AddLabel("  • Website: skelly-hub.lol", Color3.fromRGB(150, 150, 170))
-            AddLabel("", Color3.fromRGB(80, 80, 100))
-            AddLabel("💀 SKELLY HUB v8.0", Color3.fromRGB(200, 100, 100))
-        end
-        
-        -- Update canvas
-        task.wait(0.05)
-        local totalH = 0
-        for _, child in pairs(contentContainer:GetChildren()) do
-            if child:IsA("TextButton") or child:IsA("TextLabel") or child:IsA("Frame") then
-                totalH = totalH + child.Size.Y.Offset + 6
-            end
-        end
-        contentContainer.CanvasSize = UDim2.new(0, 0, 0, totalH + 20)
-        print("[SkellyHub] Canvas height: " .. totalH)
-    end
-    
-    -- Load initial content
-    RefreshContent()
-    
-    print("[SkellyHub] Menu created successfully!")
-end
+local Window = Library:CreateWindow("💀 Skelly Hub", "Skelly Hub Rivals Script")
+local MainTab = Window:CreateTab("Main")
 
 -- ======================================================================
--- MENU TOGGLE
+-- AIMBOT TAB
 -- ======================================================================
 
-local function ToggleMenu()
-    menuOpen = not menuOpen
-    print("[SkellyHub] Menu: " .. tostring(menuOpen))
-    
-    if menuOpen then
-        CreateMenu()
-        if menuGui then
-            menuGui.Enabled = true
-        end
-    else
-        if menuGui then
-            menuGui.Enabled = false
+local AimbotTab = Window:CreateTab("Aimbot")
+local AimbotGroup = AimbotTab:CreateGroup("Aimbot Settings")
+
+AimbotGroup:AddToggle("Aimbot", {
+    Text = "Enable Aimbot",
+    Default = false,
+    Tooltip = "Toggle the aimbot on/off",
+    Callback = function(Value)
+        Config.Aimbot.Enabled = Value
+        aimbotActive = Value
+        UpdateFOVCircle()
+    end
+})
+
+AimbotGroup:AddToggle("Silent Aim", {
+    Text = "Silent Aim",
+    Default = false,
+    Tooltip = "Aim without moving your camera",
+    Callback = function(Value)
+        Config.Aimbot.Silent = Value
+        silentAimActive = Value
+    end
+})
+
+AimbotGroup:AddToggle("Show FOV Circle", {
+    Text = "Show FOV Circle",
+    Default = true,
+    Tooltip = "Show a circle on screen showing your FOV",
+    Callback = function(Value)
+        Config.Aimbot.ShowFOVCircle = Value
+        UpdateFOVCircle()
+    end
+})
+
+AimbotGroup:AddToggle("Team Check", {
+    Text = "Team Check",
+    Default = true,
+    Tooltip = "Don't aim at teammates",
+    Callback = function(Value)
+        Config.Aimbot.TeamCheck = Value
+    end
+})
+
+AimbotGroup:AddToggle("Visible Check", {
+    Text = "Visible Check",
+    Default = false,
+    Tooltip = "Only aim at enemies you can see",
+    Callback = function(Value)
+        Config.Aimbot.VisibleCheck = Value
+    end
+})
+
+AimbotGroup:AddSlider("FOV", {
+    Text = "Aim FOV",
+    Default = 120,
+    Min = 10,
+    Max = 360,
+    Rounding = 1,
+    Callback = function(Value)
+        Config.Aimbot.FOV = Value
+        UpdateFOVCircle()
+    end
+})
+
+AimbotGroup:AddSlider("Smoothness", {
+    Text = "Smoothness",
+    Default = 0.3,
+    Min = 0,
+    Max = 1,
+    Rounding = 2,
+    Callback = function(Value)
+        Config.Aimbot.Smoothness = Value
+    end
+})
+
+AimbotGroup:AddSlider("Max Distance", {
+    Text = "Max Distance",
+    Default = 500,
+    Min = 100,
+    Max = 1000,
+    Rounding = 1,
+    Callback = function(Value)
+        Config.Aimbot.MaxDistance = Value
+    end
+})
+
+AimbotGroup:AddDropdown("Aim Part", {
+    Text = "Aim Part",
+    Values = {"Head", "Body", "HumanoidRootPart"},
+    Default = 1,
+    Callback = function(Value)
+        Config.Aimbot.AimPart = Value
+    end
+})
+
+-- ======================================================================
+-- AIM KEY TAB
+-- ======================================================================
+
+local KeyTab = Window:CreateTab("Keybinds")
+local KeyGroup = KeyTab:CreateGroup("Keybinds")
+
+KeyGroup:AddKeyPicker("Aim Key", {
+    Text = "Aim Key",
+    Default = "MouseButton2",
+    Mode = "Hold",
+    Callback = function(Value)
+        if Value == "MouseButton1" then
+            Config.Aimbot.AimKey = Enum.UserInputType.MouseButton1
+        elseif Value == "MouseButton2" then
+            Config.Aimbot.AimKey = Enum.UserInputType.MouseButton2
+        elseif Value == "MouseButton3" then
+            Config.Aimbot.AimKey = Enum.UserInputType.MouseButton3
+        else
+            Config.Aimbot.AimKey = Enum.UserInputType.MouseButton2
         end
     end
-end
+})
+
+-- ======================================================================
+-- ESP TAB
+-- ======================================================================
+
+local ESPTab = Window:CreateTab("ESP")
+local ESPGroup = ESPTab:CreateGroup("ESP Settings")
+
+ESPGroup:AddToggle("ESP Enabled", {
+    Text = "Enable ESP",
+    Default = false,
+    Tooltip = "Toggle ESP on/off",
+    Callback = function(Value)
+        Config.ESP.Enabled = Value
+        espActive = Value
+    end
+})
+
+ESPGroup:AddToggle("Boxes", {
+    Text = "Boxes",
+    Default = true,
+    Callback = function(Value)
+        Config.ESP.ShowBoxes = Value
+    end
+})
+
+ESPGroup:AddToggle("Names", {
+    Text = "Names",
+    Default = true,
+    Callback = function(Value)
+        Config.ESP.ShowNames = Value
+    end
+})
+
+ESPGroup:AddToggle("Health Bars", {
+    Text = "Health Bars",
+    Default = true,
+    Callback = function(Value)
+        Config.ESP.ShowHealth = Value
+    end
+})
+
+ESPGroup:AddToggle("Distance", {
+    Text = "Distance",
+    Default = true,
+    Callback = function(Value)
+        Config.ESP.ShowDistance = Value
+    end
+})
+
+ESPGroup:AddToggle("Tracers", {
+    Text = "Tracers",
+    Default = false,
+    Callback = function(Value)
+        Config.ESP.ShowTracers = Value
+    end
+})
+
+ESPGroup:AddToggle("Team Check", {
+    Text = "Team Check",
+    Default = true,
+    Callback = function(Value)
+        Config.ESP.TeamCheck = Value
+    end
+})
+
+ESPGroup:AddSlider("Max Distance", {
+    Text = "Max Distance",
+    Default = 1000,
+    Min = 100,
+    Max = 2000,
+    Rounding = 1,
+    Callback = function(Value)
+        Config.ESP.MaxDistance = Value
+    end
+})
+
+-- ======================================================================
+-- PLAYER TAB
+-- ======================================================================
+
+local PlayerTab = Window:CreateTab("Player")
+local PlayerGroup = PlayerTab:CreateGroup("Player Mods")
+
+PlayerGroup:AddToggle("Infinite Jump", {
+    Text = "Infinite Jump",
+    Default = false,
+    Callback = function(Value)
+        Config.Player.InfiniteJump = Value
+    end
+})
+
+PlayerGroup:AddToggle("Fly", {
+    Text = "Fly",
+    Default = false,
+    Callback = function(Value)
+        Config.Player.Fly = Value
+    end
+})
+
+PlayerGroup:AddSlider("Fly Speed", {
+    Text = "Fly Speed",
+    Default = 50,
+    Min = 10,
+    Max = 200,
+    Rounding = 1,
+    Callback = function(Value)
+        Config.Player.FlySpeed = Value
+    end
+})
+
+PlayerGroup:AddToggle("God Mode", {
+    Text = "God Mode",
+    Default = false,
+    Callback = function(Value)
+        Config.Player.GodMode = Value
+    end
+})
+
+PlayerGroup:AddToggle("No Fall Damage", {
+    Text = "No Fall Damage",
+    Default = false,
+    Callback = function(Value)
+        Config.Player.NoFallDamage = Value
+    end
+})
+
+PlayerGroup:AddToggle("Full Bright", {
+    Text = "Full Bright",
+    Default = false,
+    Callback = function(Value)
+        Config.Player.FullBright = Value
+    end
+})
+
+PlayerGroup:AddToggle("No Clip", {
+    Text = "No Clip",
+    Default = false,
+    Callback = function(Value)
+        Config.Player.NoClip = Value
+    end
+})
+
+PlayerGroup:AddSlider("Walk Speed", {
+    Text = "Walk Speed",
+    Default = 16,
+    Min = 10,
+    Max = 100,
+    Rounding = 1,
+    Callback = function(Value)
+        Config.Player.WalkSpeed = Value
+    end
+})
+
+PlayerGroup:AddSlider("Jump Power", {
+    Text = "Jump Power",
+    Default = 50,
+    Min = 10,
+    Max = 200,
+    Rounding = 1,
+    Callback = function(Value)
+        Config.Player.JumpPower = Value
+    end
+})
+
+PlayerGroup:AddToggle("Anti AFK", {
+    Text = "Anti AFK",
+    Default = false,
+    Callback = function(Value)
+        Config.Player.AntiAFK = Value
+    end
+})
+
+PlayerGroup:AddToggle("Auto Farm", {
+    Text = "Auto Farm",
+    Default = false,
+    Callback = function(Value)
+        Config.Player.AutoFarm = Value
+    end
+})
+
+-- ======================================================================
+-- CREDITS TAB
+-- ======================================================================
+
+local CreditsTab = Window:CreateTab("Credits")
+local CreditsGroup = CreditsTab:CreateGroup("About")
+
+CreditsGroup:AddLabel("💀 Skelly Hub")
+CreditsGroup:AddLabel("Version: 10.0")
+CreditsGroup:AddLabel("")
+CreditsGroup:AddLabel("Developed by Skelly Hub Team")
+CreditsGroup:AddLabel("")
+CreditsGroup:AddLabel("💀 skelly-hub.lol")
+CreditsGroup:AddLabel("")
+CreditsGroup:AddLabel("Press Right Shift to toggle menu")
 
 -- ======================================================================
 -- AUTO-OPEN MENU
 -- ======================================================================
 
 local function AutoOpenMenu()
-    print("[SkellyHub] Auto-opening menu in 1.5 seconds...")
+    print("[SkellyHub] Menu auto-opening in 1.5 seconds...")
     task.wait(1.5)
-    if not menuOpen then
-        ToggleMenu()
-        print("[SkellyHub] Menu auto-opened!")
-    end
+    menuOpen = true
+    Library:Open()
+    print("[SkellyHub] Menu opened!")
 end
 
 -- ======================================================================
 -- START
 -- ======================================================================
 
-print("[SkellyHub] Rivals Script v8.0 Loading...")
+print("[SkellyHub] Rivals Script Loading...")
 print("[SkellyHub] Press Right Shift to toggle menu.")
-print("[SkellyHub] Menu will auto-open shortly...")
 
--- Start core loops
 RunService.RenderStepped:Connect(UpdateFOVCircle)
 RunService.RenderStepped:Connect(DoAimbot)
 RunService.RenderStepped:Connect(DoSilentAim)
 RunService.RenderStepped:Connect(UpdateESP)
 
--- Auto-open menu
 AutoOpenMenu()
 
 print("[SkellyHub] Loaded successfully!")
