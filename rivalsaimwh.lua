@@ -1,8 +1,15 @@
 --[[
-    DarkSide Rivals Script v1.2
-    Fixed Menu & ESP
-    Press INSERT to open menu
+    DarkSide Rivals Script v2.0
+    Key System + Auto-Open Menu
+    Press Right Shift to toggle menu
 ]]
+
+-- ==================== KEY SYSTEM ====================
+-- 🔑 CHANGE THIS TO YOUR OWN KEY
+local VALID_KEYS = {
+    ["DARKSIDE-D54H3L9D-D6G2W8"] = true,  -- <-- Replace with your actual key
+    -- Add more keys if you want multiple users
+}
 
 -- ==================== SERVICES ====================
 local Players = game:GetService("Players")
@@ -12,14 +19,114 @@ local TweenService = game:GetService("TweenService")
 local LocalPlayer = Players.LocalPlayer
 local Camera = workspace.CurrentCamera
 local CoreGui = game:GetService("CoreGui")
-local ReplicatedStorage = game:GetService("ReplicatedStorage")
+
+-- ==================== KEY VALIDATION ====================
+local function ShowKeyPrompt()
+    -- Create a simple key entry GUI
+    local keyGui = Instance.new("ScreenGui")
+    keyGui.Name = "DarkSideKeySystem"
+    keyGui.Parent = CoreGui
+    keyGui.ResetOnSpawn = false
+    
+    local frame = Instance.new("Frame")
+    frame.Size = UDim2.new(0, 400, 0, 250)
+    frame.Position = UDim2.new(0.5, -200, 0.5, -125)
+    frame.BackgroundColor3 = Color3.fromRGB(15, 15, 30)
+    frame.BorderSizePixel = 2
+    frame.BorderColor3 = Color3.fromRGB(200, 0, 0)
+    frame.Parent = keyGui
+    
+    local corner = Instance.new("UICorner")
+    corner.CornerRadius = UDim.new(0, 12)
+    corner.Parent = frame
+    
+    local title = Instance.new("TextLabel")
+    title.Size = UDim2.new(1, 0, 0, 50)
+    title.Position = UDim2.new(0, 0, 0, 0)
+    title.BackgroundColor3 = Color3.fromRGB(200, 0, 0)
+    title.Text = "DARK SIDE"
+    title.TextColor3 = Color3.new(1, 1, 1)
+    title.TextSize = 28
+    title.Font = Enum.Font.GothamBold
+    title.Parent = frame
+    
+    local label = Instance.new("TextLabel")
+    label.Size = UDim2.new(1, -40, 0, 30)
+    label.Position = UDim2.new(0, 20, 0, 70)
+    label.BackgroundTransparency = 1
+    label.Text = "Enter Your Key:"
+    label.TextColor3 = Color3.fromRGB(200, 200, 200)
+    label.TextSize = 18
+    label.Font = Enum.Font.Gotham
+    label.TextXAlignment = Enum.TextXAlignment.Left
+    label.Parent = frame
+    
+    local keyBox = Instance.new("TextBox")
+    keyBox.Size = UDim2.new(0.8, 0, 0, 40)
+    keyBox.Position = UDim2.new(0.1, 0, 0, 110)
+    keyBox.BackgroundColor3 = Color3.fromRGB(30, 30, 50)
+    keyBox.TextColor3 = Color3.new(1, 1, 1)
+    keyBox.TextSize = 18
+    keyBox.Font = Enum.Font.Gotham
+    keyBox.PlaceholderText = "Paste your key here..."
+    keyBox.ClearTextOnFocus = false
+    keyBox.Parent = frame
+    
+    local keyCorner = Instance.new("UICorner")
+    keyCorner.CornerRadius = UDim.new(0, 6)
+    keyCorner.Parent = keyBox
+    
+    local statusLabel = Instance.new("TextLabel")
+    statusLabel.Size = UDim2.new(1, -40, 0, 25)
+    statusLabel.Position = UDim2.new(0, 20, 0, 160)
+    statusLabel.BackgroundTransparency = 1
+    statusLabel.Text = ""
+    statusLabel.TextColor3 = Color3.fromRGB(255, 100, 100)
+    statusLabel.TextSize = 14
+    statusLabel.Font = Enum.Font.Gotham
+    statusLabel.Parent = frame
+    
+    local submitBtn = Instance.new("TextButton")
+    submitBtn.Size = UDim2.new(0.4, 0, 0, 40)
+    submitBtn.Position = UDim2.new(0.3, 0, 0, 190)
+    submitBtn.BackgroundColor3 = Color3.fromRGB(200, 0, 0)
+    submitBtn.TextColor3 = Color3.new(1, 1, 1)
+    submitBtn.TextSize = 18
+    submitBtn.Font = Enum.Font.GothamBold
+    submitBtn.Text = "ACTIVATE"
+    submitBtn.Parent = frame
+    
+    local btnCorner = Instance.new("UICorner")
+    btnCorner.CornerRadius = UDim.new(0, 6)
+    btnCorner.Parent = submitBtn
+    
+    local function ValidateKey()
+        local inputKey = keyBox.Text
+        if VALID_KEYS[inputKey] then
+            statusLabel.Text = "✅ Key Valid! Loading DarkSide..."
+            statusLabel.TextColor3 = Color3.fromRGB(0, 255, 0)
+            task.wait(0.5)
+            keyGui:Destroy()
+            LoadDarkSide()
+        else
+            statusLabel.Text = "❌ Invalid Key! Please try again."
+            statusLabel.TextColor3 = Color3.fromRGB(255, 50, 50)
+            keyBox.Text = ""
+        end
+    end
+    
+    submitBtn.MouseButton1Click:Connect(ValidateKey)
+    keyBox.FocusLost:Connect(function(enterPressed)
+        if enterPressed then ValidateKey() end
+    end)
+end
 
 -- ==================== CONFIG ====================
 local Config = {
     Aimbot = {Enabled = false, FOV = 120, Smoothness = 0.3, AimPart = "Head", MaxDistance = 500, TeamCheck = true},
     ESP = {Enabled = false, ShowBoxes = true, ShowNames = true, ShowHealth = true, ShowDistance = true, MaxDistance = 1000, TeamCheck = true},
     Player = {InfiniteJump = false, Fly = false, FlySpeed = 50, WalkSpeed = 16, GodMode = false, FullBright = false},
-    Menu = {Key = Enum.KeyCode.Insert}
+    Menu = {Key = Enum.KeyCode.RightShift}
 }
 
 -- ==================== UTILITY ====================
@@ -100,10 +207,7 @@ local function DoAimbot()
     Camera.CFrame = CFrame.lookAt(camPos, camPos + dir)
 end
 
--- ==================== ESP (Safe Mode - No Drawing Library) ====================
--- ESP uses Drawing library, which may not work on all executors.
--- If Drawing is not available, ESP will be disabled with a warning.
-
+-- ==================== ESP ====================
 local espActive = false
 local espDrawings = {}
 local espObjects = {}
@@ -288,25 +392,23 @@ RunService.Heartbeat:Connect(function()
     end
 end)
 
--- ==================== MENU (Simplified & Reliable) ====================
+-- ==================== MENU ====================
 local menuVisible = false
 local screenGui = nil
 local menuFrame = nil
+local menuCreated = false
 
 local function CreateMenu()
-    -- Clean up any existing menu
     if screenGui then 
         pcall(function() screenGui:Destroy() end)
         screenGui = nil
     end
     
-    -- Create new ScreenGui
     screenGui = Instance.new("ScreenGui")
     screenGui.Name = "DarkSideMenu"
     screenGui.Parent = CoreGui
     screenGui.ResetOnSpawn = false
     
-    -- Main Frame
     menuFrame = Instance.new("Frame")
     menuFrame.Size = UDim2.new(0, 350, 0, 420)
     menuFrame.Position = UDim2.new(0.5, -175, 0.5, -210)
@@ -316,12 +418,10 @@ local function CreateMenu()
     menuFrame.BorderColor3 = Color3.fromRGB(200, 0, 0)
     menuFrame.Parent = screenGui
     
-    -- Corner rounding
     local corner = Instance.new("UICorner")
     corner.CornerRadius = UDim.new(0, 10)
     corner.Parent = menuFrame
     
-    -- Title Bar
     local titleBar = Instance.new("Frame")
     titleBar.Size = UDim2.new(1, 0, 0, 45)
     titleBar.BackgroundColor3 = Color3.fromRGB(200, 0, 0)
@@ -341,7 +441,6 @@ local function CreateMenu()
     title.Font = Enum.Font.GothamBold
     title.Parent = titleBar
     
-    -- Scroll Container
     local scroll = Instance.new("ScrollingFrame")
     scroll.Size = UDim2.new(1, -20, 1, -85)
     scroll.Position = UDim2.new(0, 10, 0, 55)
@@ -357,7 +456,6 @@ local function CreateMenu()
     layout.Padding = UDim.new(0, 5)
     layout.SortOrder = Enum.SortOrder.LayoutOrder
     
-    -- Button Creation Function
     local function AddToggle(text, callback)
         local btn = Instance.new("TextButton")
         btn.Size = UDim2.new(1, -10, 0, 38)
@@ -383,40 +481,32 @@ local function CreateMenu()
         return btn
     end
     
-    -- Add Buttons
     AddToggle("Aimbot", function(s) 
         Config.Aimbot.Enabled = s
         aimbotActive = s
-        print("[DarkSide] Aimbot: " .. (s and "ON" or "OFF"))
     end)
     
     AddToggle("ESP", function(s) 
         Config.ESP.Enabled = s
         espActive = s
-        print("[DarkSide] ESP: " .. (s and "ON" or "OFF"))
     end)
     
     AddToggle("Infinite Jump", function(s) 
         Config.Player.InfiniteJump = s
-        print("[DarkSide] Infinite Jump: " .. (s and "ON" or "OFF"))
     end)
     
     AddToggle("Fly", function(s) 
         Config.Player.Fly = s
-        print("[DarkSide] Fly: " .. (s and "ON" or "OFF"))
     end)
     
     AddToggle("God Mode", function(s) 
         Config.Player.GodMode = s
-        print("[DarkSide] God Mode: " .. (s and "ON" or "OFF"))
     end)
     
     AddToggle("Full Bright", function(s) 
         Config.Player.FullBright = s
-        print("[DarkSide] Full Bright: " .. (s and "ON" or "OFF"))
     end)
     
-    -- Close Button
     local closeBtn = Instance.new("TextButton")
     closeBtn.Size = UDim2.new(0.4, 0, 0, 35)
     closeBtn.Position = UDim2.new(0.3, 0, 1, -45)
@@ -436,7 +526,6 @@ local function CreateMenu()
         if screenGui then screenGui.Enabled = false end
     end)
     
-    -- Update Canvas Size
     task.wait(0.1)
     local totalH = 0
     for _, child in pairs(scroll:GetChildren()) do
@@ -446,18 +535,18 @@ local function CreateMenu()
     end
     scroll.CanvasSize = UDim2.new(0, 0, 0, totalH + 20)
     
-    print("[DarkSide] Menu created successfully!")
+    menuCreated = true
 end
 
 local function ToggleMenu()
     menuVisible = not menuVisible
     
     if menuVisible then
-        print("[DarkSide] Opening menu...")
-        CreateMenu()
+        if not menuCreated then
+            CreateMenu()
+        end
         if screenGui then 
             screenGui.Enabled = true
-            print("[DarkSide] Menu should be visible now.")
         end
     else
         if screenGui then 
@@ -466,21 +555,30 @@ local function ToggleMenu()
     end
 end
 
+-- ==================== LOAD DARKSIDE ====================
+function LoadDarkSide()
+    print("[DarkSide] Rivals Script v2.0 Loading...")
+    print("[DarkSide] Drawing library available: " .. tostring(drawingAvailable))
+    
+    -- Keybind: Right Shift
+    UserInputService.InputBegan:Connect(function(input, gameProcessed)
+        if gameProcessed then return end
+        if input.KeyCode == Enum.KeyCode.RightShift then
+            ToggleMenu()
+        end
+    end)
+    
+    -- Start loops
+    RunService.RenderStepped:Connect(DoAimbot)
+    RunService.RenderStepped:Connect(UpdateESP)
+    
+    -- Auto-open menu on first load
+    task.wait(0.5)
+    ToggleMenu() -- Opens the menu automatically
+    
+    print("[DarkSide] Rivals Script Loaded! Press Right Shift to toggle menu.")
+end
+
 -- ==================== START ====================
-print("[DarkSide] Rivals Script v1.2 Loading...")
-print("[DarkSide] Drawing library available: " .. tostring(drawingAvailable))
-
--- Keybind: INSERT
-UserInputService.InputBegan:Connect(function(input, gameProcessed)
-    if gameProcessed then return end
-    if input.KeyCode == Config.Menu.Key then
-        print("[DarkSide] INSERT pressed! Toggling menu...")
-        ToggleMenu()
-    end
-end)
-
--- Start loops
-RunService.RenderStepped:Connect(DoAimbot)
-RunService.RenderStepped:Connect(UpdateESP)
-
-print("[DarkSide] Rivals Script Loaded! Press INSERT to open menu.")
+print("[DarkSide] v2.0 - Key System Active")
+ShowKeyPrompt()
