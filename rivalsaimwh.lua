@@ -1,6 +1,6 @@
 --[[
-    Skelly Hub Rivals Script v6.0
-    Auto-Open Menu on Load
+    Skelly Hub Rivals Script v8.0
+    COMPLETE WORKING MENU
     Press Right Shift to toggle
 ]]
 
@@ -17,6 +17,7 @@ local CoreGui = game:GetService("CoreGui")
 local Lighting = game:GetService("Lighting")
 local VirtualUser = game:GetService("VirtualUser")
 local Workspace = game:GetService("Workspace")
+local TweenService = game:GetService("TweenService")
 
 -- ======================================================================
 -- CONFIGURATION
@@ -61,7 +62,6 @@ local Config = {
     Visual = {
         MenuKey = Enum.KeyCode.RightShift,
         Watermark = "💀 skelly-hub.lol",
-        AutoOpenMenu = true,
     }
 }
 
@@ -238,6 +238,10 @@ end)
 local espDrawings = {}
 local espObjects = {}
 local drawingAvailable = pcall(function() return Drawing.new("Square") end)
+
+if not drawingAvailable then
+    print("[SkellyHub] Drawing library not available. ESP disabled.")
+end
 
 local function CreateESPDrawing(dType, props)
     if not drawingAvailable then return nil end
@@ -461,7 +465,7 @@ end
 RunService.Heartbeat:Connect(NoClip)
 
 -- ======================================================================
--- MENU
+-- COMPLETE WORKING MENU
 -- ======================================================================
 
 local function CreateMenu()
@@ -479,9 +483,10 @@ local function CreateMenu()
     menuGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
     menuGui.DisplayOrder = 999
     
+    -- Main Frame
     local main = Instance.new("Frame")
-    main.Size = UDim2.new(0, 420, 0, 440)
-    main.Position = UDim2.new(0.5, -210, 0.5, -220)
+    main.Size = UDim2.new(0, 450, 0, 480)
+    main.Position = UDim2.new(0.5, -225, 0.5, -240)
     main.BackgroundColor3 = Color3.fromRGB(10, 10, 20)
     main.BackgroundTransparency = 0.05
     main.BorderSizePixel = 1
@@ -492,6 +497,7 @@ local function CreateMenu()
     mainCorner.CornerRadius = UDim.new(0, 12)
     mainCorner.Parent = main
     
+    -- Title
     local titleBar = Instance.new("Frame")
     titleBar.Size = UDim2.new(1, 0, 0, 45)
     titleBar.BackgroundColor3 = Color3.fromRGB(15, 15, 28)
@@ -512,6 +518,7 @@ local function CreateMenu()
     title.Font = Enum.Font.GothamBold
     title.Parent = titleBar
     
+    -- Tabs
     local tabBar = Instance.new("Frame")
     tabBar.Size = UDim2.new(1, 0, 0, 30)
     tabBar.Position = UDim2.new(0, 0, 0, 45)
@@ -551,6 +558,7 @@ local function CreateMenu()
         end)
     end
     
+    -- Content Container
     local contentContainer = Instance.new("ScrollingFrame")
     contentContainer.Size = UDim2.new(1, -20, 1, -105)
     contentContainer.Position = UDim2.new(0, 10, 0, 80)
@@ -566,6 +574,7 @@ local function CreateMenu()
     layout.Padding = UDim.new(0, 10)
     layout.SortOrder = Enum.SortOrder.LayoutOrder
     
+    -- Close Button
     local closeBtn = Instance.new("TextButton")
     closeBtn.Size = UDim2.new(0.2, 0, 0, 32)
     closeBtn.Position = UDim2.new(0.4, 0, 1, -38)
@@ -681,10 +690,13 @@ local function CreateMenu()
     end
     
     -- ======================================================================
-    -- TAB CONTENT
+    -- REFRESH CONTENT
     -- ======================================================================
     
     function RefreshContent()
+        print("[SkellyHub] Refreshing content for tab: " .. tabs[currentTab])
+        
+        -- Clear existing content
         for _, child in pairs(contentContainer:GetChildren()) do
             if child:IsA("TextButton") or child:IsA("TextLabel") or child:IsA("Frame") then
                 child:Destroy()
@@ -694,6 +706,7 @@ local function CreateMenu()
         if currentTab == 1 then -- Aimbot
             AddLabel("💀 AIMBOT SETTINGS")
             
+            -- Head/Body
             local selectorLabel = AddLabel("Aim Part: " .. Config.Aimbot.AimPart)
             
             local btnContainer = Instance.new("Frame")
@@ -717,6 +730,7 @@ local function CreateMenu()
                 headBtn.BackgroundColor3 = Color3.fromRGB(0, 100, 0)
                 bodyBtn.BackgroundColor3 = Color3.fromRGB(30, 30, 50)
                 UpdateFOVCircle()
+                RefreshContent()
             end)
             
             local bodyBtn = Instance.new("TextButton")
@@ -735,21 +749,26 @@ local function CreateMenu()
                 bodyBtn.BackgroundColor3 = Color3.fromRGB(0, 100, 0)
                 headBtn.BackgroundColor3 = Color3.fromRGB(30, 30, 50)
                 UpdateFOVCircle()
+                RefreshContent()
             end)
             
+            -- FOV Slider
             AddSlider("FOV", Config.Aimbot.FOV, 10, 360, 5, function(val)
                 Config.Aimbot.FOV = val
                 UpdateFOVCircle()
             end)
             
+            -- Smoothness Slider
             AddSlider("Smoothness", Config.Aimbot.Smoothness, 0, 1, 0.05, function(val)
                 Config.Aimbot.Smoothness = val
             end)
             
+            -- Max Distance Slider
             AddSlider("Max Distance", Config.Aimbot.MaxDistance, 100, 1000, 50, function(val)
                 Config.Aimbot.MaxDistance = val
             end)
             
+            -- Toggles
             AddToggle("Show FOV Circle", function(s)
                 Config.Aimbot.ShowFOVCircle = s
                 UpdateFOVCircle()
@@ -849,9 +868,6 @@ local function CreateMenu()
                 Config.Player.JumpPower = val
             end)
             
-        elseif currentTab == 4 then -- Misc
-            AddLabel("💀 MISC SETTINGS")
-            
             AddToggle("Anti AFK", function(s)
                 Config.Player.AntiAFK = s
             end)
@@ -860,11 +876,28 @@ local function CreateMenu()
                 Config.Player.AutoFarm = s
             end)
             
-            AddLabel("")
-            AddLabel("💀 Skelly Hub v6.0", Color3.fromRGB(150, 150, 170))
-            AddLabel("skelly-hub.lol", Color3.fromRGB(80, 80, 100))
+        elseif currentTab == 4 then -- Misc
+            AddLabel("💀 MISC SETTINGS")
+            
+            -- Credits
+            AddLabel("", Color3.fromRGB(80, 80, 100))
+            AddLabel("💀 Skelly Hub v8.0", Color3.fromRGB(150, 150, 170))
+            AddLabel("Developed by Skelly Hub Team", Color3.fromRGB(120, 120, 140))
+            AddLabel("", Color3.fromRGB(80, 80, 100))
+            AddLabel("⚙️ Features:", Color3.fromRGB(180, 180, 200))
+            AddLabel("  • Aimbot with FOV & Smoothness", Color3.fromRGB(150, 150, 170))
+            AddLabel("  • ESP (Boxes, Names, Health, Distance)", Color3.fromRGB(150, 150, 170))
+            AddLabel("  • Player Mods (Fly, God Mode, etc.)", Color3.fromRGB(150, 150, 170))
+            AddLabel("  • Auto Farm & Anti AFK", Color3.fromRGB(150, 150, 170))
+            AddLabel("", Color3.fromRGB(80, 80, 100))
+            AddLabel("📱 Support:", Color3.fromRGB(180, 180, 200))
+            AddLabel("  • Discord: https://discord.gg/XJtYWy9jgU", Color3.fromRGB(150, 150, 170))
+            AddLabel("  • Website: skelly-hub.lol", Color3.fromRGB(150, 150, 170))
+            AddLabel("", Color3.fromRGB(80, 80, 100))
+            AddLabel("💀 SKELLY HUB v8.0", Color3.fromRGB(200, 100, 100))
         end
         
+        -- Update canvas
         task.wait(0.05)
         local totalH = 0
         for _, child in pairs(contentContainer:GetChildren()) do
@@ -873,10 +906,13 @@ local function CreateMenu()
             end
         end
         contentContainer.CanvasSize = UDim2.new(0, 0, 0, totalH + 20)
+        print("[SkellyHub] Canvas height: " .. totalH)
     end
     
+    -- Load initial content
     RefreshContent()
-    print("[SkellyHub] Menu created!")
+    
+    print("[SkellyHub] Menu created successfully!")
 end
 
 -- ======================================================================
@@ -885,12 +921,17 @@ end
 
 local function ToggleMenu()
     menuOpen = not menuOpen
+    print("[SkellyHub] Menu: " .. tostring(menuOpen))
     
     if menuOpen then
         CreateMenu()
-        if menuGui then menuGui.Enabled = true end
+        if menuGui then
+            menuGui.Enabled = true
+        end
     else
-        if menuGui then menuGui.Enabled = false end
+        if menuGui then
+            menuGui.Enabled = false
+        end
     end
 end
 
@@ -899,11 +940,11 @@ end
 -- ======================================================================
 
 local function AutoOpenMenu()
-    print("[SkellyHub] Auto-opening menu...")
-    task.wait(0.5) -- Small delay to ensure everything is loaded
-    if not menuLoaded then
-        menuLoaded = true
+    print("[SkellyHub] Auto-opening menu in 1.5 seconds...")
+    task.wait(1.5)
+    if not menuOpen then
         ToggleMenu()
+        print("[SkellyHub] Menu auto-opened!")
     end
 end
 
@@ -911,17 +952,17 @@ end
 -- START
 -- ======================================================================
 
-print("[SkellyHub] Rivals Script v6.0 Loading...")
+print("[SkellyHub] Rivals Script v8.0 Loading...")
 print("[SkellyHub] Press Right Shift to toggle menu.")
-print("[SkellyHub] Menu will auto-open in 1 second...")
+print("[SkellyHub] Menu will auto-open shortly...")
 
+-- Start core loops
 RunService.RenderStepped:Connect(UpdateFOVCircle)
 RunService.RenderStepped:Connect(DoAimbot)
 RunService.RenderStepped:Connect(DoSilentAim)
 RunService.RenderStepped:Connect(UpdateESP)
 
--- Auto-open menu after loading
-task.wait(1)
+-- Auto-open menu
 AutoOpenMenu()
 
-print("[SkellyHub] Loaded!")
+print("[SkellyHub] Loaded successfully!")
