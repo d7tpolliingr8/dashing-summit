@@ -1,0 +1,1577 @@
+-- // Raven Software | MM2 Edition
+-- // Premium Utility Suite for Murder Mystery 2 (Roblox)
+-- // Yellow | Red | Black Theme
+
+-- ================================================
+--  STUBS
+-- ================================================
+if not checkcaller then checkcaller = function() return true end end
+if not getnamecallmethod then getnamecallmethod = function() return "" end end
+if not hookmetamethod then hookmetamethod = nil end
+
+-- ================================================
+--  SERVICES
+-- ================================================
+local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
+local UserInputService = game:GetService("UserInputService")
+local Workspace = game:GetService("Workspace")
+local Lighting = game:GetService("Lighting")
+local StarterGui = game:GetService("StarterGui")
+local CoreGui = game:GetService("CoreGui")
+local TeleportService = game:GetService("TeleportService")
+local VirtualUser = game:GetService("VirtualUser")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+
+local Camera = Workspace.CurrentCamera
+local LP = Players.LocalPlayer
+
+-- ================================================
+--  LOAD LINORIA
+-- ================================================
+local Library, SaveManager, ThemeManager
+local LibraryLoaded = false
+
+for _, url in ipairs({
+    "https://raw.githubusercontent.com/violin-suzutsuki/LinoriaLib/main/Library.lua",
+    "https://raw.githubusercontent.com/caIIed/Linoria-Rewrite/main/Library.lua",
+}) do
+    local success, result = pcall(function()
+        return loadstring(game:HttpGet(url))()
+    end)
+    if success and result then
+        Library = result
+        LibraryLoaded = true
+        break
+    end
+end
+
+if not LibraryLoaded then
+    warn("[Raven Software] Failed to load UI library")
+    StarterGui:SetCore("SendNotification", {
+        Title = "Raven Software",
+        Text = "Failed to load UI library. Please try again.",
+        Duration = 5,
+    })
+    return
+end
+
+pcall(function()
+    SaveManager = loadstring(game:HttpGet("https://raw.githubusercontent.com/violin-suzutsuki/LinoriaLib/main/addons/SaveManager.lua"))()
+end)
+pcall(function()
+    ThemeManager = loadstring(game:HttpGet("https://raw.githubusercontent.com/violin-suzutsuki/LinoriaLib/main/addons/ThemeManager.lua"))()
+end)
+
+-- ================================================
+--  RAVEN THEME (Yellow, Red, Black)
+-- ================================================
+local YELLOW = Color3.fromRGB(255, 215, 0)
+local YELLOW_DARK = Color3.fromRGB(200, 160, 0)
+local RED = Color3.fromRGB(255, 0, 0)
+local RED_DARK = Color3.fromRGB(180, 0, 0)
+local BLACK = Color3.fromRGB(0, 0, 0)
+local DARK_GRAY = Color3.fromRGB(20, 20, 20)
+local WHITE = Color3.fromRGB(255, 255, 255)
+local GREEN = Color3.fromRGB(75, 195, 95)
+
+local function ApplyRavenTheme()
+    if not Library then return end
+    pcall(function()
+        Library.AccentColor = YELLOW
+        Library.AccentColorDark = YELLOW_DARK
+        Library.FontColor = WHITE
+        Library.MainColor = BLACK
+        Library.BackgroundColor = DARK_GRAY
+        Library.OutlineColor = RED
+        Library:UpdateColorsUsingRegistry()
+        
+        if ThemeManager then
+            ThemeManager:ApplyTheme("Raven")
+        end
+    end)
+end
+
+-- ================================================
+--  MM2 SPECIFIC CONFIG
+-- ================================================
+local Cfg = {
+    ESP = {
+        On = false,
+        MaxDist = 1000,
+        Names = true,
+        NameColor = WHITE,
+        Dist = true,
+        DistColor = Color3.fromRGB(200, 200, 200),
+        Box = true,
+        BoxColor = YELLOW,
+        CornerBox = true,
+        CornerColor = RED,
+        Tracers = false,
+        TraceColor = RED,
+        Chams = true,
+        ChamsColor = YELLOW,
+        ChamsTrans = 0.3,
+        HeadDot = true,
+        HeadDotColor = RED,
+        OffscreenArrows = true,
+        OffscreenArrowColor = RED,
+        -- MM2 specific
+        ShowMurderer = true,
+        MurdererColor = RED,
+        ShowSheriff = true,
+        SheriffColor = GREEN,
+        ShowInnocent = false,
+        InnocentColor = WHITE,
+        ShowGun = true,
+        GunColor = YELLOW,
+    },
+    Aim = {
+        On = false,
+        Silent = true,
+        FOV = 200,
+        ShowFOV = true,
+        FOVColor = RED,
+        Smoothness = 0.2,
+        Prediction = 0.0,
+        WallCheck = true,
+        AimKey = "MouseButton2",
+        MaxDistance = 500,
+        -- MM2 specific
+        AimMurderer = true,
+        AimSheriff = false,
+        AutoShoot = false,
+    },
+    Visuals = {
+        FullBright = false,
+        NoFog = false,
+        Crosshair = true,
+        CrosshairColor = YELLOW,
+        CrosshairSize = 14,
+        CrosshairGap = 5,
+        SpinSpeed = 2.0,
+    },
+    Movement = {
+        Fly = false,
+        FlySpeed = 60,
+        FlyKeybind = Enum.KeyCode.F,
+        Noclip = false,
+        SpeedHack = false,
+        SpeedValue = 30,
+        BHop = false,
+        AutoJump = false,
+        InfiniteJump = false,
+    },
+    Misc = {
+        AntiAFK = false,
+        ClickTP = false,
+        TPKeybind = Enum.KeyCode.T,
+        TeleportHeight = 10,
+        -- MM2 specific
+        AutoCollect = false,
+        AutoCollectRadius = 50,
+        AutoCollectDelay = 0.5,
+        ShowCoinESP = true,
+        CoinColor = YELLOW,
+        ShowKnifeESP = true,
+        KnifeColor = RED,
+        AutoDrop = false,
+    }
+}
+
+-- ================================================
+--  DRAWING HELPERS
+-- ================================================
+local function L(props)
+    local d = Drawing.new("Line")
+    d.Visible = false
+    d.Color = props.Color or WHITE
+    d.Thickness = props.Thickness or 1
+    d.ZIndex = props.ZIndex or 5
+    return d
+end
+
+local function T(props)
+    local d = Drawing.new("Text")
+    d.Visible = false
+    d.Text = props.Text or ""
+    d.Size = props.Size or 13
+    d.Center = props.Center ~= nil and props.Center or true
+    d.Outline = true
+    d.OutlineColor = BLACK
+    d.Color = props.Color or WHITE
+    d.ZIndex = props.ZIndex or 6
+    d.Position = Vector2.new(-9999, -9999)
+    return d
+end
+
+local function C(props)
+    local d = Drawing.new("Circle")
+    d.Visible = false
+    d.Filled = false
+    d.Thickness = props.Thickness or 2
+    d.Color = props.Color or WHITE
+    d.ZIndex = props.ZIndex or 10
+    d.NumSides = 64
+    d.Position = Vector2.new(-9999, -9999)
+    d.Radius = 1
+    return d
+end
+
+-- ================================================
+--  HELPERS
+-- ================================================
+local function W2S(pos)
+    local vp, on = Camera:WorldToViewportPoint(pos)
+    return Vector2.new(vp.X, vp.Y), on and vp.Z > 0
+end
+
+local function AimPoint()
+    if UserInputService.MouseBehavior == Enum.MouseBehavior.LockCenter then
+        local vp = Camera.ViewportSize
+        return Vector2.new(vp.X * 0.5, vp.Y * 0.5)
+    end
+    return UserInputService:GetMouseLocation()
+end
+
+local function Parts(char)
+    if not char then return end
+    local h = char:FindFirstChild("HumanoidRootPart") or char:FindFirstChild("Torso")
+    local m = char:FindFirstChildOfClass("Humanoid")
+    local d = char:FindFirstChild("Head")
+    if h and m and d then return h, m, d end
+end
+
+local function BBox(char)
+    local hrp, _, head = Parts(char)
+    if not hrp then return end
+    local top = head.Position + Vector3.new(0, 0.7, 0)
+    local bot = hrp.Position - Vector3.new(0, 3.2, 0)
+    local ts, ton = W2S(top)
+    local bs, bon = W2S(bot)
+    if not ton and not bon then return end
+    local ls = W2S(hrp.Position - hrp.CFrame.RightVector * 1.5)
+    local rs = W2S(hrp.Position + hrp.CFrame.RightVector * 1.5)
+    local x = math.min(ts.X, bs.X, ls.X, rs.X)
+    local x2 = math.max(ts.X, bs.X, ls.X, rs.X)
+    local h2 = bs.Y - ts.Y
+    if h2 < 5 then return end
+    return { X = x, Y = ts.Y, W = x2 - x, H = h2, CX = (x + x2) / 2, BS = bs, TS = ts }
+end
+
+-- ================================================
+--  MM2 ROLE DETECTION
+-- ================================================
+local function GetPlayerRole(player)
+    if not player then return "Unknown" end
+    local char = player.Character
+    if not char then return "Unknown" end
+    
+    -- Check for murderer (has knife)
+    local knife = char:FindFirstChild("Knife") or char:FindFirstChild("MurdererKnife")
+    if knife then return "Murderer" end
+    
+    -- Check for sheriff (has gun)
+    local gun = char:FindFirstChild("Gun") or char:FindFirstChild("SheriffGun")
+    if gun then return "Sheriff" end
+    
+    return "Innocent"
+end
+
+local function GetPlayerGun(player)
+    local char = player.Character
+    if not char then return nil end
+    return char:FindFirstChild("Gun") or char:FindFirstChild("SheriffGun")
+end
+
+local function GetPlayerKnife(player)
+    local char = player.Character
+    if not char then return nil end
+    return char:FindFirstChild("Knife") or char:FindFirstChild("MurdererKnife")
+end
+
+local function IsMurderer(player)
+    return GetPlayerRole(player) == "Murderer"
+end
+
+local function IsSheriff(player)
+    return GetPlayerRole(player) == "Sheriff"
+end
+
+-- ================================================
+--  ESP SYSTEM
+-- ================================================
+local ESPs = {}
+local OffscreenArrows = {}
+local CoinESP = {}
+local KnifeESP = {}
+
+local function CreateOffscreenArrows(player)
+    if OffscreenArrows[player] then return end
+    local arrowGroup = {}
+    for i = 1, 3 do
+        local line = Drawing.new("Line")
+        line.Visible = false
+        line.Thickness = 2
+        line.Color = RED
+        line.ZIndex = 8
+        arrowGroup[i] = line
+    end
+    OffscreenArrows[player] = arrowGroup
+end
+
+local function DestroyOffscreenArrows(player)
+    local arrowGroup = OffscreenArrows[player]
+    if arrowGroup then
+        for _, line in ipairs(arrowGroup) do
+            pcall(function() line:Remove() end)
+        end
+        OffscreenArrows[player] = nil
+    end
+end
+
+local function CreateESPObjects(player)
+    if ESPs[player] then return end
+    local o = {}
+    
+    o.HB = {
+        L{ Color = Color3.fromRGB(15,15,15), Thickness = 2, ZIndex = 5 },
+        L{ Color = GREEN, Thickness = 2, ZIndex = 6 },
+    }
+    
+    o.Name = T{ Color = WHITE, Size = 14, ZIndex = 6 }
+    o.Dist = T{ Color = Color3.fromRGB(200,200,200), Size = 11, ZIndex = 6 }
+    o.Role = T{ Color = WHITE, Size = 12, ZIndex = 6 }
+    
+    o.Tr = L{ Color = RED, ZIndex = 3, Thickness = 1.5 }
+    o.TrO = L{ Color = BLACK, Thickness = 3, ZIndex = 2 }
+    
+    o.Box = {}
+    for i = 1, 4 do
+        o.Box[i] = L{ Color = YELLOW, Thickness = 1.5, ZIndex = 5 }
+    end
+    o.BoxO = {}
+    for i = 1, 4 do
+        o.BoxO[i] = L{ Color = BLACK, Thickness = 3, ZIndex = 4 }
+    end
+    
+    o.Corner = {}
+    for i = 1, 8 do
+        o.Corner[i] = L{ Color = RED, Thickness = 2, ZIndex = 5 }
+    end
+    
+    o.Chams = nil
+    o.HeadDot = C{ Color = RED, Thickness = 1, ZIndex = 7, Radius = 5, Filled = true }
+    o.GunESP = L{ Color = YELLOW, Thickness = 2, ZIndex = 5 }
+    
+    ESPs[player] = o
+    CreateOffscreenArrows(player)
+end
+
+local function DestroyESP(player)
+    local o = ESPs[player]
+    if not o then return end
+    for _, l in ipairs(o.HB) do pcall(function() l:Remove() end) end
+    for _, l in ipairs(o.Box or {}) do pcall(function() l:Remove() end) end
+    for _, l in ipairs(o.BoxO or {}) do pcall(function() l:Remove() end) end
+    for _, l in ipairs(o.Corner or {}) do pcall(function() l:Remove() end) end
+    pcall(function() o.Name:Remove() end)
+    pcall(function() o.Dist:Remove() end)
+    pcall(function() o.Role:Remove() end)
+    pcall(function() o.Tr:Remove() end)
+    pcall(function() o.TrO:Remove() end)
+    if o.Chams then pcall(function() o.Chams:Destroy() end) end
+    pcall(function() o.HeadDot:Remove() end)
+    pcall(function() o.GunESP:Remove() end)
+    ESPs[player] = nil
+    DestroyOffscreenArrows(player)
+end
+
+local function HideESP(o)
+    for _, l in ipairs(o.HB) do l.Visible = false end
+    for _, l in ipairs(o.Box or {}) do l.Visible = false end
+    for _, l in ipairs(o.BoxO or {}) do l.Visible = false end
+    for _, l in ipairs(o.Corner or {}) do l.Visible = false end
+    o.Name.Visible = false
+    o.Dist.Visible = false
+    o.Role.Visible = false
+    o.Tr.Visible = false
+    if o.TrO then o.TrO.Visible = false end
+    if o.Chams then o.Chams.Enabled = false end
+    if o.HeadDot then o.HeadDot.Visible = false end
+    o.GunESP.Visible = false
+end
+
+local function UpdateOffscreenArrows()
+    for _, player in ipairs(Players:GetPlayers()) do
+        if player == LP then continue end
+        local arrowGroup = OffscreenArrows[player]
+        if not arrowGroup then continue end
+        
+        local char = player.Character
+        if not char then 
+            for _, l in ipairs(arrowGroup) do l.Visible = false end
+            continue 
+        end
+        
+        local hrp = char:FindFirstChild("HumanoidRootPart")
+        local hum = char:FindFirstChildOfClass("Humanoid")
+        if not hrp or not hum or hum.Health <= 0 then 
+            for _, l in ipairs(arrowGroup) do l.Visible = false end
+            continue 
+        end
+        
+        if not Cfg.ESP.On or not Cfg.ESP.OffscreenArrows then
+            for _, l in ipairs(arrowGroup) do l.Visible = false end
+            continue
+        end
+        
+        -- Check if we should show arrow based on role
+        local role = GetPlayerRole(player)
+        if role == "Innocent" and not Cfg.ESP.ShowInnocent then
+            for _, l in ipairs(arrowGroup) do l.Visible = false end
+            continue
+        end
+        
+        local _, onScreen = Camera:WorldToViewportPoint(hrp.Position)
+        if onScreen then
+            for _, l in ipairs(arrowGroup) do l.Visible = false end
+            continue
+        end
+        
+        local vp = Camera.ViewportSize
+        local center = Vector2.new(vp.X / 2, vp.Y / 2)
+        local camCFrame = Camera.CFrame
+        local playerPos = hrp.Position
+        
+        local relPos = camCFrame:PointToObjectSpace(playerPos)
+        local angle = math.atan2(relPos.X, relPos.Z)
+        local radius = math.clamp(vp.X * 0.35, 100, 350)
+        
+        local arrowPos = Vector2.new(
+            center.X + math.sin(angle) * radius,
+            center.Y - math.cos(angle) * (radius * 0.75)
+        )
+        
+        local size = 14
+        local rot = angle
+        
+        local p1 = arrowPos + Vector2.new(math.sin(rot), -math.cos(rot)) * size
+        local p2 = arrowPos + Vector2.new(math.sin(rot + math.rad(140)), -math.cos(rot + math.rad(140))) * (size * 0.7)
+        local p3 = arrowPos + Vector2.new(math.sin(rot - math.rad(140)), -math.cos(rot - math.rad(140))) * (size * 0.7)
+        
+        arrowGroup[1].From = p1
+        arrowGroup[1].To = p2
+        arrowGroup[2].From = p2
+        arrowGroup[2].To = p3
+        arrowGroup[3].From = p3
+        arrowGroup[3].To = p1
+        
+        local col = Cfg.ESP.OffscreenArrowColor or RED
+        for _, l in ipairs(arrowGroup) do
+            l.Color = col
+            l.Visible = true
+        end
+    end
+end
+
+local function UpdateESP()
+    for _, player in ipairs(Players:GetPlayers()) do
+        if player == LP then continue end
+        CreateESPObjects(player)
+        local o = ESPs[player]
+        local char = player.Character
+        if not char then HideESP(o); continue end
+        
+        local hrp, hum = Parts(char)
+        if not hrp or not hum then HideESP(o); continue end
+        
+        local role = GetPlayerRole(player)
+        
+        -- Filter by role settings
+        if role == "Murderer" and not Cfg.ESP.ShowMurderer then HideESP(o); continue end
+        if role == "Sheriff" and not Cfg.ESP.ShowSheriff then HideESP(o); continue end
+        if role == "Innocent" and not Cfg.ESP.ShowInnocent then HideESP(o); continue end
+        
+        local myChar = LP.Character
+        local myRoot = myChar and myChar:FindFirstChild("HumanoidRootPart")
+        local dist = myRoot and (hrp.Position - myRoot.Position).Magnitude or 0
+        if dist > Cfg.ESP.MaxDist then HideESP(o); continue end
+        
+        local bb = BBox(char)
+        if not bb then HideESP(o); continue end
+        if not Cfg.ESP.On then HideESP(o); continue end
+        
+        local x, y, w, h = bb.X, bb.Y, bb.W, bb.H
+        
+        -- Get role color
+        local roleColor = WHITE
+        if role == "Murderer" then roleColor = Cfg.ESP.MurdererColor
+        elseif role == "Sheriff" then roleColor = Cfg.ESP.SheriffColor
+        else roleColor = Cfg.ESP.InnocentColor end
+        
+        -- Name
+        if Cfg.ESP.Names then
+            o.Name.Position = Vector2.new(bb.CX, bb.Y - 30)
+            o.Name.Text = player.DisplayName or player.Name
+            o.Name.Color = Cfg.ESP.NameColor
+            o.Name.Visible = true
+        else
+            o.Name.Visible = false
+        end
+        
+        -- Role label
+        o.Role.Position = Vector2.new(bb.CX, bb.Y - 16)
+        o.Role.Text = role
+        o.Role.Color = roleColor
+        o.Role.Visible = true
+        
+        -- Distance
+        if Cfg.ESP.Dist then
+            o.Dist.Position = Vector2.new(bb.CX, bb.Y + bb.H + 3)
+            o.Dist.Text = string.format("[%dm]", math.floor(dist))
+            o.Dist.Color = Cfg.ESP.DistColor
+            o.Dist.Visible = true
+        else
+            o.Dist.Visible = false
+        end
+        
+        -- Box
+        if Cfg.ESP.Box then
+            local function SetLine(out, bg, f, t, color)
+                bg.From = f
+                bg.To = t
+                bg.Visible = true
+                out.From = f
+                out.To = t
+                out.Color = color
+                out.Visible = true
+            end
+            local col = Cfg.ESP.BoxColor
+            SetLine(o.Box[1], o.BoxO[1], Vector2.new(x, y), Vector2.new(x + w, y), col)
+            SetLine(o.Box[2], o.BoxO[2], Vector2.new(x, y + h), Vector2.new(x + w, y + h), col)
+            SetLine(o.Box[3], o.BoxO[3], Vector2.new(x, y), Vector2.new(x, y + h), col)
+            SetLine(o.Box[4], o.BoxO[4], Vector2.new(x + w, y), Vector2.new(x + w, y + h), col)
+        else
+            for i = 1, 4 do
+                o.Box[i].Visible = false
+                o.BoxO[i].Visible = false
+            end
+        end
+        
+        -- Corner Box
+        if Cfg.ESP.CornerBox then
+            local len = math.min(w, h) * 0.2
+            local col = Cfg.ESP.CornerColor
+            local corners = {
+                {Vector2.new(x, y + len), Vector2.new(x, y), Vector2.new(x + len, y)},
+                {Vector2.new(x + w - len, y), Vector2.new(x + w, y), Vector2.new(x + w, y + len)},
+                {Vector2.new(x, y + h - len), Vector2.new(x, y + h), Vector2.new(x + len, y + h)},
+                {Vector2.new(x + w - len, y + h), Vector2.new(x + w, y + h), Vector2.new(x + w, y + h - len)},
+            }
+            for i, corner in ipairs(corners) do
+                local idx = (i - 1) * 2 + 1
+                o.Corner[idx].From = corner[1]
+                o.Corner[idx].To = corner[2]
+                o.Corner[idx].Color = col
+                o.Corner[idx].Visible = true
+                o.Corner[idx + 1].From = corner[2]
+                o.Corner[idx + 1].To = corner[3]
+                o.Corner[idx + 1].Color = col
+                o.Corner[idx + 1].Visible = true
+            end
+        else
+            for i = 1, 8 do
+                o.Corner[i].Visible = false
+            end
+        end
+        
+        -- Tracers
+        if Cfg.ESP.Tracers then
+            local vp = Camera.ViewportSize
+            local from = Vector2.new(vp.X / 2, vp.Y)
+            o.Tr.From = from
+            o.Tr.To = bb.BS
+            o.Tr.Color = Cfg.ESP.TraceColor
+            o.Tr.Visible = true
+            o.TrO.From = from
+            o.TrO.To = bb.BS
+            o.TrO.Visible = true
+        else
+            o.Tr.Visible = false
+            o.TrO.Visible = false
+        end
+        
+        -- Chams
+        if Cfg.ESP.Chams then
+            if not o.Chams or o.Chams.Parent ~= char then
+                if o.Chams then o.Chams:Destroy() end
+                local h = Instance.new("Highlight")
+                h.Adornee = char
+                h.DepthMode = Enum.HighlightDepthMode.AlwaysOnTop
+                h.Parent = char
+                o.Chams = h
+            end
+            o.Chams.Enabled = true
+            o.Chams.FillColor = Cfg.ESP.ChamsColor
+            o.Chams.FillTransparency = Cfg.ESP.ChamsTrans
+            o.Chams.OutlineColor = RED
+            o.Chams.OutlineTransparency = 0.5
+        elseif o.Chams then
+            o.Chams.Enabled = false
+        end
+        
+        -- Head Dot
+        if Cfg.ESP.HeadDot then
+            local head = char:FindFirstChild("Head")
+            if head then
+                local sp, on = W2S(head.Position)
+                if on then
+                    o.HeadDot.Position = sp
+                    o.HeadDot.Color = Cfg.ESP.HeadDotColor
+                    o.HeadDot.Visible = true
+                else
+                    o.HeadDot.Visible = false
+                end
+            end
+        else
+            o.HeadDot.Visible = false
+        end
+        
+        -- Gun ESP
+        if Cfg.ESP.ShowGun then
+            local gun = GetPlayerGun(player)
+            if gun then
+                local sp, on = W2S(gun.Position)
+                if on then
+                    -- Draw line from gun to bottom of screen
+                    local vp = Camera.ViewportSize
+                    o.GunESP.From = sp
+                    o.GunESP.To = Vector2.new(sp.X, vp.Y)
+                    o.GunESP.Color = Cfg.ESP.GunColor
+                    o.GunESP.Visible = true
+                else
+                    o.GunESP.Visible = false
+                end
+            else
+                o.GunESP.Visible = false
+            end
+        end
+    end
+end
+
+-- ================================================
+--  AIMBOT SYSTEM - MM2 Optimized
+-- ================================================
+local FOVCIRC = C{ Color = RED, ZIndex = 10 }
+local CurrentTarget = nil
+
+local function GetAimPart(char)
+    return char:FindFirstChild("Head") or char:FindFirstChild("HumanoidRootPart")
+end
+
+local function GetTargetPosition(char, part, predict)
+    if not part then return nil end
+    return part.Position
+end
+
+local function IsVisible(targetPos)
+    if not Cfg.Aim.WallCheck then return true end
+    local origin = Camera.CFrame.Position
+    local direction = (targetPos - origin).Unit
+    local distance = (targetPos - origin).Magnitude
+    local raycastParams = RaycastParams.new()
+    raycastParams.FilterDescendantsInstances = {LP.Character}
+    raycastParams.FilterType = Enum.RaycastFilterType.Blacklist
+    local rayResult = workspace:Raycast(origin, direction * distance, raycastParams)
+    return not rayResult
+end
+
+local function IsValidTarget(player)
+    if not player or player == LP then return false end
+    local char = player.Character
+    if not char then return false end
+    local hum = char:FindFirstChildOfClass("Humanoid")
+    if not hum or hum.Health <= 0 then return false end
+    
+    local role = GetPlayerRole(player)
+    
+    -- Filter by aim settings
+    if role == "Murderer" and not Cfg.Aim.AimMurderer then return false end
+    if role == "Sheriff" and not Cfg.Aim.AimSheriff then return false end
+    if role == "Innocent" then return false end -- Don't aim at innocents
+    
+    local part = GetAimPart(char)
+    if not part then return false end
+    
+    local myRoot = LP.Character and LP.Character:FindFirstChild("HumanoidRootPart")
+    if myRoot then
+        local dist = (part.Position - myRoot.Position).Magnitude
+        if dist > Cfg.Aim.MaxDistance then return false end
+    end
+    
+    return true, char, part, role
+end
+
+local function GetClosestTarget()
+    local center = AimPoint()
+    local best, bestDist = nil, Cfg.Aim.FOV
+    
+    for _, player in ipairs(Players:GetPlayers()) do
+        if player == LP then continue end
+        local valid, char, part, role = IsValidTarget(player)
+        if not valid then continue end
+        local pos = GetTargetPosition(char, part, false)
+        if not pos then continue end
+        if not IsVisible(pos) then continue end
+        local screen, onScreen = W2S(pos)
+        if not onScreen then continue end
+        local dist = (screen - center).Magnitude
+        if dist < bestDist then
+            bestDist = dist
+            best = { Player = player, Char = char, Part = part, Screen = screen, Pos = pos, Role = role }
+        end
+    end
+    return best
+end
+
+local function UpdateFOV()
+    if Cfg.Aim.ShowFOV and Cfg.Aim.On then
+        FOVCIRC.Visible = true
+        FOVCIRC.Position = AimPoint()
+        FOVCIRC.Radius = Cfg.Aim.FOV
+        FOVCIRC.Color = Cfg.Aim.FOVColor
+    else
+        FOVCIRC.Visible = false
+    end
+end
+
+local function IsAimKeyPressed()
+    local key = Cfg.Aim.AimKey
+    if typeof(key) == "EnumItem" then
+        if key.EnumType == Enum.UserInputType then
+            return UserInputService:IsMouseButtonPressed(key)
+        elseif key.EnumType == Enum.KeyCode then
+            return UserInputService:IsKeyDown(key)
+        end
+    elseif typeof(key) == "string" then
+        if key == "MouseButton2" then
+            return UserInputService:IsMouseButtonPressed(Enum.UserInputType.MouseButton2)
+        elseif key == "MouseButton1" then
+            return UserInputService:IsMouseButtonPressed(Enum.UserInputType.MouseButton1)
+        else
+            local success, keyCode = pcall(function() return Enum.KeyCode[key] end)
+            if success and keyCode then
+                return UserInputService:IsKeyDown(keyCode)
+            end
+        end
+    end
+    return false
+end
+
+local function DoAim()
+    if not Cfg.Aim.On then
+        CurrentTarget = nil
+        return
+    end
+    
+    local holding = IsAimKeyPressed()
+    if not holding then
+        CurrentTarget = nil
+        return
+    end
+    
+    local target = GetClosestTarget()
+    if not target then
+        CurrentTarget = nil
+        return
+    end
+    
+    CurrentTarget = target
+    local aimPos = GetTargetPosition(target.Char, target.Part, true)
+    if not aimPos then return end
+    
+    if Cfg.Aim.Silent then
+        local center = AimPoint()
+        local screen, on = W2S(aimPos)
+        if on then
+            local dist = (screen - center).Magnitude
+            if dist <= Cfg.Aim.FOV then
+                local currentCF = Camera.CFrame
+                local targetCF = CFrame.lookAt(currentCF.Position, aimPos)
+                if Cfg.Aim.Smoothness <= 0 then
+                    Camera.CFrame = targetCF
+                else
+                    local smooth = math.clamp(1 - Cfg.Aim.Smoothness, 0.01, 1)
+                    Camera.CFrame = currentCF:Lerp(targetCF, smooth)
+                end
+            end
+        end
+    else
+        local currentCF = Camera.CFrame
+        local targetCF = CFrame.lookAt(currentCF.Position, aimPos)
+        if Cfg.Aim.Smoothness <= 0 then
+            Camera.CFrame = targetCF
+        else
+            local smooth = math.clamp(1 - Cfg.Aim.Smoothness, 0.01, 1)
+            Camera.CFrame = currentCF:Lerp(targetCF, smooth)
+        end
+    end
+    
+    -- Auto shoot
+    if Cfg.Aim.AutoShoot and target then
+        pcall(function()
+            VirtualUser:ClickButton(Vector2.new())
+        end)
+    end
+end
+
+-- ================================================
+--  MOVEMENT SYSTEMS
+-- ================================================
+local flyConnection = nil
+local flyEnabled = false
+
+local function StartFly()
+    if flyConnection then return end
+    local char = LP.Character
+    if not char then return end
+    local root = char:FindFirstChild("HumanoidRootPart")
+    if not root then return end
+    local humanoid = char:FindFirstChildOfClass("Humanoid")
+    if humanoid then humanoid.PlatformStand = true end
+    
+    flyConnection = RunService:BindToRenderStep("FlySystem", Enum.RenderPriority.Last.Value, function()
+        if not flyEnabled then StopFly(); return end
+        local speed = Cfg.Movement.FlySpeed
+        local camLook = Camera.CFrame.LookVector
+        local camRight = Camera.CFrame.RightVector
+        local camUp = Camera.CFrame.UpVector
+        local moveDirection = Vector3.new()
+        if UserInputService:IsKeyDown(Enum.KeyCode.W) then moveDirection = moveDirection + camLook end
+        if UserInputService:IsKeyDown(Enum.KeyCode.S) then moveDirection = moveDirection - camLook end
+        if UserInputService:IsKeyDown(Enum.KeyCode.A) then moveDirection = moveDirection - camRight end
+        if UserInputService:IsKeyDown(Enum.KeyCode.D) then moveDirection = moveDirection + camRight end
+        if UserInputService:IsKeyDown(Enum.KeyCode.Space) then moveDirection = moveDirection + camUp end
+        if UserInputService:IsKeyDown(Enum.KeyCode.LeftShift) then moveDirection = moveDirection - camUp end
+        if moveDirection.Magnitude > 0 then
+            moveDirection = moveDirection.Unit * speed
+            root.Velocity = moveDirection
+        else
+            root.Velocity = Vector3.new(0, 0, 0)
+        end
+    end)
+end
+
+local function StopFly()
+    if flyConnection then
+        RunService:UnbindFromRenderStep("FlySystem")
+        flyConnection = nil
+    end
+    local char = LP.Character
+    if char then
+        local humanoid = char:FindFirstChildOfClass("Humanoid")
+        if humanoid then humanoid.PlatformStand = false end
+        local root = char:FindFirstChild("HumanoidRootPart")
+        if root then root.Velocity = Vector3.new(0, 0, 0) end
+    end
+end
+
+local function ToggleFly()
+    flyEnabled = not flyEnabled
+    if flyEnabled then StartFly() else StopFly() end
+    Cfg.Movement.Fly = flyEnabled
+    if Toggles and Toggles.FlyToggle then
+        pcall(function() Toggles.FlyToggle:SetValue(flyEnabled) end)
+    end
+end
+
+-- Noclip System
+local noclipConnection = nil
+
+local function StartNoclip()
+    if noclipConnection then return end
+    noclipConnection = RunService:BindToRenderStep("NoclipSystem", Enum.RenderPriority.Last.Value, function()
+        if not Cfg.Movement.Noclip then StopNoclip(); return end
+        local char = LP.Character
+        if not char then return end
+        for _, part in ipairs(char:GetDescendants()) do
+            if part:IsA("BasePart") then
+                part.CanCollide = false
+            end
+        end
+    end)
+end
+
+local function StopNoclip()
+    if noclipConnection then
+        RunService:UnbindFromRenderStep("NoclipSystem")
+        noclipConnection = nil
+    end
+    local char = LP.Character
+    if char then
+        for _, part in ipairs(char:GetDescendants()) do
+            if part:IsA("BasePart") then
+                part.CanCollide = true
+            end
+        end
+    end
+end
+
+-- BHop, AutoJump, InfiniteJump
+local bHopConnection = nil
+
+local function StartBHop()
+    if bHopConnection then return end
+    bHopConnection = RunService.Heartbeat:Connect(function()
+        local char = LP.Character
+        if not char then return end
+        local hum = char:FindFirstChildOfClass("Humanoid")
+        if not hum then return end
+        local root = char:FindFirstChild("HumanoidRootPart")
+        if not root then return end
+        
+        local vel = root.AssemblyLinearVelocity
+        
+        if Cfg.Movement.InfiniteJump then
+            hum.Jump = true
+        end
+        
+        if Cfg.Movement.AutoJump then
+            if root.Position.Y < 3 and vel.Y < 1 then
+                hum.Jump = true
+            end
+        end
+        
+        if Cfg.Movement.BHop then
+            if hum.FloorMaterial ~= Enum.Material.Air and vel.Magnitude > 20 then
+                hum.Jump = true
+            end
+        end
+    end)
+end
+
+local function StopBHop()
+    if bHopConnection then
+        bHopConnection:Disconnect()
+        bHopConnection = nil
+    end
+end
+
+-- ================================================
+--  VISUAL SYSTEMS
+-- ================================================
+local function UpdateVisuals()
+    if Cfg.Visuals.FullBright then
+        Lighting.Ambient = Color3.fromRGB(255, 255, 255)
+        Lighting.Brightness = 2
+        Lighting.GlobalShadows = false
+    else
+        Lighting.Ambient = Color3.fromRGB(128, 128, 128)
+        Lighting.Brightness = 1
+        Lighting.GlobalShadows = true
+    end
+    if Cfg.Visuals.NoFog then
+        Lighting.FogEnd = 100000
+        Lighting.FogStart = 0
+    else
+        Lighting.FogEnd = 1000
+        Lighting.FogStart = 0
+    end
+end
+
+-- Crosshair System
+local CrosshairLines = {}
+local CenterDot = nil
+local CrosshairAngle = 0
+
+local function CreateCrosshair()
+    for i = 1, 4 do
+        local line = Drawing.new("Line")
+        line.Visible = false
+        line.Color = Cfg.Visuals.CrosshairColor
+        line.Thickness = 1.5
+        line.ZIndex = 15
+        CrosshairLines[i] = line
+    end
+    CenterDot = Drawing.new("Circle")
+    CenterDot.Visible = false
+    CenterDot.Filled = true
+    CenterDot.Radius = 2
+    CenterDot.Color = Cfg.Visuals.CrosshairColor
+    CenterDot.ZIndex = 16
+    CenterDot.NumSides = 12
+end
+
+local function UpdateCrosshair()
+    if not Cfg.Visuals.Crosshair then
+        for _, line in ipairs(CrosshairLines) do line.Visible = false end
+        if CenterDot then CenterDot.Visible = false end
+        return
+    end
+    local center = AimPoint()
+    local size = Cfg.Visuals.CrosshairSize
+    local gap = Cfg.Visuals.CrosshairGap
+    local col = Cfg.Visuals.CrosshairColor
+    
+    CrosshairAngle = CrosshairAngle + (0.03 * Cfg.Visuals.SpinSpeed)
+    if CrosshairAngle > math.pi * 2 then CrosshairAngle = CrosshairAngle - math.pi * 2 end
+    
+    for i = 1, 4 do
+        local line = CrosshairLines[i]
+        local angleOffset = (i - 1) * (math.pi / 2) + CrosshairAngle
+        local cosVal = math.cos(angleOffset)
+        local sinVal = math.sin(angleOffset)
+        line.From = Vector2.new(center.X + cosVal * gap, center.Y + sinVal * gap)
+        line.To = Vector2.new(center.X + cosVal * (gap + size), center.Y + sinVal * (gap + size))
+        line.Color = col
+        line.Visible = true
+    end
+    if CenterDot then
+        CenterDot.Position = center
+        CenterDot.Color = col
+        CenterDot.Visible = true
+    end
+end
+
+-- ================================================
+--  MM2 AUTO COLLECT
+-- ================================================
+local function FindCoins()
+    local coins = {}
+    for _, obj in ipairs(Workspace:GetDescendants()) do
+        if obj:IsA("BasePart") and obj.Name and string.find(string.lower(obj.Name), "coin") then
+            table.insert(coins, obj)
+        end
+    end
+    return coins
+end
+
+local function FindKnives()
+    local knives = {}
+    for _, obj in ipairs(Workspace:GetDescendants()) do
+        if obj:IsA("BasePart") and obj.Name and string.find(string.lower(obj.Name), "knife") then
+            table.insert(knives, obj)
+        end
+    end
+    return knives
+end
+
+local function DoAutoCollect()
+    if not Cfg.Misc.AutoCollect then return end
+    
+    local myRoot = LP.Character and LP.Character:FindFirstChild("HumanoidRootPart")
+    if not myRoot then return end
+    
+    local coins = FindCoins()
+    for _, coin in ipairs(coins) do
+        if coin then
+            local dist = (coin.Position - myRoot.Position).Magnitude
+            if dist <= Cfg.Misc.AutoCollectRadius then
+                -- Move to coin
+                myRoot.CFrame = CFrame.new(coin.Position)
+                task.wait(Cfg.Misc.AutoCollectDelay)
+            end
+        end
+    end
+end
+
+local function DoAutoDrop()
+    if not Cfg.Misc.AutoDrop then return end
+    -- This would need to be implemented based on MM2's specific drop mechanics
+    -- For example, pressing G or using a remote event
+    pcall(function()
+        VirtualUser:PressKey(Enum.KeyCode.G)
+    end)
+end
+
+-- ================================================
+--  MISCELLANEOUS
+-- ================================================
+local function StartAntiAFK()
+    if Cfg.Misc.AntiAFK then
+        pcall(function()
+            VirtualUser:CaptureController()
+            VirtualUser:ClickButton(Vector2.new())
+        end)
+    end
+end
+
+local function HandleClickTP()
+    if not Cfg.Misc.ClickTP then return end
+    local key = Cfg.Misc.TPKeybind
+    if typeof(key) == "EnumItem" then
+        if key.EnumType == Enum.KeyCode and UserInputService:IsKeyDown(key) then
+            local target = UserInputService:GetMouseLocation()
+            local ray = Camera:ScreenPointToRay(target.X, target.Y)
+            local params = RaycastParams.new()
+            params.FilterDescendantsInstances = {LP.Character}
+            params.FilterType = Enum.RaycastFilterType.Blacklist
+            local result = workspace:Raycast(ray.Origin, ray.Direction * 1000, params)
+            if result then
+                local pos = result.Position + Vector3.new(0, Cfg.Misc.TeleportHeight, 0)
+                local char = LP.Character
+                if char then
+                    local root = char:FindFirstChild("HumanoidRootPart")
+                    if root then
+                        root.CFrame = CFrame.new(pos)
+                    end
+                end
+            end
+        end
+    end
+end
+
+-- ================================================
+--  PLAYER MANAGEMENT
+-- ================================================
+local function OnPlayerAdded(player)
+    CreateESPObjects(player)
+    player.CharacterAdded:Connect(function()
+        task.wait(0.5)
+        local o = ESPs[player]
+        if o and o.Chams then
+            o.Chams:Destroy()
+            o.Chams = nil
+        end
+    end)
+end
+
+for _, player in ipairs(Players:GetPlayers()) do
+    if player ~= LP then OnPlayerAdded(player) end
+end
+Players.PlayerAdded:Connect(OnPlayerAdded)
+Players.PlayerRemoving:Connect(DestroyESP)
+
+-- ================================================
+--  RENDER LOOPS
+-- ================================================
+RunService.RenderStepped:Connect(function()
+    Camera = Workspace.CurrentCamera
+    pcall(UpdateFOV)
+    pcall(UpdateESP)
+    pcall(UpdateOffscreenArrows)
+    pcall(UpdateVisuals)
+    pcall(UpdateCrosshair)
+    pcall(HandleClickTP)
+    pcall(StartAntiAFK)
+end)
+
+RunService:BindToRenderStep("RavenAim", Enum.RenderPriority.Last.Value, function()
+    Camera = Workspace.CurrentCamera
+    pcall(DoAim)
+end)
+
+RunService:BindToRenderStep("RavenMove", Enum.RenderPriority.Last.Value, function()
+    if Cfg.Movement.SpeedHack then
+        local char = LP.Character
+        if char then
+            local hum = char:FindFirstChildOfClass("Humanoid")
+            local hrp = char:FindFirstChild("HumanoidRootPart")
+            if hum and hrp and hum.MoveDirection.Magnitude > 0 then
+                hrp.CFrame = hrp.CFrame + (hum.MoveDirection * (Cfg.Movement.SpeedValue / 50))
+            end
+        end
+    end
+end)
+
+-- Auto collect loop
+task.spawn(function()
+    while task.wait(Cfg.Misc.AutoCollectDelay) do
+        pcall(DoAutoCollect)
+    end
+end)
+
+-- Start movement systems
+StartBHop()
+if Cfg.Movement.Noclip then StartNoclip() end
+if flyEnabled then StartFly() end
+
+-- ================================================
+--  USER INTERFACE
+-- ================================================
+local Window = Library:CreateWindow({
+    Title = "Raven Software | MM2",
+    Center = true,
+    AutoShow = true,
+    TabPadding = 8,
+    MenuFadeTime = 0.2,
+})
+
+-- Raven Software Branding
+pcall(function()
+    if Window and Window.Holder then
+        local logoContainer = Instance.new("Frame")
+        logoContainer.Name = "RavenLogoContainer"
+        logoContainer.BackgroundTransparency = 1
+        logoContainer.AnchorPoint = Vector2.new(0, 1)
+        logoContainer.Position = UDim2.new(0, 12, 1, -12)
+        logoContainer.Size = UDim2.new(0, 180, 0, 55)
+        logoContainer.ZIndex = 5
+        
+        local glassBg = Instance.new("Frame")
+        glassBg.Name = "GlassBackground"
+        glassBg.BackgroundColor3 = Color3.fromRGB(10, 10, 10)
+        glassBg.BackgroundTransparency = 0.3
+        glassBg.BorderSizePixel = 0
+        glassBg.Size = UDim2.new(1, 0, 1, 0)
+        glassBg.ZIndex = 5
+        glassBg.Parent = logoContainer
+        
+        local cornerGlass = Instance.new("UICorner")
+        cornerGlass.CornerRadius = UDim.new(0, 8)
+        cornerGlass.Parent = glassBg
+        
+        local strokeGlass = Instance.new("UIStroke")
+        strokeGlass.Color = RED
+        strokeGlass.Transparency = 0.5
+        strokeGlass.Thickness = 1.5
+        strokeGlass.Parent = glassBg
+        
+        local iconFrame = Instance.new("Frame")
+        iconFrame.Name = "IconFrame"
+        iconFrame.BackgroundTransparency = 1
+        iconFrame.Position = UDim2.new(0, 5, 0.5, -18)
+        iconFrame.Size = UDim2.new(0, 40, 0, 40)
+        iconFrame.ZIndex = 6
+        iconFrame.Parent = logoContainer
+        
+        local logoLabel = Instance.new("ImageLabel")
+        logoLabel.Name = "RavenLogoImage"
+        logoLabel.BackgroundTransparency = 1
+        logoLabel.Size = UDim2.new(1, 0, 1, 0)
+        logoLabel.Image = "rbxassetid://73575987788416"
+        logoLabel.ScaleType = Enum.ScaleType.Fit
+        logoLabel.ZIndex = 6
+        logoLabel.Parent = iconFrame
+        
+        local textHolder = Instance.new("Frame")
+        textHolder.Name = "TextHolder"
+        textHolder.BackgroundTransparency = 1
+        textHolder.Position = UDim2.new(0, 50, 0, 4)
+        textHolder.Size = UDim2.new(1, -55, 1, -8)
+        textHolder.ZIndex = 6
+        textHolder.Parent = logoContainer
+        
+        local titleLabel = Instance.new("TextLabel")
+        titleLabel.Name = "BrandTitle"
+        titleLabel.BackgroundTransparency = 1
+        titleLabel.Size = UDim2.new(1, 0, 0, 20)
+        titleLabel.Font = Enum.Font.GothamBold
+        titleLabel.Text = "RAVEN"
+        titleLabel.TextColor3 = YELLOW
+        titleLabel.TextSize = 15
+        titleLabel.TextXAlignment = Enum.TextXAlignment.Left
+        titleLabel.ZIndex = 6
+        titleLabel.Parent = textHolder
+        
+        local subLabel = Instance.new("TextLabel")
+        subLabel.Name = "BrandSubtitle"
+        subLabel.BackgroundTransparency = 1
+        subLabel.Position = UDim2.new(0, 0, 0, 19)
+        subLabel.Size = UDim2.new(1, 0, 0, 16)
+        subLabel.Font = Enum.Font.GothamMedium
+        subLabel.Text = "MM2 EDITION"
+        subLabel.TextColor3 = RED
+        subLabel.TextSize = 10
+        subLabel.TextXAlignment = Enum.TextXAlignment.Left
+        subLabel.ZIndex = 6
+        subLabel.Parent = textHolder
+        
+        local accentLine = Instance.new("Frame")
+        accentLine.Name = "AccentLine"
+        accentLine.BackgroundColor3 = RED
+        accentLine.BackgroundTransparency = 0
+        accentLine.Position = UDim2.new(0, 5, 0, 0)
+        accentLine.Size = UDim2.new(0, 3, 1, 0)
+        accentLine.ZIndex = 6
+        accentLine.Parent = logoContainer
+        
+        logoContainer.Parent = Window.Holder
+    end
+end)
+
+local Tabs = {
+    ESP = Window:AddTab("ESP"),
+    Aim = Window:AddTab("Aim"),
+    Move = Window:AddTab("Move"),
+    Vis = Window:AddTab("Visuals"),
+    Misc = Window:AddTab("Misc"),
+    Settings = Window:AddTab("Settings"),
+}
+
+ApplyRavenTheme()
+CreateCrosshair()
+
+task.spawn(function()
+    task.wait(0.2)
+    ApplyRavenTheme()
+end)
+
+-- =============================================
+-- ESP TAB
+-- =============================================
+local ESPGroup = Tabs.ESP:AddLeftGroupbox("ESP Controls")
+
+ESPGroup:AddToggle("ESPOn", { Text = "Enable ESP", Default = Cfg.ESP.On })
+Toggles.ESPOn:OnChanged(function(v) Cfg.ESP.On = v end)
+
+ESPGroup:AddSlider("ESPDist", { Text = "Max Distance", Default = Cfg.ESP.MaxDist, Min = 50, Max = 5000, Rounding = 0 })
+Options.ESPDist:OnChanged(function(v) Cfg.ESP.MaxDist = v end)
+
+ESPGroup:AddToggle("ESPNames", { Text = "Player Names", Default = Cfg.ESP.Names })
+Toggles.ESPNames:OnChanged(function(v) Cfg.ESP.Names = v end)
+Toggles.ESPNames:AddColorPicker("ESPNamesCol", { Default = Cfg.ESP.NameColor, Title = "Color" })
+Options.ESPNamesCol:OnChanged(function(v) Cfg.ESP.NameColor = v end)
+
+ESPGroup:AddToggle("ESPDist", { Text = "Distance", Default = Cfg.ESP.Dist })
+Toggles.ESPDist:OnChanged(function(v) Cfg.ESP.Dist = v end)
+
+ESPGroup:AddToggle("ESPBox", { Text = "Box", Default = Cfg.ESP.Box })
+Toggles.ESPBox:OnChanged(function(v) Cfg.ESP.Box = v end)
+Toggles.ESPBox:AddColorPicker("ESPBoxCol", { Default = Cfg.ESP.BoxColor, Title = "Color" })
+Options.ESPBoxCol:OnChanged(function(v) Cfg.ESP.BoxColor = v end)
+
+ESPGroup:AddToggle("ESPCorner", { Text = "Corner Box", Default = Cfg.ESP.CornerBox })
+Toggles.ESPCorner:OnChanged(function(v) Cfg.ESP.CornerBox = v end)
+Toggles.ESPCorner:AddColorPicker("ESPCornerCol", { Default = Cfg.ESP.CornerColor, Title = "Color" })
+Options.ESPCornerCol:OnChanged(function(v) Cfg.ESP.CornerColor = v end)
+
+ESPGroup:AddToggle("ESPTracers", { Text = "Tracers", Default = Cfg.ESP.Tracers })
+Toggles.ESPTracers:OnChanged(function(v) Cfg.ESP.Tracers = v end)
+
+ESPGroup:AddToggle("ESPChams", { Text = "Chams", Default = Cfg.ESP.Chams })
+Toggles.ESPChams:OnChanged(function(v) Cfg.ESP.Chams = v end)
+Toggles.ESPChams:AddColorPicker("ESPChamsCol", { Default = Cfg.ESP.ChamsColor, Title = "Color" })
+Options.ESPChamsCol:OnChanged(function(v) Cfg.ESP.ChamsColor = v end)
+
+ESPGroup:AddToggle("ESPHeadDot", { Text = "Head Dot", Default = Cfg.ESP.HeadDot })
+Toggles.ESPHeadDot:OnChanged(function(v) Cfg.ESP.HeadDot = v end)
+Toggles.ESPHeadDot:AddColorPicker("ESPHeadDotCol", { Default = Cfg.ESP.HeadDotColor, Title = "Color" })
+Options.ESPHeadDotCol:OnChanged(function(v) Cfg.ESP.HeadDotColor = v end)
+
+ESPGroup:AddToggle("ESPOffscreen", { Text = "Offscreen Arrows", Default = Cfg.ESP.OffscreenArrows })
+Toggles.ESPOffscreen:OnChanged(function(v) Cfg.ESP.OffscreenArrows = v end)
+
+-- MM2 Specific ESP
+ESPGroup:AddToggle("ESPShowMurderer", { Text = "Show Murderer", Default = Cfg.ESP.ShowMurderer })
+Toggles.ESPShowMurderer:OnChanged(function(v) Cfg.ESP.ShowMurderer = v end)
+Toggles.ESPShowMurderer:AddColorPicker("ESPMurdererCol", { Default = Cfg.ESP.MurdererColor, Title = "Color" })
+Options.ESPMurdererCol:OnChanged(function(v) Cfg.ESP.MurdererColor = v end)
+
+ESPGroup:AddToggle("ESPShowSheriff", { Text = "Show Sheriff", Default = Cfg.ESP.ShowSheriff })
+Toggles.ESPShowSheriff:OnChanged(function(v) Cfg.ESP.ShowSheriff = v end)
+Toggles.ESPShowSheriff:AddColorPicker("ESPSheriffCol", { Default = Cfg.ESP.SheriffColor, Title = "Color" })
+Options.ESPSheriffCol:OnChanged(function(v) Cfg.ESP.SheriffColor = v end)
+
+ESPGroup:AddToggle("ESPShowInnocent", { Text = "Show Innocent", Default = Cfg.ESP.ShowInnocent })
+Toggles.ESPShowInnocent:OnChanged(function(v) Cfg.ESP.ShowInnocent = v end)
+
+ESPGroup:AddToggle("ESPShowGun", { Text = "Show Gun Tracer", Default = Cfg.ESP.ShowGun })
+Toggles.ESPShowGun:OnChanged(function(v) Cfg.ESP.ShowGun = v end)
+Toggles.ESPShowGun:AddColorPicker("ESPGunCol", { Default = Cfg.ESP.GunColor, Title = "Color" })
+Options.ESPGunCol:OnChanged(function(v) Cfg.ESP.GunColor = v end)
+
+-- =============================================
+-- AIMBOT TAB (MM2 Optimized)
+-- =============================================
+local AimGroup = Tabs.Aim:AddLeftGroupbox("Aimbot Controls")
+
+AimGroup:AddToggle("AimOn", { Text = "Enable Aimbot", Default = Cfg.Aim.On })
+Toggles.AimOn:OnChanged(function(v) Cfg.Aim.On = v end)
+Toggles.AimOn:AddKeyPicker("AimKeyPicker", { Default = "MouseButton2", Text = "Aim Key", NoUI = false })
+Options.AimKeyPicker:OnChanged(function(v) Cfg.Aim.AimKey = Options.AimKeyPicker.Value end)
+
+AimGroup:AddToggle("AimSilent", { Text = "Silent Aim", Default = Cfg.Aim.Silent })
+Toggles.AimSilent:OnChanged(function(v) Cfg.Aim.Silent = v end)
+
+AimGroup:AddToggle("AimWall", { Text = "Wall Check", Default = Cfg.Aim.WallCheck })
+Toggles.AimWall:OnChanged(function(v) Cfg.Aim.WallCheck = v end)
+
+AimGroup:AddToggle("AimAutoShoot", { Text = "Auto Shoot", Default = Cfg.Aim.AutoShoot })
+Toggles.AimAutoShoot:OnChanged(function(v) Cfg.Aim.AutoShoot = v end)
+
+AimGroup:AddToggle("ShowFOV", { Text = "Show FOV Circle", Default = Cfg.Aim.ShowFOV })
+Toggles.ShowFOV:OnChanged(function(v) Cfg.Aim.ShowFOV = v end)
+Toggles.ShowFOV:AddColorPicker("FOVCol", { Default = Cfg.Aim.FOVColor, Title = "Color" })
+Options.FOVCol:OnChanged(function(v) Cfg.Aim.FOVColor = v end)
+
+AimGroup:AddSlider("AimFOV", { Text = "FOV Radius", Default = Cfg.Aim.FOV, Min = 10, Max = 800, Rounding = 0 })
+Options.AimFOV:OnChanged(function(v) Cfg.Aim.FOV = v end)
+
+AimGroup:AddSlider("AimSmooth", { Text = "Smoothness", Default = Cfg.Aim.Smoothness, Min = 0, Max = 1, Rounding = 2 })
+Options.AimSmooth:OnChanged(function(v) Cfg.Aim.Smoothness = v end)
+
+AimGroup:AddSlider("AimMaxDist", { Text = "Max Distance", Default = Cfg.Aim.MaxDistance, Min = 50, Max = 1000, Rounding = 0 })
+Options.AimMaxDist:OnChanged(function(v) Cfg.Aim.MaxDistance = v end)
+
+-- MM2 Aim Filters
+AimGroup:AddToggle("AimMurderer", { Text = "Target Murderer", Default = Cfg.Aim.AimMurderer })
+Toggles.AimMurderer:OnChanged(function(v) Cfg.Aim.AimMurderer = v end)
+
+AimGroup:AddToggle("AimSheriff", { Text = "Target Sheriff", Default = Cfg.Aim.AimSheriff })
+Toggles.AimSheriff:OnChanged(function(v) Cfg.Aim.AimSheriff = v end)
+
+-- =============================================
+-- MOVEMENT TAB
+-- =============================================
+local MoveGroup = Tabs.Move:AddLeftGroupbox("Movement Controls")
+
+MoveGroup:AddToggle("FlyToggle", { Text = "Flight", Default = Cfg.Movement.Fly })
+Toggles.FlyToggle:OnChanged(function(v)
+    if flyEnabled ~= v then ToggleFly() end
+end)
+Toggles.FlyToggle:AddKeyPicker("FlyKeyPicker", { Default = "F", Text = "Fly Key", NoUI = false })
+Options.FlyKeyPicker:OnChanged(function(v) Cfg.Movement.FlyKeybind = Options.FlyKeyPicker.Value end)
+
+MoveGroup:AddSlider("FlySpeed", { Text = "Flight Speed", Default = Cfg.Movement.FlySpeed, Min = 10, Max = 300, Rounding = 0 })
+Options.FlySpeed:OnChanged(function(v) Cfg.Movement.FlySpeed = v end)
+
+MoveGroup:AddToggle("SpeedToggle", { Text = "Speed Hack", Default = Cfg.Movement.SpeedHack })
+Toggles.SpeedToggle:OnChanged(function(v) Cfg.Movement.SpeedHack = v end)
+MoveGroup:AddSlider("SpeedVal", { Text = "Speed Factor", Default = Cfg.Movement.SpeedValue, Min = 16, Max = 100, Rounding = 0 })
+Options.SpeedVal:OnChanged(function(v) Cfg.Movement.SpeedValue = v end)
+
+MoveGroup:AddToggle("NoclipToggle", { Text = "Noclip", Default = Cfg.Movement.Noclip })
+Toggles.NoclipToggle:OnChanged(function(v)
+    Cfg.Movement.Noclip = v
+    if v then StartNoclip() else StopNoclip() end
+end)
+
+MoveGroup:AddToggle("BHopToggle", { Text = "Bunny Hop", Default = Cfg.Movement.BHop })
+Toggles.BHopToggle:OnChanged(function(v)
+    Cfg.Movement.BHop = v
+    if v then StartBHop() else StopBHop() end
+end)
+
+MoveGroup:AddToggle("AutoJumpToggle", { Text = "Auto Jump", Default = Cfg.Movement.AutoJump })
+Toggles.AutoJumpToggle:OnChanged(function(v)
+    Cfg.Movement.AutoJump = v
+    if v then StartBHop() else StopBHop() end
+end)
+
+MoveGroup:AddToggle("InfiniteJumpToggle", { Text = "Infinite Jump", Default = Cfg.Movement.InfiniteJump })
+Toggles.InfiniteJumpToggle:OnChanged(function(v)
+    Cfg.Movement.InfiniteJump = v
+    if v then StartBHop() else StopBHop() end
+end)
+
+-- =============================================
+-- VISUALS TAB
+-- =============================================
+local VisGroup = Tabs.Vis:AddLeftGroupbox("Visual Controls")
+
+VisGroup:AddToggle("FullBright", { Text = "Fullbright", Default = Cfg.Visuals.FullBright })
+Toggles.FullBright:OnChanged(function(v) Cfg.Visuals.FullBright = v end)
+
+VisGroup:AddToggle("NoFog", { Text = "No Fog", Default = Cfg.Visuals.NoFog })
+Toggles.NoFog:OnChanged(function(v) Cfg.Visuals.NoFog = v end)
+
+VisGroup:AddToggle("CrosshairToggle", { Text = "Crosshair", Default = Cfg.Visuals.Crosshair })
+Toggles.CrosshairToggle:OnChanged(function(v) Cfg.Visuals.Crosshair = v end)
+Toggles.CrosshairToggle:AddColorPicker("CrosshairCol", { Default = Cfg.Visuals.CrosshairColor, Title = "Color" })
+Options.CrosshairCol:OnChanged(function(v) Cfg.Visuals.CrosshairColor = v end)
+
+VisGroup:AddSlider("CrosshairSize", { Text = "Crosshair Size", Default = Cfg.Visuals.CrosshairSize, Min = 4, Max = 30, Rounding = 0 })
+Options.CrosshairSize:OnChanged(function(v) Cfg.Visuals.CrosshairSize = v end)
+
+VisGroup:AddSlider("CrosshairGap", { Text = "Crosshair Gap", Default = Cfg.Visuals.CrosshairGap, Min = 1, Max = 15, Rounding = 0 })
+Options.CrosshairGap:OnChanged(function(v) Cfg.Visuals.CrosshairGap = v end)
+
+VisGroup:AddSlider("CrosshairSpin", { Text = "Spin Speed", Default = Cfg.Visuals.SpinSpeed, Min = 0.1, Max = 5, Rounding = 1 })
+Options.CrosshairSpin:OnChanged(function(v) Cfg.Visuals.SpinSpeed = v end)
+
+-- =============================================
+-- MISC TAB (MM2 Specific)
+-- =============================================
+local MiscGroup = Tabs.Misc:AddLeftGroupbox("Miscellaneous")
+
+MiscGroup:AddToggle("AntiAFK", { Text = "Anti-AFK", Default = Cfg.Misc.AntiAFK })
+Toggles.AntiAFK:OnChanged(function(v) Cfg.Misc.AntiAFK = v end)
+
+MiscGroup:AddToggle("ClickTP", { Text = "Click Teleport", Default = Cfg.Misc.ClickTP })
+Toggles.ClickTP:OnChanged(function(v) Cfg.Misc.ClickTP = v end)
+Toggles.ClickTP:AddKeyPicker("TPKeyPicker", { Default = "T", Text = "TP Key", NoUI = false })
+Options.TPKeyPicker:OnChanged(function(v) Cfg.Misc.TPKeybind = Options.TPKeyPicker.Value end)
+
+MiscGroup:AddSlider("TPHeight", { Text = "Teleport Height", Default = Cfg.Misc.TeleportHeight, Min = 0, Max = 500, Rounding = 0 })
+Options.TPHeight:OnChanged(function(v) Cfg.Misc.TeleportHeight = v end)
+
+-- MM2 Specific - Auto Collect
+MiscGroup:AddToggle("AutoCollect", { Text = "Auto Collect Coins", Default = Cfg.Misc.AutoCollect })
+Toggles.AutoCollect:OnChanged(function(v) Cfg.Misc.AutoCollect = v end)
+
+MiscGroup:AddSlider("CollectRadius", { Text = "Collect Radius", Default = Cfg.Misc.AutoCollectRadius, Min = 10, Max = 200, Rounding = 0 })
+Options.CollectRadius:OnChanged(function(v) Cfg.Misc.AutoCollectRadius = v end)
+
+MiscGroup:AddSlider("CollectDelay", { Text = "Collect Delay (s)", Default = Cfg.Misc.AutoCollectDelay, Min = 0.1, Max = 2, Rounding = 1 })
+Options.CollectDelay:OnChanged(function(v) Cfg.Misc.AutoCollectDelay = v end)
+
+MiscGroup:AddToggle("AutoDrop", { Text = "Auto Drop (G key)", Default = Cfg.Misc.AutoDrop })
+Toggles.AutoDrop:OnChanged(function(v) Cfg.Misc.AutoDrop = v end)
+
+MiscGroup:AddButton("Rejoin", function()
+    TeleportService:Teleport(game.PlaceId, LP)
+end)
+
+MiscGroup:AddButton("Reset Character", function()
+    if LP.Character then LP.Character:BreakJoints() end
+end)
+
+-- =============================================
+-- SETTINGS TAB
+-- =============================================
+Library:SetWatermark("Raven Software | MM2 Edition")
+ThemeManager:SetLibrary(Library)
+SaveManager:SetLibrary(Library)
+ThemeManager:ApplyToTab(Tabs.Settings)
+SaveManager:BuildConfigSection(Tabs.Settings)
+SaveManager:LoadAutoloadConfig()
+
+-- =============================================
+-- KEYBIND HANDLER
+-- =============================================
+UserInputService.InputBegan:Connect(function(input, gameProcessed)
+    if gameProcessed then return end
+    
+    local flyKey = Cfg.Movement.FlyKeybind
+    if flyKey then
+        if typeof(flyKey) == "EnumItem" then
+            if input.KeyCode == flyKey or input.UserInputType == flyKey then
+                ToggleFly()
+            end
+        elseif typeof(flyKey) == "string" then
+            pcall(function()
+                local kc = Enum.KeyCode[flyKey]
+                if kc and input.KeyCode == kc then
+                    ToggleFly()
+                end
+            end)
+        end
+    end
+    
+    local tpKey = Cfg.Misc.TPKeybind
+    if Cfg.Misc.ClickTP and tpKey then
+        if typeof(tpKey) == "EnumItem" then
+            if input.KeyCode == tpKey or input.UserInputType == tpKey then
+                HandleClickTP()
+            end
+        elseif typeof(tpKey) == "string" then
+            pcall(function()
+                local kc = Enum.KeyCode[tpKey]
+                if kc and input.KeyCode == kc then
+                    HandleClickTP()
+                end
+            end)
+        end
+    end
+    
+    -- Auto drop on G key
+    if Cfg.Misc.AutoDrop and input.KeyCode == Enum.KeyCode.G then
+        pcall(function()
+            VirtualUser:PressKey(Enum.KeyCode.G)
+        end)
+    end
+end)
+
+print("[Raven Software] MM2 Edition Loaded Successfully!")
