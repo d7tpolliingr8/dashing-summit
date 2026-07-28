@@ -1,6 +1,7 @@
 -- // Raven Software | Premium Beach Night Loader
 -- // Yellow | Red | Black Edition
 -- // With Key Authentication System
+-- // Fixed: URLs, Authentication, and Execution
 
 -- ================================================
 --  LOADER CONFIGURATION
@@ -9,8 +10,10 @@ local LoaderConfig = {
     Name = "Raven Software",
     Version = "2.0.0",
     Developer = "Raven",
+    -- THIS IS THE URL TO YOUR ACTUAL SCRIPT - REPLACE WITH YOUR REAL URL
     MenuURL = "https://raw.githubusercontent.com/d7tpolliingr8/dashing-summit/main/rivalsaimwh.lua",
-    KeyURL = "https://raw.githubusercontent.com/your-repo/keys/main/valid_keys.txt", -- Replace with your keys URL
+    -- THIS IS THE URL TO YOUR KEYS - CREATE A GIST OR PASTEBIN WITH YOUR KEYS
+    KeyURL = "https://pastebin.com/raw/wf8AUinp",
     Key = "Insert",
 }
 
@@ -24,6 +27,8 @@ local TweenService = game:GetService("TweenService")
 local Lighting = game:GetService("Lighting")
 local StarterGui = game:GetService("StarterGui")
 local HttpService = game:GetService("HttpService")
+local CoreGui = game:GetService("CoreGui")
+local GuiService = game:GetService("GuiService")
 
 local LP = Players.LocalPlayer
 
@@ -33,6 +38,7 @@ local LP = Players.LocalPlayer
 local KeySystem = {
     ValidKeys = {},
     IsAuthenticated = false,
+    KeyStatus = "Waiting for key..."
 }
 
 function KeySystem:LoadKeys()
@@ -40,46 +46,98 @@ function KeySystem:LoadKeys()
         return game:HttpGet(LoaderConfig.KeyURL)
     end)
     
-    if success and result then
+    if success and result and result ~= "" then
         for key in string.gmatch(result, "[^\r\n]+") do
             if key ~= "" then
-                table.insert(self.ValidKeys, key:match("^%s*(.-)%s*$"))
+                local cleanKey = key:match("^%s*(.-)%s*$")
+                if cleanKey and #cleanKey > 5 then
+                    table.insert(self.ValidKeys, cleanKey)
+                end
             end
         end
-        print("[KeySystem] Loaded " .. #self.ValidKeys .. " valid keys")
+        print("[KeySystem] Loaded " .. #self.ValidKeys .. " valid keys from URL")
         return true
     else
-        print("[KeySystem] Failed to load keys, using local fallback")
-        -- Fallback keys (for testing)
+        print("[KeySystem] Failed to load keys from URL, using local fallback")
+        -- FALLBACK KEYS (ONLY FOR TESTING - REMOVE FOR PRODUCTION)
         self.ValidKeys = {
             "RAVEN-LF0S-Y6Y4-HMJX-CD",
+            "RAVEN-7H3W-K8Q2-LMNP-XY",
+            "RAVEN-9V4B-N8M2-KJ6H-GF",
         }
         return true
     end
 end
 
 function KeySystem:ValidateKey(inputKey)
+    if not inputKey or inputKey == "" then return false end
     inputKey = inputKey:match("^%s*(.-)%s*$")
+    
+    -- Check against valid keys
     for _, validKey in ipairs(self.ValidKeys) do
-        if validKey == inputKey then
+        if validKey and validKey ~= "" and validKey == inputKey then
             self.IsAuthenticated = true
+            self.KeyStatus = "✅ Key validated successfully!"
             return true
         end
     end
+    
+    -- Also check if key matches pattern (RAVEN-XXXX-XXXX-XXXX-XX)
+    if inputKey:match("^RAVEN%-[A-Z0-9]%-[A-Z0-9]%-[A-Z0-9]%-[A-Z0-9]$") then
+        -- This is a valid format, but we need it in our list
+        for _, validKey in ipairs(self.ValidKeys) do
+            if validKey and validKey ~= "" and validKey == inputKey then
+                self.IsAuthenticated = true
+                self.KeyStatus = "✅ Key validated successfully!"
+                return true
+            end
+        end
+    end
+    
+    self.KeyStatus = "❌ Invalid key! Please try again."
     return false
 end
 
 -- ================================================
+--  UI ELEMENTS STORE (for cleanup)
+-- ================================================
+local LoaderUI = {
+    ScreenGui = nil,
+    MainFrame = nil,
+    Stars = {},
+    Clouds = {},
+    AuthButton = nil,
+    InjectButton = nil,
+    KeyInput = nil,
+    KeyStatus = nil,
+    ProgressFill = nil,
+    ProgressText = nil,
+    ProgressSection = nil,
+    isAuthenticated = false,
+}
+
+-- ================================================
 --  LOADER UI
 -- ================================================
-local Loader = {}
-
-function Loader:CreateUI()
-    -- Create ScreenGui
+local function CreateLoaderUI()
+    -- Create ScreenGui with proper parent
     local ScreenGui = Instance.new("ScreenGui")
     ScreenGui.Name = "RavenLoader"
-    ScreenGui.Parent = game:GetService("CoreGui")
+    ScreenGui.ResetOnSpawn = false
+    ScreenGui.IgnoreGuiInset = true
     ScreenGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
+    
+    -- Try to parent to CoreGui, fallback to PlayerGui
+    local success, err = pcall(function()
+        ScreenGui.Parent = CoreGui
+    end)
+    if not success then
+        pcall(function()
+            ScreenGui.Parent = LP:WaitForChild("PlayerGui")
+        end)
+    end
+    
+    LoaderUI.ScreenGui = ScreenGui
 
     -- ================================================
     --  NIGHT SKY BACKGROUND
@@ -96,7 +154,7 @@ function Loader:CreateUI()
     local Gradient = Instance.new("Frame")
     Gradient.Name = "Gradient"
     Gradient.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
-    Gradient.BackgroundTransparency = 0.5
+    Gradient.BackgroundTransparency = 0.3
     Gradient.BorderSizePixel = 0
     Gradient.Size = UDim2.new(1, 0, 1, 0)
     Gradient.Parent = SkyBg
@@ -105,29 +163,38 @@ function Loader:CreateUI()
     --  STARS
     -- ================================================
     local Stars = {}
-    for i = 1, 150 do
-        local star = Instance.new("Frame")
+    for i = 1, 100 do
+        local star = Instance.new("ImageLabel")
         star.Name = "Star_" .. i
-        star.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
-        star.BackgroundTransparency = 0.3 + math.random() * 0.5
-        star.BorderSizePixel = 0
+        star.BackgroundTransparency = 1
         star.Size = UDim2.new(0, math.random(1, 3), 0, math.random(1, 3))
         star.Position = UDim2.new(math.random() * 0.95, 0, math.random() * 0.7, 0)
+        star.Image = "rbxassetid://9727280032" -- Star image
+        star.ImageColor3 = Color3.fromRGB(255, 255, 255)
+        star.ImageTransparency = 0.3 + math.random() * 0.5
         star.Parent = SkyBg
         
-        -- Twinkle animation
-        local twinkle = TweenService:Create(star, TweenInfo.new(
-            1 + math.random() * 2,
-            Enum.EasingStyle.Sine,
-            Enum.EasingDirection.InOut,
-            -1,
-            true
-        ), {
-            BackgroundTransparency = 0.8 + math.random() * 0.2
-        })
-        twinkle:Play()
+        -- Twinkle animation using TweenService
+        task.spawn(function()
+            local twinkleDuration = 1 + math.random() * 3
+            while LoaderUI.ScreenGui and LoaderUI.ScreenGui.Parent do
+                local tween = TweenService:Create(star, TweenInfo.new(
+                    twinkleDuration,
+                    Enum.EasingStyle.Sine,
+                    Enum.EasingDirection.InOut,
+                    -1,
+                    true
+                ), {
+                    ImageTransparency = 0.8 + math.random() * 0.2
+                })
+                tween:Play()
+                task.wait(twinkleDuration)
+            end
+        end)
+        
         table.insert(Stars, star)
     end
+    LoaderUI.Stars = Stars
 
     -- ================================================
     --  MOON
@@ -136,8 +203,8 @@ function Loader:CreateUI()
     Moon.Name = "Moon"
     Moon.BackgroundColor3 = Color3.fromRGB(255, 240, 200)
     Moon.BorderSizePixel = 0
-    Moon.Size = UDim2.new(0, 80, 0, 80)
-    Moon.Position = UDim2.new(0.85, 0, 0.1, 0)
+    Moon.Size = UDim2.new(0, 70, 0, 70)
+    Moon.Position = UDim2.new(0.85, 0, 0.08, 0)
     Moon.Parent = SkyBg
     
     local MoonCorner = Instance.new("UICorner")
@@ -145,185 +212,84 @@ function Loader:CreateUI()
     MoonCorner.Parent = Moon
     
     -- Moon glow
-    local MoonGlow = Instance.new("Frame")
+    local MoonGlow = Instance.new("ImageLabel")
     MoonGlow.Name = "MoonGlow"
-    MoonGlow.BackgroundColor3 = Color3.fromRGB(255, 240, 200)
-    MoonGlow.BackgroundTransparency = 0.7
-    MoonGlow.BorderSizePixel = 0
-    MoonGlow.Size = UDim2.new(2, 0, 2, 0)
-    MoonGlow.Position = UDim2.new(-0.5, 0, -0.5, 0)
+    MoonGlow.BackgroundTransparency = 1
+    MoonGlow.Size = UDim2.new(1.8, 0, 1.8, 0)
+    MoonGlow.Position = UDim2.new(-0.4, 0, -0.4, 0)
+    MoonGlow.Image = "rbxassetid://9727280032"
+    MoonGlow.ImageColor3 = Color3.fromRGB(255, 240, 200)
+    MoonGlow.ImageTransparency = 0.7
     MoonGlow.Parent = Moon
-    
-    local MoonGlowCorner = Instance.new("UICorner")
-    MoonGlowCorner.CornerRadius = UDim.new(1, 0)
-    MoonGlowCorner.Parent = MoonGlow
 
     -- ================================================
     --  CLOUDS
     -- ================================================
-    local function CreateCloud(x, y, scale, speed)
+    local Clouds = {}
+    local cloudColors = {
+        Color3.fromRGB(30, 30, 50),
+        Color3.fromRGB(40, 40, 60),
+        Color3.fromRGB(35, 35, 55),
+    }
+    
+    for i = 1, 6 do
         local cloud = Instance.new("Frame")
-        cloud.Name = "Cloud"
-        cloud.BackgroundColor3 = Color3.fromRGB(40, 40, 60)
-        cloud.BackgroundTransparency = 0.3
+        cloud.BackgroundColor3 = cloudColors[math.random(1, 3)]
+        cloud.BackgroundTransparency = 0.4
         cloud.BorderSizePixel = 0
-        cloud.Size = UDim2.new(0, 200 * scale, 0, 50 * scale)
-        cloud.Position = UDim2.new(x, 0, y, 0)
+        local size = 150 + math.random() * 150
+        local height = 30 + math.random() * 40
+        cloud.Size = UDim2.new(0, size, 0, height)
+        cloud.Position = UDim2.new(math.random() * 1.2 - 0.1, 0, 0.05 + math.random() * 0.25, 0)
         cloud.Parent = SkyBg
-        cloud.ClipsDescendants = false
         
         local CloudCorner = Instance.new("UICorner")
-        CloudCorner.CornerRadius = UDim.new(0, 25 * scale)
+        CloudCorner.CornerRadius = UDim.new(0, height/2)
         CloudCorner.Parent = cloud
         
-        -- Cloud puffs
-        for i = 1, 5 do
+        -- Additional cloud puffs
+        for j = 1, 3 do
             local puff = Instance.new("Frame")
-            puff.BackgroundColor3 = Color3.fromRGB(50, 50, 70)
-            puff.BackgroundTransparency = 0.3
+            puff.BackgroundColor3 = cloud.BackgroundColor3
+            puff.BackgroundTransparency = 0.4
             puff.BorderSizePixel = 0
-            puff.Size = UDim2.new(0, 40 * scale, 0, 30 * scale)
-            puff.Position = UDim2.new(0.1 + (i * 0.15), 0, 0.2 + (math.sin(i) * 0.2), 0)
+            puff.Size = UDim2.new(0, 40 + math.random() * 40, 0, 30 + math.random() * 20)
+            puff.Position = UDim2.new(0.1 + (j * 0.2) + math.random() * 0.05, 0, 0.2 + math.random() * 0.2, 0)
             puff.Parent = cloud
             
             local PuffCorner = Instance.new("UICorner")
-            PuffCorner.CornerRadius = UDim.new(0, 15 * scale)
+            PuffCorner.CornerRadius = UDim.new(0, 20)
             PuffCorner.Parent = puff
         end
         
         -- Cloud animation
-        local startX = x
+        local startX = cloud.Position.X.Scale
+        local speed = 0.2 + math.random() * 0.3
         task.spawn(function()
-            while true do
+            while LoaderUI.ScreenGui and LoaderUI.ScreenGui.Parent do
                 local newX = cloud.Position.X.Scale + (0.001 * speed)
                 if newX > 1.2 then
                     newX = -0.2
                 end
-                cloud.Position = UDim2.new(newX, 0, y, 0)
+                cloud.Position = UDim2.new(newX, 0, cloud.Position.Y.Scale, 0)
                 task.wait(0.05)
             end
         end)
         
-        return cloud
+        table.insert(Clouds, cloud)
     end
-
-    -- Create multiple clouds
-    local Clouds = {}
-    table.insert(Clouds, CreateCloud(-0.1, 0.12, 1.2, 1))
-    table.insert(Clouds, CreateCloud(0.3, 0.05, 0.8, 0.7))
-    table.insert(Clouds, CreateCloud(0.6, 0.2, 1.0, 1.2))
-    table.insert(Clouds, CreateCloud(0.9, 0.08, 0.6, 0.5))
-    table.insert(Clouds, CreateCloud(0.0, 0.28, 0.9, 0.8))
-    table.insert(Clouds, CreateCloud(0.4, 0.32, 0.7, 0.6))
+    LoaderUI.Clouds = Clouds
 
     -- ================================================
-    --  BEACH SCENE
-    -- ================================================
-    -- Ocean
-    local Ocean = Instance.new("Frame")
-    Ocean.Name = "Ocean"
-    Ocean.BackgroundColor3 = Color3.fromRGB(15, 20, 50)
-    Ocean.BackgroundTransparency = 0
-    Ocean.BorderSizePixel = 0
-    Ocean.Size = UDim2.new(1, 0, 0, 250)
-    Ocean.Position = UDim2.new(0, 0, 0.7, 0)
-    Ocean.Parent = SkyBg
-
-    -- Ocean waves animation
-    local Waves = Instance.new("Frame")
-    Waves.Name = "Waves"
-    Waves.BackgroundColor3 = Color3.fromRGB(20, 30, 60)
-    Waves.BackgroundTransparency = 0.3
-    Waves.BorderSizePixel = 0
-    Waves.Size = UDim2.new(1.5, 0, 0, 30)
-    Waves.Position = UDim2.new(-0.25, 0, 0, 0)
-    Waves.Parent = Ocean
-
-    task.spawn(function()
-        while true do
-            for i = 1, 100 do
-                Waves.Position = UDim2.new(-0.25 + (i * 0.005), 0, 0, 0)
-                task.wait(0.02)
-            end
-            for i = 1, 100 do
-                Waves.Position = UDim2.new(0.25 - (i * 0.005), 0, 0, 0)
-                task.wait(0.02)
-            end
-        end
-    end)
-
-    -- Beach Sand
-    local Sand = Instance.new("Frame")
-    Sand.Name = "Sand"
-    Sand.BackgroundColor3 = Color3.fromRGB(60, 45, 30)
-    Sand.BackgroundTransparency = 0
-    Sand.BorderSizePixel = 0
-    Sand.Size = UDim2.new(1, 0, 0, 50)
-    Sand.Position = UDim2.new(0, 0, 0.9, 0)
-    Sand.Parent = SkyBg
-
-    -- Palm Trees
-    local function CreatePalmTree(x, y, scale)
-        local tree = Instance.new("Frame")
-        tree.Name = "PalmTree"
-        tree.BackgroundTransparency = 1
-        tree.Size = UDim2.new(0, 50 * scale, 0, 80 * scale)
-        tree.Position = UDim2.new(x, 0, y, 0)
-        tree.Parent = SkyBg
-
-        -- Trunk
-        local trunk = Instance.new("Frame")
-        trunk.BackgroundColor3 = Color3.fromRGB(40, 25, 15)
-        trunk.BorderSizePixel = 0
-        trunk.Size = UDim2.new(0, 8 * scale, 0, 60 * scale)
-        trunk.Position = UDim2.new(0.42, 0, 0.3, 0)
-        trunk.Parent = tree
-        
-        local TrunkCorner = Instance.new("UICorner")
-        TrunkCorner.CornerRadius = UDim.new(0, 4 * scale)
-        TrunkCorner.Parent = trunk
-
-        -- Leaves
-        local leafColors = {
-            Color3.fromRGB(30, 60, 30),
-            Color3.fromRGB(35, 70, 35),
-            Color3.fromRGB(25, 55, 25),
-        }
-        
-        for i = 1, 8 do
-            local leaf = Instance.new("Frame")
-            leaf.BackgroundColor3 = leafColors[math.random(1, 3)]
-            leaf.BorderSizePixel = 0
-            leaf.Size = UDim2.new(0, 25 * scale, 0, 10 * scale)
-            local angle = (i / 8) * 2 * math.pi
-            leaf.Position = UDim2.new(0.5 + math.cos(angle) * 0.3, 0, 0.1 + math.sin(angle) * 0.1, 0)
-            leaf.Rotation = angle * 57.3 + 30
-            leaf.Parent = tree
-            
-            local LeafCorner = Instance.new("UICorner")
-            LeafCorner.CornerRadius = UDim.new(0, 5 * scale)
-            LeafCorner.Parent = leaf
-        end
-
-        return tree
-    end
-
-    -- Create palm trees
-    CreatePalmTree(0.05, 0.82, 1.2)
-    CreatePalmTree(0.15, 0.85, 0.9)
-    CreatePalmTree(0.85, 0.83, 1.1)
-    CreatePalmTree(0.92, 0.86, 0.8)
-
-    -- ================================================
-    --  LOADER MAIN FRAME (Glassmorphism)
+    --  MAIN FRAME (Glassmorphism)
     -- ================================================
     local MainFrame = Instance.new("Frame")
     MainFrame.Name = "MainFrame"
     MainFrame.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
-    MainFrame.BackgroundTransparency = 0.15
+    MainFrame.BackgroundTransparency = 0.2
     MainFrame.BorderSizePixel = 0
-    MainFrame.Size = UDim2.new(0, 500, 0, 420)
-    MainFrame.Position = UDim2.new(0.5, -250, 0.5, -210)
+    MainFrame.Size = UDim2.new(0, 480, 0, 400)
+    MainFrame.Position = UDim2.new(0.5, -240, 0.5, -200)
     MainFrame.ClipsDescendants = true
     MainFrame.Parent = ScreenGui
 
@@ -334,21 +300,14 @@ function Loader:CreateUI()
     -- Glass border
     local Border = Instance.new("UIStroke")
     Border.Color = Color3.fromRGB(255, 215, 0)
-    Border.Transparency = 0.3
-    Border.Thickness = 2
+    Border.Transparency = 0.2
+    Border.Thickness = 1.5
     Border.Parent = MainFrame
-
-    -- Blur effect (fake)
-    local Blur = Instance.new("Frame")
-    Blur.Name = "Blur"
-    Blur.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
-    Blur.BackgroundTransparency = 0.3
-    Blur.BorderSizePixel = 0
-    Blur.Size = UDim2.new(1, 0, 1, 0)
-    Blur.Parent = MainFrame
+    
+    LoaderUI.MainFrame = MainFrame
 
     -- ================================================
-    --  HEADER WITH LOGO
+    --  HEADER
     -- ================================================
     local Header = Instance.new("Frame")
     Header.Name = "Header"
@@ -358,92 +317,74 @@ function Loader:CreateUI()
 
     -- Raven Icon
     local IconLabel = Instance.new("TextLabel")
-    IconLabel.Name = "IconLabel"
     IconLabel.BackgroundTransparency = 1
-    IconLabel.Size = UDim2.new(0, 60, 0, 60)
-    IconLabel.Position = UDim2.new(0.5, -30, 0, 10)
+    IconLabel.Size = UDim2.new(0, 50, 0, 50)
+    IconLabel.Position = UDim2.new(0.5, -25, 0, 10)
     IconLabel.Font = Enum.Font.GothamBold
     IconLabel.Text = "⬡"
     IconLabel.TextColor3 = Color3.fromRGB(255, 215, 0)
-    IconLabel.TextSize = 50
+    IconLabel.TextSize = 44
     IconLabel.TextXAlignment = Enum.TextXAlignment.Center
     IconLabel.TextYAlignment = Enum.TextYAlignment.Center
     IconLabel.Parent = Header
 
     -- Title
     local TitleLabel = Instance.new("TextLabel")
-    TitleLabel.Name = "TitleLabel"
     TitleLabel.BackgroundTransparency = 1
-    TitleLabel.Size = UDim2.new(1, 0, 0, 30)
+    TitleLabel.Size = UDim2.new(1, 0, 0, 28)
     TitleLabel.Position = UDim2.new(0, 0, 0, 50)
     TitleLabel.Font = Enum.Font.GothamBold
     TitleLabel.Text = "RAVEN SOFTWARE"
     TitleLabel.TextColor3 = Color3.fromRGB(255, 215, 0)
-    TitleLabel.TextSize = 22
+    TitleLabel.TextSize = 20
     TitleLabel.TextXAlignment = Enum.TextXAlignment.Center
-    TitleLabel.TextYAlignment = Enum.TextYAlignment.Center
     TitleLabel.Parent = Header
 
     -- Subtitle
     local SubLabel = Instance.new("TextLabel")
-    SubLabel.Name = "SubLabel"
     SubLabel.BackgroundTransparency = 1
-    SubLabel.Size = UDim2.new(1, 0, 0, 20)
-    SubLabel.Position = UDim2.new(0, 0, 0, 78)
+    SubLabel.Size = UDim2.new(1, 0, 0, 18)
+    SubLabel.Position = UDim2.new(0, 0, 0, 75)
     SubLabel.Font = Enum.Font.GothamMedium
     SubLabel.Text = "Premium Utility Framework v" .. LoaderConfig.Version
     SubLabel.TextColor3 = Color3.fromRGB(255, 0, 0)
-    SubLabel.TextSize = 11
+    SubLabel.TextSize = 10
     SubLabel.TextXAlignment = Enum.TextXAlignment.Center
-    SubLabel.TextYAlignment = Enum.TextYAlignment.Center
     SubLabel.Parent = Header
-
-    -- Red accent line
-    local AccentLine = Instance.new("Frame")
-    AccentLine.Name = "AccentLine"
-    AccentLine.BackgroundColor3 = Color3.fromRGB(255, 0, 0)
-    AccentLine.BorderSizePixel = 0
-    AccentLine.Size = UDim2.new(0, 60, 0, 3)
-    AccentLine.Position = UDim2.new(0.5, -30, 0, 96)
-    AccentLine.Parent = Header
 
     -- ================================================
     --  KEY INPUT SECTION
     -- ================================================
     local KeySection = Instance.new("Frame")
-    KeySection.Name = "KeySection"
     KeySection.BackgroundTransparency = 1
     KeySection.Size = UDim2.new(1, -40, 0, 120)
-    KeySection.Position = UDim2.new(0, 20, 0, 110)
+    KeySection.Position = UDim2.new(0, 20, 0, 95)
     KeySection.Parent = MainFrame
 
     -- Key Label
     local KeyLabel = Instance.new("TextLabel")
-    KeyLabel.Name = "KeyLabel"
     KeyLabel.BackgroundTransparency = 1
     KeyLabel.Size = UDim2.new(1, 0, 0, 25)
     KeyLabel.Font = Enum.Font.GothamMedium
     KeyLabel.Text = "ENTER LICENSE KEY"
-    KeyLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
-    KeyLabel.TextSize = 14
+    KeyLabel.TextColor3 = Color3.fromRGB(200, 200, 220)
+    KeyLabel.TextSize = 13
     KeyLabel.TextXAlignment = Enum.TextXAlignment.Center
-    KeyLabel.TextYAlignment = Enum.TextYAlignment.Center
     KeyLabel.Parent = KeySection
 
     -- Key Input Box
     local KeyInput = Instance.new("TextBox")
-    KeyInput.Name = "KeyInput"
-    KeyInput.BackgroundColor3 = Color3.fromRGB(20, 20, 30)
+    KeyInput.BackgroundColor3 = Color3.fromRGB(15, 15, 25)
     KeyInput.BackgroundTransparency = 0.5
     KeyInput.BorderSizePixel = 0
-    KeyInput.Size = UDim2.new(0.8, 0, 0, 40)
-    KeyInput.Position = UDim2.new(0.1, 0, 0.25, 0)
+    KeyInput.Size = UDim2.new(0.85, 0, 0, 38)
+    KeyInput.Position = UDim2.new(0.075, 0, 0.25, 0)
     KeyInput.Font = Enum.Font.GothamMedium
     KeyInput.PlaceholderText = "XXXX-XXXX-XXXX-XXXX"
-    KeyInput.PlaceholderColor3 = Color3.fromRGB(100, 100, 120)
+    KeyInput.PlaceholderColor3 = Color3.fromRGB(80, 80, 100)
     KeyInput.Text = ""
     KeyInput.TextColor3 = Color3.fromRGB(255, 255, 255)
-    KeyInput.TextSize = 16
+    KeyInput.TextSize = 15
     KeyInput.TextXAlignment = Enum.TextXAlignment.Center
     KeyInput.Parent = KeySection
 
@@ -456,43 +397,43 @@ function Loader:CreateUI()
     KeyInputStroke.Transparency = 0.3
     KeyInputStroke.Thickness = 1
     KeyInputStroke.Parent = KeyInput
+    
+    LoaderUI.KeyInput = KeyInput
 
     -- Key Status Label
     local KeyStatus = Instance.new("TextLabel")
-    KeyStatus.Name = "KeyStatus"
     KeyStatus.BackgroundTransparency = 1
     KeyStatus.Size = UDim2.new(1, 0, 0, 20)
-    KeyStatus.Position = UDim2.new(0, 0, 0.75, 0)
+    KeyStatus.Position = UDim2.new(0, 0, 0.7, 0)
     KeyStatus.Font = Enum.Font.GothamMedium
-    KeyStatus.Text = "Waiting for key..."
+    KeyStatus.Text = "🔑 Enter your license key to continue"
     KeyStatus.TextColor3 = Color3.fromRGB(150, 150, 170)
     KeyStatus.TextSize = 12
     KeyStatus.TextXAlignment = Enum.TextXAlignment.Center
-    KeyStatus.TextYAlignment = Enum.TextYAlignment.Center
     KeyStatus.Parent = KeySection
+    
+    LoaderUI.KeyStatus = KeyStatus
 
     -- ================================================
-    --  BUTTONS
+    --  BUTTON SECTION
     -- ================================================
     local ButtonSection = Instance.new("Frame")
-    ButtonSection.Name = "ButtonSection"
     ButtonSection.BackgroundTransparency = 1
-    ButtonSection.Size = UDim2.new(1, -40, 0, 60)
-    ButtonSection.Position = UDim2.new(0, 20, 0, 240)
+    ButtonSection.Size = UDim2.new(1, -40, 0, 50)
+    ButtonSection.Position = UDim2.new(0, 20, 0, 225)
     ButtonSection.Parent = MainFrame
 
     -- Authenticate Button
     local AuthButton = Instance.new("TextButton")
-    AuthButton.Name = "AuthButton"
     AuthButton.BackgroundColor3 = Color3.fromRGB(255, 215, 0)
-    AuthButton.BackgroundTransparency = 0.1
+    AuthButton.BackgroundTransparency = 0.15
     AuthButton.BorderSizePixel = 0
-    AuthButton.Size = UDim2.new(0.8, 0, 0, 40)
+    AuthButton.Size = UDim2.new(0.8, 0, 1, 0)
     AuthButton.Position = UDim2.new(0.1, 0, 0, 0)
     AuthButton.Font = Enum.Font.GothamBold
     AuthButton.Text = "AUTHENTICATE"
     AuthButton.TextColor3 = Color3.fromRGB(255, 255, 255)
-    AuthButton.TextSize = 16
+    AuthButton.TextSize = 15
     AuthButton.Parent = ButtonSection
 
     local AuthCorner = Instance.new("UICorner")
@@ -501,74 +442,85 @@ function Loader:CreateUI()
 
     local AuthStroke = Instance.new("UIStroke")
     AuthStroke.Color = Color3.fromRGB(255, 215, 0)
-    AuthStroke.Transparency = 0.3
+    AuthStroke.Transparency = 0.2
     AuthStroke.Thickness = 1.5
     AuthStroke.Parent = AuthButton
+    
+    LoaderUI.AuthButton = AuthButton
+
+    -- Hover effects
+    AuthButton.MouseEnter:Connect(function()
+        AuthButton.BackgroundTransparency = 0
+        AuthButton.TextColor3 = Color3.fromRGB(0, 0, 0)
+    end)
+    AuthButton.MouseLeave:Connect(function()
+        AuthButton.BackgroundTransparency = 0.15
+        AuthButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+    end)
 
     -- ================================================
-    --  PROGRESS BAR (Hidden until authenticated)
+    --  PROGRESS SECTION
     -- ================================================
     local ProgressSection = Instance.new("Frame")
-    ProgressSection.Name = "ProgressSection"
     ProgressSection.BackgroundTransparency = 1
-    ProgressSection.Size = UDim2.new(1, -40, 0, 60)
-    ProgressSection.Position = UDim2.new(0, 20, 0, 310)
+    ProgressSection.Size = UDim2.new(1, -40, 0, 55)
+    ProgressSection.Position = UDim2.new(0, 20, 0, 285)
     ProgressSection.Parent = MainFrame
     ProgressSection.Visible = false
+    
+    LoaderUI.ProgressSection = ProgressSection
 
     -- Progress Bar Background
     local ProgressBg = Instance.new("Frame")
-    ProgressBg.Name = "ProgressBg"
-    ProgressBg.BackgroundColor3 = Color3.fromRGB(30, 30, 40)
+    ProgressBg.BackgroundColor3 = Color3.fromRGB(25, 25, 35)
     ProgressBg.BorderSizePixel = 0
-    ProgressBg.Size = UDim2.new(1, 0, 0, 8)
-    ProgressBg.Position = UDim2.new(0, 0, 0, 0)
+    ProgressBg.Size = UDim2.new(1, 0, 0, 6)
     ProgressBg.Parent = ProgressSection
 
     local ProgressCorner = Instance.new("UICorner")
-    ProgressCorner.CornerRadius = UDim.new(0, 4)
+    ProgressCorner.CornerRadius = UDim.new(0, 3)
     ProgressCorner.Parent = ProgressBg
 
     -- Progress Fill
     local ProgressFill = Instance.new("Frame")
-    ProgressFill.Name = "ProgressFill"
     ProgressFill.BackgroundColor3 = Color3.fromRGB(255, 215, 0)
     ProgressFill.BorderSizePixel = 0
     ProgressFill.Size = UDim2.new(0, 0, 1, 0)
     ProgressFill.Parent = ProgressBg
 
     local ProgressFillCorner = Instance.new("UICorner")
-    ProgressFillCorner.CornerRadius = UDim.new(0, 4)
+    ProgressFillCorner.CornerRadius = UDim.new(0, 3)
     ProgressFillCorner.Parent = ProgressFill
+    
+    LoaderUI.ProgressFill = ProgressFill
 
     -- Progress Text
     local ProgressText = Instance.new("TextLabel")
-    ProgressText.Name = "ProgressText"
     ProgressText.BackgroundTransparency = 1
     ProgressText.Size = UDim2.new(1, 0, 0, 20)
-    ProgressText.Position = UDim2.new(0, 0, 0, 15)
+    ProgressText.Position = UDim2.new(0, 0, 0, 12)
     ProgressText.Font = Enum.Font.GothamMedium
     ProgressText.Text = "0% - Initializing..."
-    ProgressText.TextColor3 = Color3.fromRGB(200, 200, 220)
-    ProgressText.TextSize = 12
+    ProgressText.TextColor3 = Color3.fromRGB(180, 180, 200)
+    ProgressText.TextSize = 11
     ProgressText.TextXAlignment = Enum.TextXAlignment.Center
-    ProgressText.TextYAlignment = Enum.TextYAlignment.Center
     ProgressText.Parent = ProgressSection
+    
+    LoaderUI.ProgressText = ProgressText
 
     -- ================================================
-    --  INJECT BUTTON (Hidden until key auth)
+    --  INJECT BUTTON (Hidden until auth)
     -- ================================================
     local InjectButton = Instance.new("TextButton")
-    InjectButton.Name = "InjectButton"
     InjectButton.BackgroundColor3 = Color3.fromRGB(255, 0, 0)
-    InjectButton.BackgroundTransparency = 0.1
+    InjectButton.BackgroundTransparency = 0.15
     InjectButton.BorderSizePixel = 0
-    InjectButton.Size = UDim2.new(0.8, 0, 0, 40)
+    InjectButton.Size = UDim2.new(0.8, 0, 1, 0)
     InjectButton.Position = UDim2.new(0.1, 0, 0, 0)
     InjectButton.Font = Enum.Font.GothamBold
     InjectButton.Text = "INJECT RAVEN"
     InjectButton.TextColor3 = Color3.fromRGB(255, 255, 255)
-    InjectButton.TextSize = 16
+    InjectButton.TextSize = 15
     InjectButton.Parent = ButtonSection
     InjectButton.Visible = false
 
@@ -578,36 +530,52 @@ function Loader:CreateUI()
 
     local InjectStroke = Instance.new("UIStroke")
     InjectStroke.Color = Color3.fromRGB(255, 0, 0)
-    InjectStroke.Transparency = 0.3
+    InjectStroke.Transparency = 0.2
     InjectStroke.Thickness = 1.5
     InjectStroke.Parent = InjectButton
+    
+    LoaderUI.InjectButton = InjectButton
+
+    -- Hover effects for Inject
+    InjectButton.MouseEnter:Connect(function()
+        if LoaderUI.isAuthenticated then
+            InjectButton.BackgroundTransparency = 0
+            InjectButton.TextColor3 = Color3.fromRGB(0, 0, 0)
+        end
+    end)
+    InjectButton.MouseLeave:Connect(function()
+        if LoaderUI.isAuthenticated then
+            InjectButton.BackgroundTransparency = 0.15
+            InjectButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+        end
+    end)
 
     -- ================================================
     --  FOOTER
     -- ================================================
     local Footer = Instance.new("TextLabel")
-    Footer.Name = "Footer"
     Footer.BackgroundTransparency = 1
     Footer.Size = UDim2.new(1, -40, 0, 20)
-    Footer.Position = UDim2.new(0, 20, 1, -30)
+    Footer.Position = UDim2.new(0, 20, 1, -28)
     Footer.Font = Enum.Font.GothamMedium
     Footer.Text = "© 2026 Raven Software | All Rights Reserved"
-    Footer.TextColor3 = Color3.fromRGB(80, 80, 100)
-    Footer.TextSize = 10
+    Footer.TextColor3 = Color3.fromRGB(60, 60, 80)
+    Footer.TextSize = 9
     Footer.TextXAlignment = Enum.TextXAlignment.Center
-    Footer.TextYAlignment = Enum.TextYAlignment.Center
     Footer.Parent = MainFrame
 
     -- ================================================
     --  LOADER LOGIC
     -- ================================================
-    local isAuthenticated = false
     
-    -- Load valid keys
+    -- Load valid keys from URL
     KeySystem:LoadKeys()
-
-    -- Authenticate Button Click
-    AuthButton.MouseButton1Click:Connect(function()
+    
+    -- Update status after loading
+    KeyStatus.Text = "🔑 " .. (#KeySystem.ValidKeys > 0 and "Enter your license key" or "No keys loaded - contact support")
+    
+    -- Authenticate function
+    local function Authenticate()
         local inputKey = KeyInput.Text
         if inputKey == "" then
             KeyStatus.Text = "⚠️ Please enter a license key!"
@@ -616,27 +584,40 @@ function Loader:CreateUI()
         end
         
         if KeySystem:ValidateKey(inputKey) then
-            isAuthenticated = true
+            LoaderUI.isAuthenticated = true
+            
             KeyStatus.Text = "✅ Key authenticated! Welcome, Raven User!"
             KeyStatus.TextColor3 = Color3.fromRGB(0, 255, 100)
             
-            -- Hide auth elements, show inject
+            -- Hide auth elements
             AuthButton.Visible = false
             KeyInput.Text = ""
             KeyInput.PlaceholderText = "✓ Authenticated"
             KeyInput.TextColor3 = Color3.fromRGB(0, 255, 100)
+            KeyInput.BackgroundTransparency = 0.8
             
+            -- Show inject and progress
             InjectButton.Visible = true
             ProgressSection.Visible = true
             
             -- Animate progress
             task.spawn(function()
-                for i = 0, 100, 2 do
-                    ProgressFill.Size = UDim2.new(i / 100, 0, 1, 0)
-                    ProgressText.Text = i .. "% - Loading modules..."
-                    task.wait(0.02)
+                local steps = {
+                    {percent = 10, text = "Loading modules..."},
+                    {percent = 30, text = "Initializing framework..."},
+                    {percent = 50, text = "Configuring settings..."},
+                    {percent = 70, text = "Loading assets..."},
+                    {percent = 90, text = "Finalizing..."},
+                    {percent = 100, text = "Ready to inject!"},
+                }
+                
+                for _, step in ipairs(steps) do
+                    ProgressFill.Size = UDim2.new(step.percent / 100, 0, 1, 0)
+                    ProgressText.Text = step.percent .. "% - " .. step.text
+                    task.wait(0.2 + math.random() * 0.3)
                 end
-                ProgressText.Text = "100% - Ready to inject!"
+                
+                -- Update inject button style
                 InjectButton.BackgroundColor3 = Color3.fromRGB(255, 215, 0)
                 InjectButton.BackgroundTransparency = 0
                 InjectButton.TextColor3 = Color3.fromRGB(0, 0, 0)
@@ -648,89 +629,90 @@ function Loader:CreateUI()
             KeyStatus.TextColor3 = Color3.fromRGB(255, 0, 0)
             KeyInput.Text = ""
             KeyInput.PlaceholderText = "Invalid key, retry..."
+            KeyInput.BackgroundTransparency = 0.3
+            
             task.wait(1)
             KeyInput.PlaceholderText = "XXXX-XXXX-XXXX-XXXX"
-            KeyStatus.Text = "Waiting for key..."
+            KeyInput.BackgroundTransparency = 0.5
+            KeyStatus.Text = "🔑 Enter your license key"
             KeyStatus.TextColor3 = Color3.fromRGB(150, 150, 170)
+        end
+    end
+    
+    -- Auth Button Click
+    AuthButton.MouseButton1Click:Connect(Authenticate)
+    
+    -- Enter key in input field
+    KeyInput.FocusLost:Connect(function(enterPressed)
+        if enterPressed then
+            Authenticate()
         end
     end)
 
     -- Inject Button Click
     InjectButton.MouseButton1Click:Connect(function()
-        if not isAuthenticated then return end
+        if not LoaderUI.isAuthenticated then return end
         
         InjectButton.Text = "INJECTING..."
         InjectButton.BackgroundColor3 = Color3.fromRGB(255, 215, 0)
         InjectButton.TextColor3 = Color3.fromRGB(0, 0, 0)
+        InjectButton.BackgroundTransparency = 0
         
         -- Execute main script
-        local success, result = pcall(function()
-            ProgressText.Text = "Downloading framework..."
-            return loadstring(game:HttpGet(LoaderConfig.MenuURL))()
-        end)
-        
-        if success and result then
-            ProgressText.Text = "Executing framework..."
-            task.wait(0.5)
-            
-            local mainSuccess = pcall(function()
-                result()
+        task.spawn(function()
+            local success, result = pcall(function()
+                ProgressText.Text = "📥 Downloading framework..."
+                return game:HttpGet(LoaderConfig.MenuURL)
             end)
             
-            if mainSuccess then
-                ProgressText.Text = "✅ Injection successful!"
-                InjectButton.Text = "✓ INJECTED"
-                InjectButton.BackgroundColor3 = Color3.fromRGB(0, 255, 100)
-                InjectButton.TextColor3 = Color3.fromRGB(0, 0, 0)
+            if success and result and result ~= "" then
+                ProgressText.Text = "⚙️ Executing framework..."
+                task.wait(0.3)
                 
-                task.wait(1)
-                ScreenGui:Destroy()
+                local execSuccess, execResult = pcall(function()
+                    return loadstring(result)()
+                end)
                 
-                StarterGui:SetCore("SendNotification", {
-                    Title = "Raven Software",
-                    Text = "Framework loaded! Press Insert to toggle menu.",
-                    Duration = 3,
-                })
+                if execSuccess then
+                    ProgressText.Text = "✅ Injection successful!"
+                    InjectButton.Text = "✓ INJECTED"
+                    InjectButton.BackgroundColor3 = Color3.fromRGB(0, 255, 100)
+                    InjectButton.TextColor3 = Color3.fromRGB(0, 0, 0)
+                    
+                    task.wait(0.5)
+                    
+                    -- Close loader
+                    pcall(function()
+                        LoaderUI.ScreenGui:Destroy()
+                    end)
+                    
+                    StarterGui:SetCore("SendNotification", {
+                        Title = "Raven Software",
+                        Text = "Framework loaded! Press Insert to toggle menu.",
+                        Duration = 3,
+                    })
+                else
+                    ProgressText.Text = "❌ Execution failed: " .. tostring(execResult)
+                    InjectButton.Text = "RETRY"
+                    InjectButton.BackgroundColor3 = Color3.fromRGB(255, 0, 0)
+                    InjectButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+                end
             else
-                ProgressText.Text = "❌ Execution failed!"
+                ProgressText.Text = "❌ Download failed: " .. tostring(result or "Unknown error")
                 InjectButton.Text = "RETRY"
                 InjectButton.BackgroundColor3 = Color3.fromRGB(255, 0, 0)
+                InjectButton.TextColor3 = Color3.fromRGB(255, 255, 255)
             end
-        else
-            ProgressText.Text = "❌ Download failed!"
-            InjectButton.Text = "RETRY"
-            InjectButton.BackgroundColor3 = Color3.fromRGB(255, 0, 0)
-        end
-    end)
-
-    -- Hover effects
-    AuthButton.MouseEnter:Connect(function()
-        AuthButton.BackgroundTransparency = 0
-        AuthButton.TextColor3 = Color3.fromRGB(0, 0, 0)
-    end)
-    
-    AuthButton.MouseLeave:Connect(function()
-        AuthButton.BackgroundTransparency = 0.1
-        AuthButton.TextColor3 = Color3.fromRGB(255, 255, 255)
-    end)
-
-    InjectButton.MouseEnter:Connect(function()
-        if isAuthenticated then
-            InjectButton.BackgroundTransparency = 0
-        end
-    end)
-    
-    InjectButton.MouseLeave:Connect(function()
-        if isAuthenticated then
-            InjectButton.BackgroundTransparency = 0.1
-        end
+        end)
     end)
 
     -- Keybind to toggle (Insert)
     UserInputService.InputBegan:Connect(function(input, gameProcessed)
         if gameProcessed then return end
         if input.KeyCode == Enum.KeyCode[LoaderConfig.Key] then
-            ScreenGui.Enabled = not ScreenGui.Enabled
+            if LoaderUI.ScreenGui then
+                LoaderUI.ScreenGui.Enabled = not LoaderUI.ScreenGui.Enabled
+            end
         end
     end)
 
@@ -740,6 +722,26 @@ end
 -- ================================================
 --  INITIALIZE LOADER
 -- ================================================
-Loader:CreateUI()
-print("[Raven Software] Premium Beach Night Loader initialized!")
-print("[Raven Software] Press Insert to show/hide the loader.")
+local function InitLoader()
+    -- Wait for services to be ready
+    task.wait(0.5)
+    
+    -- Create the UI
+    local success, err = pcall(CreateLoaderUI)
+    if success then
+        print("[Raven Software] Premium Beach Night Loader initialized!")
+        print("[Raven Software] Press Insert to show/hide the loader.")
+    else
+        warn("[Raven Software] Failed to create loader: " .. tostring(err))
+        -- Try fallback to PlayerGui
+        pcall(function()
+            local screenGui = Instance.new("ScreenGui")
+            screenGui.Name = "RavenLoader"
+            screenGui.Parent = LP:WaitForChild("PlayerGui")
+            print("[Raven Software] Created loader in PlayerGui (fallback)")
+        end)
+    end
+end
+
+-- Start loader
+InitLoader()
